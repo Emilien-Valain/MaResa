@@ -15,7 +15,7 @@ export default defineConfig({
   globalSetup: "./e2e/global-setup.ts",
 
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: "http://localhost:3001",
     trace: "on-first-retry",
   },
 
@@ -44,12 +44,12 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: "npm run dev",
-    url: "http://localhost:3000",
-    reuseExistingServer: true,
+    command: "next dev -p 3001",
+    url: "http://localhost:3001",
+    reuseExistingServer: false,
     env: {
       DATABASE_URL: process.env.TEST_DATABASE_URL!,
-      BETTER_AUTH_URL: "http://localhost:3000",
+      BETTER_AUTH_URL: "http://localhost:3001",
       BETTER_AUTH_SECRET: "test-secret-for-playwright-32chars",
     },
   },

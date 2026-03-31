@@ -29,6 +29,31 @@ Pour toute nouvelle fonctionnalité ou modification d'une fonctionnalité exista
 3. Les tests sont dans `/e2e/`, organisés par domaine : `auth/`, `admin/`, `public/`, `payment/`.
 4. Utilise `test.skip(...)` pour les tests dont le code applicatif n'est pas encore écrit. Ne laisse jamais un test sans stub.
 
+## Règle : les tests doivent essayer de casser l'app
+
+Les tests de non-régression ont pour but de garantir que les fonctionnalités **restent viables après chaque push**. Un test qui ne couvre que le "happy path" est insuffisant. Pour chaque feature, tu dois écrire :
+
+### Cas nominaux (happy path)
+Le flux principal tel qu'un utilisateur normal l'utilise.
+
+### Cas aux limites (boundary testing)
+- **Valeurs extrêmes** : prix = 0, capacité = 1, texte vide, texte à 500 caractères, dates limites (1er jan, 31 déc)
+- **Transitions d'état** : cycle complet d'un objet (pending → confirmed → completed, puis annulation depuis chaque état)
+- **Paramètres invalides** : UUID inexistant dans l'URL, querystring malformé (?year=abc&month=99), données manquantes
+
+### Cas d'erreur (error paths)
+- **Ressource inexistante** : accéder à `/admin/ressource/uuid-qui-nexiste-pas` → doit retourner 404, jamais 500
+- **Formulaire invalide** : soumettre sans remplir les champs requis, mauvais format d'email, dates incohérentes (checkout < checkin)
+- **Isolation multi-tenant** : un UUID valide mais appartenant à un autre tenant → 404, les données ne fuient pas
+
+### Sécurité de base
+- **XSS** : injecter `<script>alert(1)</script>` dans les champs texte → le texte doit apparaître échappé, aucun dialog ne doit se déclencher
+- **Accès non authentifié** : toutes les URLs `/admin/*` sans session → redirection vers `/login`, jamais de 500
+- **Après déconnexion** : la session est bien détruite, `/admin` redirige vers `/login`
+
+### Règle de nettoyage
+Chaque test qui crée des données doit les supprimer à la fin (ou utiliser des données dont d'autres tests dépendent). Les tests doivent pouvoir tourner plusieurs fois de suite sans laisser de résidus en DB.
+
 ## Lancer les tests
 
 ```bash

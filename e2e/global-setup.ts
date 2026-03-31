@@ -5,9 +5,7 @@ import { hex } from "@better-auth/utils/hex";
 import { randomBytes } from "crypto";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
-import * as schema from "../db/schema";
-
-const { tenants, users, accounts, properties } = schema;
+import { tenants, users, accounts, properties } from "../db/schema";
 
 async function hashPassword(password: string): Promise<string> {
   const salt = hex.encode(randomBytes(16));
@@ -25,14 +23,18 @@ function generateId(): string {
   return randomBytes(16).toString("base64url");
 }
 
-async function seedTestAdmin(db: ReturnType<typeof drizzle>) {
+export default async function globalSetup() {
+  const { config } = await import("dotenv");
+  config({ path: ".env.test" });
+
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL! });
+  const db = drizzle(pool);
+
   const email = process.env.TEST_ADMIN_EMAIL!;
   const password = process.env.TEST_ADMIN_PASSWORD!;
 
   // Tenant de test
-  let tenant = await db.query.tenants.findFirst({
-    where: eq(tenants.slug, "test-tenant"),
-  });
+  let [tenant] = await db.select().from(tenants).where(eq(tenants.slug, "test-tenant"));
 
   if (!tenant) {
     [tenant] = await db
@@ -41,22 +43,15 @@ async function seedTestAdmin(db: ReturnType<typeof drizzle>) {
       .returning();
   }
 
-  // Property de test (requise pour créer des chambres)
-  const existingProperty = await db.query.properties.findFirst({
-    where: eq(properties.tenantId, tenant.id),
-  });
+  // Property de test
+  const [existingProp] = await db.select().from(properties).where(eq(properties.tenantId, tenant.id));
 
-  if (!existingProperty) {
-    await db.insert(properties).values({
-      tenantId: tenant.id,
-      name: "Hôtel Test",
-    });
+  if (!existingProp) {
+    await db.insert(properties).values({ tenantId: tenant.id, name: "Hôtel Test" });
   }
 
   // User de test
-  const existing = await db.query.users.findFirst({
-    where: eq(users.email, email),
-  });
+  const [existing] = await db.select().from(users).where(eq(users.email, email));
 
   if (!existing) {
     const userId = generateId();
@@ -78,27 +73,16 @@ async function seedTestAdmin(db: ReturnType<typeof drizzle>) {
       password: passwordHash,
     });
   }
-}
 
-export default async function globalSetup() {
-  // Charger .env.test
-  const { config } = await import("dotenv");
-  config({ path: ".env.test" });
-
-  const dbUrl = process.env.TEST_DATABASE_URL!;
-  const pool = new Pool({ connectionString: dbUrl });
-  const db = drizzle(pool, { schema });
-
-  await seedTestAdmin(db);
   await pool.end();
 
-  // Sauvegarder la session admin pour les tests qui en ont besoin
+  // Sauvegarder la session admin
   const browser = await chromium.launch();
   const page = await browser.newPage();
 
-  await page.goto("http://localhost:3000/login");
-  await page.fill('[name="email"]', process.env.TEST_ADMIN_EMAIL!);
-  await page.fill('[name="password"]', process.env.TEST_ADMIN_PASSWORD!);
+  await page.goto("http://localhost:3001/login");
+  await page.fill('[name="email"]', email);
+  await page.fill('[name="password"]', password);
   await page.click('[type="submit"]');
   await page.waitForURL(/\/admin/);
 

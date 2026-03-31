@@ -15,7 +15,7 @@ import { scryptAsync } from "@noble/hashes/scrypt.js";
 import { hex } from "@better-auth/utils/hex";
 import { randomBytes } from "crypto";
 import { db } from "@/lib/db";
-import { tenants, users, accounts } from "@/db/schema";
+import { tenants, users, accounts, properties } from "@/db/schema";
 
 // Même algo que Better Auth — doit rester synchronisé avec
 // node_modules/better-auth/dist/crypto/password.mjs
@@ -70,7 +70,16 @@ async function main() {
       : `✓ Tenant créé : ${tenant.name} (${tenant.id})`,
   );
 
-  // 2. Vérifier si l'email existe déjà
+  // 2. Créer la property par défaut si absente (1 tenant = 1 property)
+  const existingProp = await db.query.properties.findFirst({
+    where: eq(properties.tenantId, tenant.id),
+  });
+  if (!existingProp) {
+    await db.insert(properties).values({ tenantId: tenant.id, name });
+    console.log(`✓ Propriété créée : ${name}`);
+  }
+
+  // 3. Vérifier si l'email existe déjà
   const existingUser = await db.query.users.findFirst({
     where: eq(users.email, email),
   });

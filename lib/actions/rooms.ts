@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/session";
 import { db } from "@/lib/db";
-import { rooms } from "@/db/schema";
+import { rooms, properties, tenants } from "@/db/schema";
 
 async function requireTenantId(): Promise<string> {
   const { tenantId } = await requireSession();
@@ -29,14 +29,20 @@ export async function createRoom(formData: FormData) {
   const pricePerNight = formData.get("prix") as string;
   const capacity = parseInt(formData.get("capacite") as string, 10);
 
-  // TODO Phase 2.1 : récupérer propertyId depuis la session ou le tenant
-  // Pour l'instant on prend la première property du tenant
-  const property = await db.query.properties.findFirst({
-    where: (p) => eq(p.tenantId, tenantId),
+  // 1 tenant = 1 property dans ce modèle — on auto-crée si absente
+  let property = await db.query.properties.findFirst({
+    where: eq(properties.tenantId, tenantId),
   });
 
   if (!property) {
-    throw new Error("Aucune propriété trouvée pour ce tenant. Créez d'abord une propriété.");
+    const tenant = await db.query.tenants.findFirst({
+      where: eq(tenants.id, tenantId),
+      columns: { name: true },
+    });
+    [property] = await db
+      .insert(properties)
+      .values({ tenantId, name: tenant?.name ?? "Propriété" })
+      .returning();
   }
 
   await db.insert(rooms).values({
