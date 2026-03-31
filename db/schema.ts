@@ -27,31 +27,68 @@ export const tenants = pgTable(
   (table) => [index("tenants_domain_idx").on(table.domain)],
 );
 
-// config JSON shape :
-// {
-//   primaryColor: string,
-//   secondaryColor: string,
-//   fontFamily: string,
-//   logoUrl: string,
-//   heroImageUrl: string,
-//   heroTitle: string,
-//   heroSubtitle: string,
-//   address: string,
-//   phone: string,
-//   email: string,
-// }
-
-// ─── USERS (admins) ──────────────────────────────────────────────────────────
+// ─── USERS (Better Auth — admins) ────────────────────────────────────────────
+// IDs gérés par Better Auth (text/nanoid, pas uuid)
+// Les champs emailVerified, image, updatedAt sont requis par Better Auth
 
 export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  tenantId: uuid("tenant_id")
-    .notNull()
-    .references(() => tenants.id),
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  name: text("name"),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  image: text("image"),
+  // Champ custom : lie l'admin à son tenant
+  tenantId: uuid("tenant_id").references(() => tenants.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// ─── AUTH — Sessions ──────────────────────────────────────────────────────────
+
+export const sessions = pgTable("sessions", {
+  id: text("id").primaryKey(),
+  expiresAt: timestamp("expires_at").notNull(),
+  token: text("token").notNull().unique(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  // tenantId en session évite un lookup DB dans le middleware
+  tenantId: uuid("tenant_id").references(() => tenants.id),
+});
+
+// ─── AUTH — Accounts ──────────────────────────────────────────────────────────
+
+export const accounts = pgTable("accounts", {
+  id: text("id").primaryKey(),
+  accountId: text("account_id").notNull(),
+  providerId: text("provider_id").notNull(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  idToken: text("id_token"),
+  accessTokenExpiresAt: timestamp("access_token_expires_at"),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+  scope: text("scope"),
+  password: text("password"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// ─── AUTH — Verifications ────────────────────────────────────────────────────
+
+export const verifications = pgTable("verifications", {
+  id: text("id").primaryKey(),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-  // Le reste (password hash, sessions) est géré par Better Auth
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // ─── PROPERTIES ──────────────────────────────────────────────────────────────
@@ -194,6 +231,10 @@ export const icalBlocks = pgTable(
   },
   (table) => [
     unique().on(table.sourceId, table.uid),
-    index("ical_blocks_room_dates_idx").on(table.roomId, table.start, table.end),
+    index("ical_blocks_room_dates_idx").on(
+      table.roomId,
+      table.start,
+      table.end,
+    ),
   ],
 );
