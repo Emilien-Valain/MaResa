@@ -2,7 +2,7 @@
  * Crée un tenant et un utilisateur admin en ligne de commande.
  *
  * Usage :
- *   npx tsx scripts/create-admin.ts \
+ *   npm run create-admin -- \
  *     --name "Hôtel du Coin" \
  *     --slug "hotel-du-coin" \
  *     --domain "hotelducoin.fr" \
@@ -11,9 +11,29 @@
  */
 
 import { eq } from "drizzle-orm";
+import { scryptAsync } from "@noble/hashes/scrypt.js";
+import { hex } from "@better-auth/utils/hex";
+import { randomBytes } from "crypto";
 import { db } from "@/lib/db";
-import { auth } from "@/lib/auth";
-import { tenants, users } from "@/db/schema";
+import { tenants, users, accounts } from "@/db/schema";
+
+// Même algo que Better Auth — doit rester synchronisé avec
+// node_modules/better-auth/dist/crypto/password.mjs
+async function hashPassword(password: string): Promise<string> {
+  const salt = hex.encode(randomBytes(16));
+  const key = await scryptAsync(password.normalize("NFKC"), salt, {
+    N: 16384,
+    r: 16,
+    p: 1,
+    dkLen: 64,
+    maxmem: 128 * 16384 * 16 * 2,
+  });
+  return `${salt}:${hex.encode(key)}`;
+}
+
+function generateId(): string {
+  return randomBytes(16).toString("base64url");
+}
 
 async function main() {
   const args = process.argv.slice(2);
@@ -35,29 +55,50 @@ async function main() {
     process.exit(1);
   }
 
-  // 1. Créer le tenant
-  const [tenant] = await db
-    .insert(tenants)
-    .values({ name, slug, domain })
-    .returning();
-
-  console.log(`✓ Tenant créé : ${tenant.name} (${tenant.id})`);
-
-  // 2. Créer l'utilisateur via Better Auth
-  const result = await auth.api.signUpEmail({
-    body: { name, email, password },
+  // 1. Créer le tenant (idempotent sur le slug)
+  const existing = await db.query.tenants.findFirst({
+    where: eq(tenants.slug, slug),
   });
 
-  if (!result?.user) {
-    console.error("Erreur lors de la création de l'utilisateur");
-    process.exit(1);
+  const tenant =
+    existing ??
+    (await db.insert(tenants).values({ name, slug, domain }).returning())[0];
+
+  console.log(
+    existing
+      ? `ℹ Tenant existant réutilisé : ${tenant.name} (${tenant.id})`
+      : `✓ Tenant créé : ${tenant.name} (${tenant.id})`,
+  );
+
+  // 2. Vérifier si l'email existe déjà
+  const existingUser = await db.query.users.findFirst({
+    where: eq(users.email, email),
+  });
+
+  if (existingUser) {
+    console.log(`ℹ Utilisateur déjà existant : ${email}`);
+    process.exit(0);
   }
 
-  // 3. Associer l'utilisateur au tenant
-  await db
-    .update(users)
-    .set({ tenantId: tenant.id })
-    .where(eq(users.id, result.user.id));
+  // 3. Créer l'utilisateur + compte email/password au format Better Auth
+  const userId = generateId();
+  const passwordHash = await hashPassword(password);
+
+  await db.insert(users).values({
+    id: userId,
+    name,
+    email,
+    emailVerified: true,
+    tenantId: tenant.id,
+  });
+
+  await db.insert(accounts).values({
+    id: generateId(),
+    accountId: userId,
+    providerId: "credential",
+    userId,
+    password: passwordHash,
+  });
 
   console.log(`✓ Admin créé : ${email}`);
   console.log(`  Tenant : ${tenant.name} (slug: ${tenant.slug})`);
