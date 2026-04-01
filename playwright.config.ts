@@ -51,6 +51,7 @@ export default defineConfig({
       DATABASE_URL: process.env.TEST_DATABASE_URL!,
       BETTER_AUTH_URL: "http://localhost:3001",
       BETTER_AUTH_SECRET: "test-secret-for-playwright-32chars",
+      PUBLIC_TENANT_SLUG: "test-tenant",
     },
   },
 });
