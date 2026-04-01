@@ -42,25 +42,25 @@ export default async function CalendrierPage({
     <div className="space-y-6">
       {/* Navigation mois */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900 capitalize">
+        <h1 className="font-heading text-3xl font-semibold text-warm-900 capitalize">
           {formatMonthLabel(year, month)}
         </h1>
         <div className="flex items-center gap-2">
           <Link
             href={`/admin/calendrier?year=${prev.year}&month=${prev.month}`}
-            className="px-3 py-1.5 rounded-lg text-sm bg-gray-100 hover:bg-gray-200 transition-colors"
+            className="px-3 py-1.5 rounded-sm text-sm bg-warm-100 hover:bg-warm-200 transition-colors"
           >
             ←
           </Link>
           <Link
             href={`/admin/calendrier?year=${now.getFullYear()}&month=${now.getMonth()}`}
-            className="px-3 py-1.5 rounded-lg text-sm bg-gray-100 hover:bg-gray-200 transition-colors"
+            className="px-3 py-1.5 rounded-sm text-sm bg-warm-100 hover:bg-warm-200 transition-colors"
           >
             Aujourd&apos;hui
           </Link>
           <Link
             href={`/admin/calendrier?year=${next.year}&month=${next.month}`}
-            className="px-3 py-1.5 rounded-lg text-sm bg-gray-100 hover:bg-gray-200 transition-colors"
+            className="px-3 py-1.5 rounded-sm text-sm bg-warm-100 hover:bg-warm-200 transition-colors"
           >
             →
           </Link>
@@ -68,15 +68,15 @@ export default async function CalendrierPage({
       </div>
 
       {activeChambres.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <p className="text-gray-400 text-sm">Aucune chambre active.</p>
+        <div className="text-center py-16 bg-white rounded-sm border border-warm-200">
+          <p className="text-warm-400 text-sm">Aucune chambre active.</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-xs">
             <thead>
               <tr>
-                <th className="text-left py-2 pr-4 text-gray-500 font-medium w-32 sticky left-0 bg-white">
+                <th className="text-left py-2 pr-4 text-warm-500 font-medium w-32 sticky left-0 bg-warm-50">
                   Chambre
                 </th>
                 {calendar.days.map((day) => {
@@ -86,7 +86,7 @@ export default async function CalendrierPage({
                     <th
                       key={day.getTime()}
                       className={`text-center py-2 px-1 font-medium min-w-[28px] ${
-                        isToday ? "text-blue-600" : "text-gray-500"
+                        isToday ? "text-amber-accent" : "text-warm-500"
                       }`}
                     >
                       {day.getDate()}
@@ -95,7 +95,7 @@ export default async function CalendrierPage({
                 })}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-warm-100">
               {activeChambres.map((chambre) => {
                 const roomBookings = bookings.filter(
                   (b) => b.roomId === chambre.id,
@@ -103,7 +103,7 @@ export default async function CalendrierPage({
 
                 return (
                   <tr key={chambre.id}>
-                    <td className="py-2 pr-4 text-gray-700 font-medium sticky left-0 bg-white">
+                    <td className="py-2 pr-4 text-warm-700 font-medium sticky left-0 bg-warm-50">
                       {chambre.name}
                     </td>
                     {calendar.days.map((day) => {
@@ -121,10 +121,10 @@ export default async function CalendrierPage({
                             <Link
                               href={`/admin/reservations/${booking.id}`}
                               title={booking.guestName}
-                              className={`block w-full h-6 rounded ${STATUS_COLORS[booking.status]}`}
+                              className={`block w-full h-6 rounded-sm ${STATUS_COLORS[booking.status]}`}
                             />
                           ) : (
-                            <div className="block w-full h-6 rounded bg-gray-50" />
+                            <div className="block w-full h-6 rounded-sm bg-warm-50" />
                           )}
                         </td>
                       );
@@ -138,12 +138,12 @@ export default async function CalendrierPage({
       )}
 
       {/* Légende */}
-      <div className="flex gap-4 text-xs text-gray-500">
+      <div className="flex gap-4 text-xs text-warm-500">
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded bg-yellow-100 inline-block" /> En attente
+          <span className="w-3 h-3 rounded-sm bg-yellow-100 inline-block" /> En attente
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded bg-green-100 inline-block" /> Confirmée
+          <span className="w-3 h-3 rounded-sm bg-green-100 inline-block" /> Confirmée
         </span>
       </div>
     </div>

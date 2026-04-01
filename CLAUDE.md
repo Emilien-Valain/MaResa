@@ -66,3 +66,25 @@ Les tests se lancent automatiquement avant chaque commit (hook pre-commit via Hu
 ## DB de test
 
 Utilise la variable `TEST_DATABASE_URL` dans `.env.test` pour pointer vers une base PostgreSQL de test dédiée. Ne jamais lancer les tests E2E contre la base de production.
+
+# Esthétique frontend
+
+**UX > UI** — l'app doit d'abord être facile à utiliser et à comprendre. Mais une fois la clarté assurée, pousse le style.
+
+## Principes
+
+- **Typographie** : utilise des fonts distinctives et belles. Évite les fonts génériques (Arial, Inter, Roboto, system fonts). Privilégie des choix qui élèvent l'esthétique.
+- **Couleur & thème** : engage-toi sur une esthétique cohérente. Utilise des CSS variables pour la consistance. Des couleurs dominantes avec des accents francs > des palettes timides et uniformément réparties.
+- **Motion** : utilise des animations pour les micro-interactions. Priorise les solutions CSS-only. Focus sur les moments à fort impact : une orchestration au chargement de page avec des reveals stagés (animation-delay) > des micro-interactions dispersées.
+- **Arrière-plans** : crée de l'atmosphère et de la profondeur plutôt que des couleurs plates. Superpose des gradients CSS, utilise des patterns géométriques, ou ajoute des effets contextuels.
+
+## Interdits (esthétique "AI slop")
+
+- Les fonts clichés (Inter, Roboto, Arial, Space Grotesk)
+- Les schémas de couleurs éculés (gradients violets sur fond blanc)
+- Les layouts et composants prévisibles et cookie-cutter
+- Les choix qui convergent vers le "générique"
+
+## Rappel
+
+Interprète créativement, fais des choix inattendus qui semblent véritablement conçus pour le contexte hôtelier. Varie entre thèmes clairs et sombres, différentes fonts, différentes esthétiques selon le template.

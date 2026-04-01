@@ -62,7 +62,6 @@ export default function BookingForm({
       return;
     }
 
-    // Debounce l'appel API
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     debounceRef.current = setTimeout(async () => {
@@ -106,11 +105,13 @@ export default function BookingForm({
 
   const handleCheckInChange = (val: string) => {
     setCheckIn(val);
-    // S'assurer que checkOut est au moins checkIn + 1 jour
     if (val >= checkOut) {
       setCheckOut(addDay(val));
     }
   };
+
+  const inputClass =
+    "w-full border border-warm-200 rounded-sm px-3 py-2.5 text-sm text-warm-900 bg-warm-50/50 focus:outline-none focus:ring-2 focus:ring-amber-accent/40 focus:border-amber-accent transition-colors";
 
   return (
     <form action={createBookingPublic} className="space-y-6">
@@ -119,7 +120,7 @@ export default function BookingForm({
       {/* Dates */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="checkIn" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="checkIn" className="block text-sm font-medium text-warm-700 mb-1.5">
             Date d&apos;arrivée
           </label>
           <input
@@ -130,11 +131,11 @@ export default function BookingForm({
             min={today}
             value={checkIn}
             onChange={(e) => handleCheckInChange(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className={inputClass}
           />
         </div>
         <div>
-          <label htmlFor="checkOut" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="checkOut" className="block text-sm font-medium text-warm-700 mb-1.5">
             Date de départ
           </label>
           <input
@@ -145,7 +146,7 @@ export default function BookingForm({
             min={checkIn ? addDay(checkIn) : tomorrow}
             value={checkOut}
             onChange={(e) => setCheckOut(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className={inputClass}
           />
         </div>
       </div>
@@ -153,19 +154,19 @@ export default function BookingForm({
       {/* Badge disponibilité */}
       <div className="min-h-[28px]">
         {availability === "checking" && (
-          <span className="inline-flex items-center gap-1.5 text-sm text-gray-500">
-            <span className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+          <span className="inline-flex items-center gap-1.5 text-sm text-warm-500">
+            <span className="inline-block w-3 h-3 border-2 border-warm-400 border-t-transparent rounded-full animate-spin" />
             Vérification de la disponibilité…
           </span>
         )}
         {availability === "available" && (
-          <span className="inline-flex items-center gap-1.5 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-3 py-1">
+          <span className="inline-flex items-center gap-1.5 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-sm px-3 py-1">
             <span className="w-2 h-2 bg-green-500 rounded-full" />
             Disponible
           </span>
         )}
         {availability === "unavailable" && (
-          <span className="inline-flex items-center gap-1.5 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-full px-3 py-1">
+          <span className="inline-flex items-center gap-1.5 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-sm px-3 py-1">
             <span className="w-2 h-2 bg-red-500 rounded-full" />
             Non disponible pour ces dates
           </span>
@@ -174,7 +175,7 @@ export default function BookingForm({
 
       {/* Nombre de personnes */}
       <div>
-        <label htmlFor="guestCount" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="guestCount" className="block text-sm font-medium text-warm-700 mb-1.5">
           Nombre de personnes
         </label>
         <input
@@ -185,15 +186,15 @@ export default function BookingForm({
           min={1}
           max={room.capacity}
           defaultValue={1}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className={inputClass}
         />
-        <p className="text-xs text-gray-500 mt-1">Capacité maximale : {room.capacity} personnes</p>
+        <p className="text-xs text-warm-500 mt-1">Capacité maximale : {room.capacity} personnes</p>
       </div>
 
       {/* Informations client */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="guestName" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="guestName" className="block text-sm font-medium text-warm-700 mb-1.5">
             Nom complet <span className="text-red-500">*</span>
           </label>
           <input
@@ -201,11 +202,11 @@ export default function BookingForm({
             type="text"
             name="guestName"
             required
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className={inputClass}
           />
         </div>
         <div>
-          <label htmlFor="guestEmail" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="guestEmail" className="block text-sm font-medium text-warm-700 mb-1.5">
             Email <span className="text-red-500">*</span>
           </label>
           <input
@@ -213,31 +214,31 @@ export default function BookingForm({
             type="email"
             name="guestEmail"
             required
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className={inputClass}
           />
         </div>
       </div>
 
       <div>
-        <label htmlFor="guestPhone" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="guestPhone" className="block text-sm font-medium text-warm-700 mb-1.5">
           Téléphone
         </label>
         <input
           id="guestPhone"
           type="tel"
           name="guestPhone"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className={inputClass}
         />
       </div>
 
       {/* Récapitulatif prix */}
       {availability === "available" && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-          <div className="flex justify-between text-sm text-gray-600">
+        <div className="bg-warm-50 border border-warm-200 rounded-sm p-4">
+          <div className="flex justify-between text-sm text-warm-600">
             <span>
               {parseFloat(room.pricePerNight).toFixed(0)} € × {nights} nuit{nights > 1 ? "s" : ""}
             </span>
-            <span className="font-semibold text-gray-900">{totalPrice.toFixed(2)} €</span>
+            <span className="font-semibold text-warm-900">{totalPrice.toFixed(2)} €</span>
           </div>
         </div>
       )}
@@ -245,7 +246,7 @@ export default function BookingForm({
       <button
         type="submit"
         disabled={availability !== "available"}
-        className="w-full py-3 px-6 rounded-lg font-semibold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-gray-900 text-white hover:bg-gray-700 disabled:bg-gray-400"
+        className="w-full py-3 px-6 rounded-sm font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-warm-900 text-warm-50 hover:bg-warm-800 disabled:bg-warm-400"
       >
         Enregistrer la réservation
       </button>

@@ -64,11 +64,9 @@ export default function HomeSearch({ tenantId }: { tenantId: string }) {
   const handleCheckInChange = (val: string) => {
     setCheckIn(val);
     setStatus("idle");
-    // Ajuster checkOut si nécessaire
     if (!checkOut || val >= checkOut) {
       setCheckOut(addDay(val));
     }
-    // Ouvrir le calendrier de départ automatiquement
     setTimeout(() => {
       try {
         checkOutRef.current?.showPicker();
@@ -98,10 +96,9 @@ export default function HomeSearch({ tenantId }: { tenantId: string }) {
   return (
     <div className="w-full">
       {/* Widget de recherche */}
-      <div className="bg-white rounded-2xl shadow-lg p-4 flex flex-col sm:flex-row gap-3 items-end">
-        {/* Date d'arrivée */}
+      <div className="bg-white rounded-sm shadow-lg p-4 flex flex-col sm:flex-row gap-3 items-end">
         <div className="flex-1 min-w-0">
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+          <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wide mb-1">
             Arrivée
           </label>
           <input
@@ -109,15 +106,14 @@ export default function HomeSearch({ tenantId }: { tenantId: string }) {
             value={checkIn}
             min={today}
             onChange={(e) => handleCheckInChange(e.target.value)}
-            className="w-full border-0 border-b-2 border-gray-200 focus:border-gray-900 outline-none py-2 text-gray-900 font-medium text-sm bg-transparent transition-colors"
+            className="w-full border-0 border-b-2 border-warm-200 focus:border-warm-900 outline-none py-2 text-warm-900 font-medium text-sm bg-transparent transition-colors"
           />
         </div>
 
-        <div className="hidden sm:block w-px h-10 bg-gray-200 self-end mb-2" />
+        <div className="hidden sm:block w-px h-10 bg-warm-200 self-end mb-2" />
 
-        {/* Date de départ */}
         <div className="flex-1 min-w-0">
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+          <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wide mb-1">
             Départ
           </label>
           <input
@@ -126,13 +122,12 @@ export default function HomeSearch({ tenantId }: { tenantId: string }) {
             value={checkOut}
             min={checkIn ? addDay(checkIn) : today}
             onChange={(e) => handleCheckOutChange(e.target.value)}
-            className="w-full border-0 border-b-2 border-gray-200 focus:border-gray-900 outline-none py-2 text-gray-900 font-medium text-sm bg-transparent transition-colors"
+            className="w-full border-0 border-b-2 border-warm-200 focus:border-warm-900 outline-none py-2 text-warm-900 font-medium text-sm bg-transparent transition-colors"
           />
         </div>
 
-        {/* Indicateur de nuits */}
         {nights > 0 && (
-          <div className="text-xs text-gray-400 whitespace-nowrap pb-2">
+          <div className="text-xs text-warm-400 whitespace-nowrap pb-2">
             {nights} nuit{nights > 1 ? "s" : ""}
           </div>
         )}
@@ -140,48 +135,48 @@ export default function HomeSearch({ tenantId }: { tenantId: string }) {
 
       {/* Résultats */}
       {status === "searching" && (
-        <div className="mt-8 flex items-center justify-center gap-2 text-gray-500 text-sm">
-          <span className="inline-block w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+        <div className="mt-8 flex items-center justify-center gap-2 text-warm-300 text-sm">
+          <span className="inline-block w-4 h-4 border-2 border-warm-400 border-t-transparent rounded-full animate-spin" />
           Recherche des chambres disponibles…
         </div>
       )}
 
       {status === "done" && availableRooms.length === 0 && (
-        <div className="mt-8 text-center text-gray-500 text-sm">
+        <div className="mt-8 text-center text-warm-300 text-sm">
           Aucune chambre disponible pour ces dates.
         </div>
       )}
 
       {status === "done" && availableRooms.length > 0 && (
         <div className="mt-8">
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-warm-300 mb-4">
             {availableRooms.length} chambre{availableRooms.length > 1 ? "s" : ""} disponible{availableRooms.length > 1 ? "s" : ""}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {availableRooms.map((room) => (
+            {availableRooms.map((room, i) => (
               <div
                 key={room.id}
-                className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
+                className={`bg-white rounded-sm border border-warm-200 overflow-hidden hover:shadow-md transition-shadow animate-fade-up stagger-${i + 1}`}
               >
-                <div className="bg-gray-100 h-36 flex items-center justify-center text-gray-400 text-sm">
+                <div className="bg-warm-100 h-36 flex items-center justify-center text-warm-400 text-sm">
                   Photo à venir
                 </div>
                 <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-1">{room.name}</h3>
-                  <p className="text-sm text-gray-500 mb-3">
+                  <h3 className="font-heading text-lg font-semibold text-warm-900 mb-1">{room.name}</h3>
+                  <p className="text-sm text-warm-500 mb-3">
                     {room.capacity} personne{room.capacity > 1 ? "s" : ""} ·{" "}
-                    <span className="font-medium text-gray-700">
+                    <span className="font-medium text-warm-700">
                       {parseFloat(room.pricePerNight).toFixed(0)} €/nuit
                     </span>
                     {nights > 0 && (
-                      <span className="ml-1 text-gray-400">
+                      <span className="ml-1 text-warm-400">
                         · {(parseFloat(room.pricePerNight) * nights).toFixed(0)} € total
                       </span>
                     )}
                   </p>
                   <Link
                     href={`/reserver/${room.id}?checkIn=${checkIn}&checkOut=${checkOut}`}
-                    className="block text-center text-sm font-semibold bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                    className="block text-center text-sm font-medium bg-warm-900 text-warm-50 px-4 py-2 rounded-sm hover:bg-warm-800 transition-colors"
                   >
                     Réserver
                   </Link>

@@ -17,38 +17,44 @@ export default async function HomePage() {
   return (
     <PublicLayout>
       {/* Hero + moteur de recherche */}
-      <section className="bg-gray-900 text-white px-6 py-16">
+      <section className="bg-warm-900 text-warm-50 px-6 py-20">
         <div className="max-w-3xl mx-auto text-center">
-          <h1 className="text-4xl sm:text-5xl font-bold mb-3 leading-tight">{heroTitle}</h1>
-          <p className="text-lg text-gray-300 mb-10">
+          <h1 className="font-heading text-5xl sm:text-6xl font-semibold mb-4 leading-tight animate-fade-up">
+            {heroTitle}
+          </h1>
+          <p className="text-lg text-warm-300 mb-12 animate-fade-up stagger-1">
             Choisissez vos dates et trouvez votre chambre.
           </p>
-          <HomeSearch tenantId={tenant.id} />
+          <div className="animate-fade-up stagger-2">
+            <HomeSearch tenantId={tenant.id} />
+          </div>
         </div>
       </section>
 
-      {/* Chambres en vedette (affichées tant qu'aucune recherche n'est faite) */}
+      {/* Chambres en vedette */}
       {featuredRooms.length > 0 && (
-        <section className="px-6 py-16 max-w-5xl mx-auto">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8">Nos chambres</h2>
+        <section className="px-6 py-20 max-w-5xl mx-auto">
+          <h2 className="font-heading text-3xl font-semibold text-warm-900 mb-10 animate-fade-up">
+            Nos chambres
+          </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredRooms.map((room) => (
+            {featuredRooms.map((room, i) => (
               <div
                 key={room.id}
-                className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow"
+                className={`border border-warm-200 rounded-sm overflow-hidden hover:shadow-md transition-shadow animate-fade-up stagger-${i + 2}`}
               >
-                <div className="bg-gray-100 h-40 flex items-center justify-center text-gray-400 text-sm">
+                <div className="bg-warm-100 h-44 flex items-center justify-center text-warm-400 text-sm">
                   Photo à venir
                 </div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-1">{room.name}</h3>
-                  <p className="text-sm text-gray-500 mb-2">
+                <div className="p-5">
+                  <h3 className="font-heading text-xl font-semibold text-warm-900 mb-1">{room.name}</h3>
+                  <p className="text-sm text-warm-500 mb-2">
                     {room.capacity} personne{room.capacity > 1 ? "s" : ""} ·{" "}
                     {parseFloat(room.pricePerNight).toFixed(0)} €/nuit
                   </p>
                   <Link
                     href={`/chambres/${room.slug}`}
-                    className="inline-block mt-2 text-sm font-medium text-gray-900 underline hover:text-gray-600"
+                    className="inline-block mt-2 text-sm font-medium text-warm-900 underline underline-offset-4 decoration-warm-300 hover:decoration-amber-accent transition-colors"
                   >
                     Voir la chambre
                   </Link>
@@ -58,10 +64,10 @@ export default async function HomePage() {
           </div>
 
           {allRooms.length > 3 && (
-            <div className="text-center mt-8">
+            <div className="text-center mt-10">
               <Link
                 href="/chambres"
-                className="inline-block border border-gray-900 text-gray-900 font-semibold px-6 py-2 rounded-full hover:bg-gray-900 hover:text-white transition-colors"
+                className="inline-block border border-warm-900 text-warm-900 font-medium px-6 py-2.5 rounded-sm hover:bg-warm-900 hover:text-warm-50 transition-colors text-sm"
               >
                 Voir toutes les chambres
               </Link>

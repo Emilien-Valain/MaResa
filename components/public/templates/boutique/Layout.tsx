@@ -3,7 +3,7 @@ import type { Tenant, TenantConfig } from "@/lib/tenant-context";
 
 /**
  * Template "Boutique" — style élégant et minimaliste.
- * Header blanc avec logo centré, navigation discrète, footer épuré.
+ * Header fond clair avec logo centré, navigation discrète, footer épuré.
  * La couleur primaire est utilisée comme accent (liens, bordures) plutôt qu'en fond plein.
  */
 export default function BoutiqueLayout({
@@ -26,17 +26,17 @@ export default function BoutiqueLayout({
           "--color-secondary": secondaryColor,
         } as React.CSSProperties
       }
-      className="min-h-screen flex flex-col bg-white"
+      className="min-h-screen flex flex-col"
     >
       {/* Header — fond secondaire, logo centré */}
       <header
-        className="px-6 py-6 border-b"
+        className="px-6 py-8 border-b"
         style={{
           backgroundColor: "var(--color-secondary)",
-          borderColor: "var(--color-primary)",
+          borderColor: "color-mix(in oklch, var(--color-primary) 15%, transparent)",
         }}
       >
-        <div className="max-w-4xl mx-auto flex flex-col items-center gap-4">
+        <div className="max-w-4xl mx-auto flex flex-col items-center gap-5">
           <Link href="/" className="hover:opacity-70 transition-opacity text-center">
             {config.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -47,7 +47,7 @@ export default function BoutiqueLayout({
               />
             ) : (
               <span
-                className="text-2xl font-light tracking-widest uppercase"
+                className="font-heading text-3xl font-semibold tracking-widest uppercase"
                 style={{ color: "var(--color-primary)" }}
               >
                 {tenant.name}
@@ -62,7 +62,12 @@ export default function BoutiqueLayout({
             >
               Chambres
             </Link>
-            <span style={{ color: "var(--color-primary)", opacity: 0.3 }}>|</span>
+            <span
+              style={{ color: "var(--color-primary)", opacity: 0.2 }}
+              aria-hidden
+            >
+              ·
+            </span>
             <Link
               href="/chambres"
               className="hover:opacity-60 transition-opacity"
@@ -79,34 +84,44 @@ export default function BoutiqueLayout({
 
       {/* Footer — minimal, centré */}
       <footer
-        className="px-6 py-10 mt-auto border-t text-center"
+        className="px-6 py-12 mt-auto border-t text-center"
         style={{
           backgroundColor: "var(--color-secondary)",
-          borderColor: "var(--color-primary)",
+          borderColor: "color-mix(in oklch, var(--color-primary) 15%, transparent)",
         }}
       >
         <p
-          className="text-xs tracking-widest uppercase mb-2"
+          className="font-heading text-lg tracking-widest uppercase mb-3"
           style={{ color: "var(--color-primary)" }}
         >
           {tenant.name}
         </p>
         {config.address && (
-          <p className="text-xs text-gray-500 mb-1">{config.address}</p>
+          <p className="text-xs opacity-50 mb-1" style={{ color: "var(--color-primary)" }}>
+            {config.address}
+          </p>
         )}
-        <div className="flex justify-center gap-4 text-xs text-gray-500 mt-2">
+        <div className="flex justify-center gap-4 text-xs mt-3">
           {config.phone && (
-            <a href={`tel:${config.phone}`} className="hover:text-gray-800">
+            <a
+              href={`tel:${config.phone}`}
+              className="opacity-50 hover:opacity-80 transition-opacity"
+              style={{ color: "var(--color-primary)" }}
+            >
               {config.phone}
             </a>
           )}
           {config.email && (
-            <a href={`mailto:${config.email}`} className="hover:text-gray-800">
+            <a
+              href={`mailto:${config.email}`}
+              className="opacity-50 hover:opacity-80 transition-opacity"
+              style={{ color: "var(--color-primary)" }}
+            >
               {config.email}
             </a>
           )}
         </div>
-        <p className="text-xs text-gray-400 mt-6">
+        <p className="text-xs opacity-30 mt-8" style={{ color: "var(--color-primary)" }}>
           &copy; {new Date().getFullYear()} {tenant.name}
         </p>
       </footer>

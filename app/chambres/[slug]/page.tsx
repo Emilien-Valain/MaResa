@@ -19,45 +19,43 @@ export default async function ChambreDetailPage({
 
   return (
     <PublicLayout>
-      <div className="max-w-3xl mx-auto px-6 py-12">
+      <div className="max-w-3xl mx-auto px-6 py-16">
         {/* Breadcrumb */}
-        <nav className="text-sm text-gray-500 mb-6">
-          <Link href="/" className="hover:text-gray-900">Accueil</Link>
-          <span className="mx-2">/</span>
-          <Link href="/chambres" className="hover:text-gray-900">Chambres</Link>
-          <span className="mx-2">/</span>
-          <span className="text-gray-900">{room.name}</span>
+        <nav className="text-sm text-warm-500 mb-8 animate-fade-in">
+          <Link href="/" className="hover:text-warm-900 transition-colors">Accueil</Link>
+          <span className="mx-2 text-warm-300">/</span>
+          <Link href="/chambres" className="hover:text-warm-900 transition-colors">Chambres</Link>
+          <span className="mx-2 text-warm-300">/</span>
+          <span className="text-warm-900">{room.name}</span>
         </nav>
 
         {/* Photo placeholder */}
-        <div className="bg-gray-100 rounded-xl h-64 flex items-center justify-center text-gray-400 mb-8">
+        <div className="bg-warm-100 rounded-sm h-72 flex items-center justify-center text-warm-400 mb-10 animate-fade-up">
           Photo à venir
         </div>
 
         {/* Contenu */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-8 animate-fade-up stagger-1">
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-gray-900 mb-3">{room.name}</h1>
-            <div className="flex items-center gap-4 text-sm text-gray-500 mb-6">
+            <h1 className="font-heading text-4xl font-semibold text-warm-900 mb-3">{room.name}</h1>
+            <div className="flex items-center gap-4 text-sm text-warm-500 mb-6">
               <span>{room.capacity} personne{room.capacity > 1 ? "s" : ""}</span>
-              <span>·</span>
-              <span className="text-lg font-semibold text-gray-900">
-                {parseFloat(room.pricePerNight).toFixed(0)} €/nuit
+              <span className="text-warm-300">·</span>
+              <span className="font-heading text-2xl font-semibold text-warm-900">
+                {parseFloat(room.pricePerNight).toFixed(0)} €<span className="text-sm font-sans text-warm-500 font-normal">/nuit</span>
               </span>
             </div>
 
             {room.description && (
-              <div className="prose prose-gray max-w-none">
-                <p className="text-gray-600 leading-relaxed">{room.description}</p>
-              </div>
+              <p className="text-warm-600 leading-relaxed">{room.description}</p>
             )}
           </div>
 
           {/* CTA */}
-          <div className="sm:w-48 flex-shrink-0">
+          <div className="sm:w-52 flex-shrink-0">
             <Link
               href={`/reserver/${room.id}`}
-              className="block text-center bg-gray-900 text-white font-semibold px-6 py-3 rounded-xl hover:bg-gray-700 transition-colors"
+              className="block text-center bg-warm-900 text-warm-50 font-medium px-6 py-3 rounded-sm hover:bg-warm-800 transition-colors"
             >
               Réserver cette chambre
             </Link>

@@ -15,10 +15,13 @@ export default function RoomForm({
   action: (formData: FormData) => Promise<void>;
   defaultValues?: DefaultValues;
 }) {
+  const inputClass =
+    "w-full border border-warm-200 rounded-sm px-3 py-2.5 text-sm text-warm-900 bg-warm-50/50 focus:outline-none focus:ring-2 focus:ring-amber-accent/40 focus:border-amber-accent transition-colors";
+
   return (
-    <form action={action} className="space-y-4 bg-white p-6 rounded-xl border border-gray-200">
+    <form action={action} className="space-y-4 bg-white p-6 rounded-sm border border-warm-200">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-warm-700 mb-1.5">
           Nom <span className="text-red-500">*</span>
         </label>
         <input
@@ -26,25 +29,25 @@ export default function RoomForm({
           type="text"
           required
           defaultValue={defaultValues?.name ?? ""}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className={inputClass}
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-warm-700 mb-1.5">
           Description
         </label>
         <textarea
           name="description"
           rows={3}
           defaultValue={defaultValues?.description ?? ""}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className={inputClass}
         />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-warm-700 mb-1.5">
             Prix / nuit (€) <span className="text-red-500">*</span>
           </label>
           <input
@@ -54,12 +57,12 @@ export default function RoomForm({
             min="0"
             required
             defaultValue={defaultValues?.pricePerNight ?? ""}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className={inputClass}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-warm-700 mb-1.5">
             Capacité (pers.) <span className="text-red-500">*</span>
           </label>
           <input
@@ -68,7 +71,7 @@ export default function RoomForm({
             min="1"
             required
             defaultValue={defaultValues?.capacity ?? 2}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className={inputClass}
           />
         </div>
       </div>
@@ -80,9 +83,9 @@ export default function RoomForm({
             id="actif"
             type="checkbox"
             defaultChecked={defaultValues.active ?? true}
-            className="rounded border-gray-300"
+            className="rounded border-warm-300"
           />
-          <label htmlFor="actif" className="text-sm text-gray-700">
+          <label htmlFor="actif" className="text-sm text-warm-700">
             Chambre active (visible sur le site)
           </label>
         </div>
@@ -91,13 +94,13 @@ export default function RoomForm({
       <div className="flex gap-3 pt-2">
         <button
           type="submit"
-          className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
+          className="bg-warm-900 text-warm-50 px-4 py-2.5 rounded-sm text-sm font-medium hover:bg-warm-800 transition-colors"
         >
           Enregistrer
         </button>
         <Link
           href="/admin/chambres"
-          className="px-4 py-2 rounded-lg text-sm text-gray-500 hover:text-gray-900 transition-colors"
+          className="px-4 py-2.5 rounded-sm text-sm text-warm-500 hover:text-warm-900 transition-colors"
         >
           Annuler
         </Link>
