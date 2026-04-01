@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { createBookingPublic } from "@/lib/actions/bookings-public";
 
 type Room = {
@@ -37,9 +38,10 @@ export default function BookingForm({
 }) {
   const today = getToday();
   const tomorrow = getTomorrow();
+  const searchParams = useSearchParams();
 
-  const [checkIn, setCheckIn] = useState(today);
-  const [checkOut, setCheckOut] = useState(tomorrow);
+  const [checkIn, setCheckIn] = useState(searchParams.get("checkIn") ?? today);
+  const [checkOut, setCheckOut] = useState(searchParams.get("checkOut") ?? tomorrow);
   const [availability, setAvailability] = useState<AvailabilityStatus>("idle");
   const [nights, setNights] = useState(0);
   const [totalPrice, setTotalPrice] = useState(0);

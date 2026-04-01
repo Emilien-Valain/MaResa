@@ -91,6 +91,29 @@ export const verifications = pgTable("verifications", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// ─── USER ↔ TENANT (many-to-many) ────────────────────────────────────────────
+// Permet à un admin de gérer plusieurs tenants (hôtels).
+
+export const userTenants = pgTable(
+  "user_tenants",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("admin"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    unique("user_tenants_user_tenant_unique").on(table.userId, table.tenantId),
+    index("user_tenants_user_idx").on(table.userId),
+    index("user_tenants_tenant_idx").on(table.tenantId),
+  ],
+);
+
 // ─── PROPERTIES ──────────────────────────────────────────────────────────────
 
 export const properties = pgTable("properties", {

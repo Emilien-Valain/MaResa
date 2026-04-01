@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import {
   tenants,
   users,
+  userTenants,
   properties,
   rooms,
   bookings,
@@ -12,13 +13,20 @@ import {
 
 export const tenantsRelations = relations(tenants, ({ many }) => ({
   users: many(users),
+  userTenants: many(userTenants),
   properties: many(properties),
   rooms: many(rooms),
   bookings: many(bookings),
 }));
 
-export const usersRelations = relations(users, ({ one }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
   tenant: one(tenants, { fields: [users.tenantId], references: [tenants.id] }),
+  userTenants: many(userTenants),
+}));
+
+export const userTenantsRelations = relations(userTenants, ({ one }) => ({
+  user: one(users, { fields: [userTenants.userId], references: [users.id] }),
+  tenant: one(tenants, { fields: [userTenants.tenantId], references: [tenants.id] }),
 }));
 
 export const propertiesRelations = relations(properties, ({ one, many }) => ({

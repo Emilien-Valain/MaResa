@@ -15,6 +15,13 @@
       "when": 1774971168831,
       "tag": "0001_abnormal_snowbird",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775054789066,
+      "tag": "0002_redundant_sunfire",
+      "breakpoints": true
     }
   ]
 }

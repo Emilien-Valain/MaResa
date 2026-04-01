@@ -14,6 +14,20 @@ export const auth = betterAuth({
     enabled: true,
   },
 
+  // En dev, tous les *.localhost:<port> sont des origines de confiance
+  // Le port est dérivé de BETTER_AUTH_URL pour couvrir aussi le port 3001 des tests
+  // Chaque sous-domaine gère sa propre session (miroir du comportement prod)
+  ...(process.env.NODE_ENV === "development" && (() => {
+    const devUrl = new URL(process.env.BETTER_AUTH_URL ?? "http://localhost:3000");
+    const port = devUrl.port ? `:${devUrl.port}` : "";
+    return {
+      trustedOrigins: [
+        devUrl.origin,
+        `*.localhost${port}`,
+      ],
+    };
+  })()),
+
   // Expose tenantId dans l'objet user et session
   user: {
     additionalFields: {

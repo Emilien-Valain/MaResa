@@ -31,6 +31,8 @@ export const requireTenant = cache(async () => {
 
 export type Tenant = Awaited<ReturnType<typeof requireTenant>>;
 
+export type TemplateName = "classic" | "boutique";
+
 export type TenantConfig = {
   primaryColor?: string;
   secondaryColor?: string;
@@ -39,4 +41,5 @@ export type TenantConfig = {
   phone?: string;
   email?: string;
   logoUrl?: string;
+  template?: TemplateName;
 };

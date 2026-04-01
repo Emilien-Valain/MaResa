@@ -1,8 +1,8 @@
 "use server";
 
-import { and, eq, gt, lt, or } from "drizzle-orm";
+import { and, asc, eq, gt, lt, or } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { bookings, icalBlocks } from "@/db/schema";
+import { bookings, icalBlocks, rooms } from "@/db/schema";
 
 /**
  * Retourne true si la chambre est disponible pour la période [checkIn, checkOut[.
@@ -51,6 +51,48 @@ export async function isRoomAvailable(
     .limit(1);
 
   return !overlappingBlock;
+}
+
+/**
+ * Retourne toutes les chambres actives d'un tenant disponibles pour la période [checkIn, checkOut[.
+ * Exclut les chambres ayant une réservation pending/confirmed ou un blocage iCal qui chevauche.
+ */
+export async function getAvailableRooms(tenantId: string, checkIn: Date, checkOut: Date) {
+  const [bookedRoomIds, blockedRoomIds, allRooms] = await Promise.all([
+    db
+      .selectDistinct({ roomId: bookings.roomId })
+      .from(bookings)
+      .where(
+        and(
+          eq(bookings.tenantId, tenantId),
+          or(eq(bookings.status, "pending"), eq(bookings.status, "confirmed")),
+          lt(bookings.checkIn, checkOut),
+          gt(bookings.checkOut, checkIn),
+        ),
+      ),
+    db
+      .selectDistinct({ roomId: icalBlocks.roomId })
+      .from(icalBlocks)
+      .where(
+        and(
+          eq(icalBlocks.tenantId, tenantId),
+          lt(icalBlocks.start, checkOut),
+          gt(icalBlocks.end, checkIn),
+        ),
+      ),
+    db
+      .select()
+      .from(rooms)
+      .where(and(eq(rooms.tenantId, tenantId), eq(rooms.active, true)))
+      .orderBy(asc(rooms.createdAt)),
+  ]);
+
+  const unavailableIds = new Set([
+    ...bookedRoomIds.map((r) => r.roomId),
+    ...blockedRoomIds.map((r) => r.roomId),
+  ]);
+
+  return allRooms.filter((r) => !unavailableIds.has(r.id));
 }
 
 /**

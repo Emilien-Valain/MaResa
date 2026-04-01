@@ -7,7 +7,8 @@
  *     --slug "hotel-du-coin" \
  *     --domain "hotelducoin.fr" \
  *     --email "contact@hotelducoin.fr" \
- *     --password "motdepasse"
+ *     --password "motdepasse" \
+ *     --template boutique        # optionnel, défaut : classic
  */
 
 import { eq } from "drizzle-orm";
@@ -15,7 +16,10 @@ import { scryptAsync } from "@noble/hashes/scrypt.js";
 import { hex } from "@better-auth/utils/hex";
 import { randomBytes } from "crypto";
 import { db } from "@/lib/db";
-import { tenants, users, accounts, properties } from "@/db/schema";
+import { tenants, users, accounts, properties, userTenants } from "@/db/schema";
+import type { TemplateName } from "@/lib/tenant-context";
+
+const VALID_TEMPLATES: TemplateName[] = ["classic", "boutique"];
 
 // Même algo que Better Auth — doit rester synchronisé avec
 // node_modules/better-auth/dist/crypto/password.mjs
@@ -47,13 +51,21 @@ async function main() {
   const domain = get("--domain");
   const email = get("--email");
   const password = get("--password");
+  const templateArg = get("--template");
 
   if (!name || !slug || !email || !password) {
     console.error(
-      "Usage: --name <name> --slug <slug> --email <email> --password <password> [--domain <domain>]",
+      "Usage: --name <name> --slug <slug> --email <email> --password <password> [--domain <domain>] [--template classic|boutique]",
     );
     process.exit(1);
   }
+
+  if (templateArg && !VALID_TEMPLATES.includes(templateArg as TemplateName)) {
+    console.error(`Template invalide : "${templateArg}". Valeurs possibles : ${VALID_TEMPLATES.join(", ")}`);
+    process.exit(1);
+  }
+
+  const template = (templateArg as TemplateName | undefined) ?? "classic";
 
   // 1. Créer le tenant (idempotent sur le slug)
   const existing = await db.query.tenants.findFirst({
@@ -62,7 +74,7 @@ async function main() {
 
   const tenant =
     existing ??
-    (await db.insert(tenants).values({ name, slug, domain }).returning())[0];
+    (await db.insert(tenants).values({ name, slug, domain, config: { template } }).returning())[0];
 
   console.log(
     existing
@@ -84,34 +96,44 @@ async function main() {
     where: eq(users.email, email),
   });
 
+  let userId: string;
+
   if (existingUser) {
+    userId = existingUser.id;
     console.log(`ℹ Utilisateur déjà existant : ${email}`);
-    process.exit(0);
+  } else {
+    // 3. Créer l'utilisateur + compte email/password au format Better Auth
+    userId = generateId();
+    const passwordHash = await hashPassword(password);
+
+    await db.insert(users).values({
+      id: userId,
+      name,
+      email,
+      emailVerified: true,
+      tenantId: tenant.id,
+    });
+
+    await db.insert(accounts).values({
+      id: generateId(),
+      accountId: userId,
+      providerId: "credential",
+      userId,
+      password: passwordHash,
+    });
+
+    console.log(`✓ Admin créé : ${email}`);
   }
 
-  // 3. Créer l'utilisateur + compte email/password au format Better Auth
-  const userId = generateId();
-  const passwordHash = await hashPassword(password);
+  // 4. Ajouter l'accès au tenant (idempotent)
+  await db
+    .insert(userTenants)
+    .values({ userId, tenantId: tenant.id })
+    .onConflictDoNothing();
 
-  await db.insert(users).values({
-    id: userId,
-    name,
-    email,
-    emailVerified: true,
-    tenantId: tenant.id,
-  });
-
-  await db.insert(accounts).values({
-    id: generateId(),
-    accountId: userId,
-    providerId: "credential",
-    userId,
-    password: passwordHash,
-  });
-
-  console.log(`✓ Admin créé : ${email}`);
-  console.log(`  Tenant : ${tenant.name} (slug: ${tenant.slug})`);
+  console.log(`✓ Accès au tenant : ${tenant.name} (slug: ${tenant.slug})`);
   if (domain) console.log(`  Domaine : ${domain}`);
+  console.log(`  Template : ${template}`);
 
   process.exit(0);
 }

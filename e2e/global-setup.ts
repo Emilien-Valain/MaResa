@@ -7,7 +7,7 @@ import { hex } from "@better-auth/utils/hex";
 import { randomBytes } from "crypto";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { tenants, users, accounts, properties, rooms, bookings } from "../db/schema";
+import { tenants, users, accounts, properties, rooms, bookings, userTenants } from "../db/schema";
 
 async function hashPassword(password: string): Promise<string> {
   const salt = hex.encode(randomBytes(16));
@@ -61,8 +61,9 @@ export default async function globalSetup() {
 
   const [existing] = await db.select().from(users).where(eq(users.email, email));
 
+  const userId = existing?.id ?? generateId();
+
   if (!existing) {
-    const userId = generateId();
     const passwordHash = await hashPassword(password);
 
     await db.insert(users).values({
@@ -81,6 +82,12 @@ export default async function globalSetup() {
       password: passwordHash,
     });
   }
+
+  // Ajouter l'accès au tenant (idempotent)
+  await db
+    .insert(userTenants)
+    .values({ userId, tenantId: tenant.id })
+    .onConflictDoNothing();
 
   // ── Chambre de test pour l'API de disponibilité (Phase 3) ──────────────────
   // Chambre dédiée aux tests d'API — ne pas utiliser pour les tests admin UI

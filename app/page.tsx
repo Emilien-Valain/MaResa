@@ -1,5 +1,6 @@
 import Link from "next/link";
 import PublicLayout from "@/components/public/PublicLayout";
+import HomeSearch from "@/components/public/HomeSearch";
 import { requireTenant } from "@/lib/tenant-context";
 import { getRoomsPublic } from "@/lib/queries/public";
 import type { TenantConfig } from "@/lib/tenant-context";
@@ -15,23 +16,18 @@ export default async function HomePage() {
 
   return (
     <PublicLayout>
-      {/* Hero */}
-      <section className="bg-gray-900 text-white px-6 py-24 text-center">
-        <div className="max-w-3xl mx-auto">
-          <h1 className="text-4xl sm:text-5xl font-bold mb-4 leading-tight">{heroTitle}</h1>
-          <p className="text-lg text-gray-300 mb-8">
-            Réservez votre séjour directement en ligne, simplement et rapidement.
+      {/* Hero + moteur de recherche */}
+      <section className="bg-gray-900 text-white px-6 py-16">
+        <div className="max-w-3xl mx-auto text-center">
+          <h1 className="text-4xl sm:text-5xl font-bold mb-3 leading-tight">{heroTitle}</h1>
+          <p className="text-lg text-gray-300 mb-10">
+            Choisissez vos dates et trouvez votre chambre.
           </p>
-          <Link
-            href="/chambres"
-            className="inline-block bg-white text-gray-900 font-semibold px-8 py-3 rounded-full hover:bg-gray-100 transition-colors"
-          >
-            Voir les chambres
-          </Link>
+          <HomeSearch tenantId={tenant.id} />
         </div>
       </section>
 
-      {/* Chambres en vedette */}
+      {/* Chambres en vedette (affichées tant qu'aucune recherche n'est faite) */}
       {featuredRooms.length > 0 && (
         <section className="px-6 py-16 max-w-5xl mx-auto">
           <h2 className="text-2xl font-bold text-gray-900 mb-8">Nos chambres</h2>
@@ -54,7 +50,7 @@ export default async function HomePage() {
                     href={`/chambres/${room.slug}`}
                     className="inline-block mt-2 text-sm font-medium text-gray-900 underline hover:text-gray-600"
                   >
-                    Réserver
+                    Voir la chambre
                   </Link>
                 </div>
               </div>
