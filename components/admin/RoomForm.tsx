@@ -16,12 +16,12 @@ export default function RoomForm({
   defaultValues?: DefaultValues;
 }) {
   const inputClass =
-    "w-full border border-warm-200 rounded-sm px-3 py-2.5 text-sm text-warm-900 bg-warm-50/50 focus:outline-none focus:ring-2 focus:ring-amber-accent/40 focus:border-amber-accent transition-colors";
+    "w-full border border-warm-300 rounded-sm px-3 py-2.5 text-sm text-warm-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-accent/40 focus:border-amber-accent transition-colors";
 
   return (
-    <form action={action} className="space-y-4 bg-white p-6 rounded-sm border border-warm-200">
+    <form action={action} className="space-y-4 bg-white p-6 rounded-sm border border-warm-300 shadow-sm">
       <div>
-        <label className="block text-sm font-medium text-warm-700 mb-1.5">
+        <label className="block text-sm font-medium text-warm-800 mb-1.5">
           Nom <span className="text-red-500">*</span>
         </label>
         <input
@@ -34,7 +34,7 @@ export default function RoomForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-warm-700 mb-1.5">
+        <label className="block text-sm font-medium text-warm-800 mb-1.5">
           Description
         </label>
         <textarea
@@ -47,7 +47,7 @@ export default function RoomForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-warm-700 mb-1.5">
+          <label className="block text-sm font-medium text-warm-800 mb-1.5">
             Prix / nuit (€) <span className="text-red-500">*</span>
           </label>
           <input
@@ -62,7 +62,7 @@ export default function RoomForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-warm-700 mb-1.5">
+          <label className="block text-sm font-medium text-warm-800 mb-1.5">
             Capacité (pers.) <span className="text-red-500">*</span>
           </label>
           <input
@@ -83,9 +83,9 @@ export default function RoomForm({
             id="actif"
             type="checkbox"
             defaultChecked={defaultValues.active ?? true}
-            className="rounded border-warm-300"
+            className="rounded border-warm-400"
           />
-          <label htmlFor="actif" className="text-sm text-warm-700">
+          <label htmlFor="actif" className="text-sm text-warm-800">
             Chambre active (visible sur le site)
           </label>
         </div>
@@ -94,13 +94,13 @@ export default function RoomForm({
       <div className="flex gap-3 pt-2">
         <button
           type="submit"
-          className="bg-warm-900 text-warm-50 px-4 py-2.5 rounded-sm text-sm font-medium hover:bg-warm-800 transition-colors"
+          className="bg-warm-900 text-white px-4 py-2.5 rounded-sm text-sm font-medium hover:bg-warm-800 transition-colors"
         >
           Enregistrer
         </button>
         <Link
           href="/admin/chambres"
-          className="px-4 py-2.5 rounded-sm text-sm text-warm-500 hover:text-warm-900 transition-colors"
+          className="px-4 py-2.5 rounded-sm text-sm text-warm-600 hover:text-warm-900 transition-colors"
         >
           Annuler
         </Link>

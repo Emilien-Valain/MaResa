@@ -16,7 +16,7 @@ export default async function EditChambrePage({
 
   return (
     <div className="space-y-6 max-w-xl">
-      <h1 className="font-heading text-3xl font-semibold text-warm-900">
+      <h1 className="font-heading text-3xl font-semibold text-warm-950">
         Modifier — {chambre.name}
       </h1>
       <RoomForm action={updateRoom.bind(null, id)} defaultValues={chambre} />

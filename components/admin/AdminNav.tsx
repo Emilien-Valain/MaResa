@@ -41,15 +41,15 @@ export default function AdminNav({
   }
 
   return (
-    <nav className="border-b border-warm-200 bg-white">
+    <nav className="bg-warm-900 text-warm-100">
       <div className="max-w-6xl mx-auto px-6 flex items-center justify-between h-14">
         <div className="flex items-center gap-6">
           {/* Tenant switcher */}
           <div className="relative">
             <button
               onClick={() => otherTenants.length > 0 && setSwitcherOpen(!switcherOpen)}
-              className={`flex items-center gap-1.5 font-heading text-lg font-semibold text-warm-900 ${
-                otherTenants.length > 0 ? "cursor-pointer hover:text-warm-600" : ""
+              className={`flex items-center gap-1.5 font-heading text-lg font-semibold text-white ${
+                otherTenants.length > 0 ? "cursor-pointer hover:text-amber-accent" : ""
               }`}
             >
               {currentTenantName || "MaRésa"}
@@ -70,14 +70,14 @@ export default function AdminNav({
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setSwitcherOpen(false)} />
                 <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-sm shadow-lg border border-warm-200 py-1 z-20 animate-slide-down">
-                  <div className="px-3 py-2 text-xs text-warm-400 uppercase tracking-wide">
+                  <div className="px-3 py-2 text-xs text-warm-500 uppercase tracking-wide">
                     Tenant actif
                   </div>
-                  <div className="px-3 py-2 text-sm font-medium text-warm-900 bg-warm-50">
+                  <div className="px-3 py-2 text-sm font-medium text-warm-900 bg-warm-100">
                     {currentTenantName}
                   </div>
-                  <div className="border-t border-warm-100 mt-1 pt-1">
-                    <div className="px-3 py-2 text-xs text-warm-400 uppercase tracking-wide">
+                  <div className="border-t border-warm-200 mt-1 pt-1">
+                    <div className="px-3 py-2 text-xs text-warm-500 uppercase tracking-wide">
                       Changer de tenant
                     </div>
                     {otherTenants.map((t) =>
@@ -85,7 +85,7 @@ export default function AdminNav({
                         <a
                           key={t.id}
                           href={t.adminUrl}
-                          className="block px-3 py-2 text-sm text-warm-700 hover:bg-warm-50 transition-colors"
+                          className="block px-3 py-2 text-sm text-warm-700 hover:bg-warm-100 transition-colors"
                           onClick={() => setSwitcherOpen(false)}
                         >
                           {t.name}
@@ -109,8 +109,8 @@ export default function AdminNav({
                 href={link.href}
                 className={`px-3 py-1.5 rounded-sm text-sm transition-colors ${
                   pathname === link.href
-                    ? "bg-warm-100 text-warm-900 font-medium"
-                    : "text-warm-500 hover:text-warm-900"
+                    ? "bg-white/15 text-white font-medium"
+                    : "text-warm-300 hover:text-white hover:bg-white/10"
                 }`}
               >
                 {link.label}
@@ -123,7 +123,7 @@ export default function AdminNav({
           <span className="text-xs text-warm-400">{userEmail}</span>
           <button
             onClick={handleSignOut}
-            className="text-xs text-warm-500 hover:text-warm-900 transition-colors"
+            className="text-xs text-warm-300 hover:text-white transition-colors"
           >
             Déconnexion
           </button>

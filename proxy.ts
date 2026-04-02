@@ -70,8 +70,8 @@ async function resolveTenant(host: string): Promise<CachedTenant | null> {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // ── Routes login et API → passe-plat ────────────────────────────────────
-  if (pathname.startsWith("/login") || pathname.startsWith("/api/")) {
+  // ── Routes login et API publiques → passe-plat ──────────────────────────
+  if (pathname.startsWith("/login") || (pathname.startsWith("/api/") && !pathname.startsWith("/api/admin/"))) {
     return NextResponse.next();
   }
 
@@ -85,11 +85,14 @@ export async function proxy(request: NextRequest) {
     return new NextResponse("Not Found", { status: 404 });
   }
 
-  // ── Protection des routes /admin ─────────────────────────────────────────
-  if (pathname.startsWith("/admin")) {
+  // ── Protection des routes /admin et /api/admin ───────────────────────────
+  const isAdminRoute = pathname.startsWith("/admin") || pathname.startsWith("/api/admin/");
+  if (isAdminRoute) {
+    const isApiRoute = pathname.startsWith("/api/");
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session) {
+      if (isApiRoute) return new NextResponse("Unauthorized", { status: 401 });
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
@@ -103,6 +106,7 @@ export async function proxy(request: NextRequest) {
       ),
     });
     if (!membership) {
+      if (isApiRoute) return new NextResponse("Forbidden", { status: 403 });
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);

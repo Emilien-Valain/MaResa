@@ -43,7 +43,7 @@ export default async function AdminLayout({
   }));
 
   return (
-    <div className="min-h-screen flex flex-col bg-warm-50">
+    <div className="min-h-screen flex flex-col bg-warm-100">
       <AdminNav
         userEmail={session.user.email}
         currentTenantName={currentTenant?.name ?? ""}

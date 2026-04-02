@@ -25,7 +25,7 @@ Next.js 16 / React 19 / TypeScript / Tailwind v4 / Drizzle ORM / PostgreSQL / Be
 - [x] **Moteur de recherche** — widget homepage : date arrivee -> date depart (auto-open) -> chambres disponibles
 - [x] **Moteur de disponibilite** — reservations + blocages iCal, API temps reel, recherche multi-chambres
 - [x] **Admin chambres** — CRUD complet, activation/desactivation, suppression
-- [x] **Admin reservations** — liste, detail, cycle de statuts, creation manuelle
+- [x] **Admin reservations** — liste, detail, cycle de statuts, creation manuelle, export PDF, impression
 - [x] **Calendrier** — vue mensuelle avec navigation
 - [x] **Auth** — Better Auth email/password, protection middleware, session par domaine
 - [x] **Securite** — isolation tenant, XSS echappe, 404 sur UUID d'un autre tenant

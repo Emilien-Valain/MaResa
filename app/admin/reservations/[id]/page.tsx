@@ -4,6 +4,7 @@ import { requireSession } from "@/lib/session";
 import { getBookingByIdAndTenant } from "@/lib/queries/bookings";
 import { confirmBooking, cancelBooking, completeBooking } from "@/lib/actions/bookings";
 import { STATUS_LABELS, STATUS_COLORS } from "@/lib/calendar";
+import ReservationPdfActions from "@/components/admin/ReservationPdfActions";
 
 export default async function ReservationDetailPage({
   params,
@@ -23,17 +24,17 @@ export default async function ReservationDetailPage({
   return (
     <div className="space-y-6 max-w-2xl">
       <div className="flex items-center gap-3">
-        <Link href="/admin/reservations" className="text-sm text-warm-400 hover:text-warm-900 transition-colors">
+        <Link href="/admin/reservations" className="text-sm text-warm-500 hover:text-warm-900 font-medium transition-colors">
           ← Réservations
         </Link>
-        <span className={`text-xs px-2 py-0.5 rounded-sm ${STATUS_COLORS[reservation.status]}`}>
+        <span className={`text-xs px-2 py-0.5 rounded-sm font-medium ${STATUS_COLORS[reservation.status]}`}>
           {STATUS_LABELS[reservation.status]}
         </span>
       </div>
 
-      <h1 className="font-heading text-3xl font-semibold text-warm-900">{reservation.guestName}</h1>
+      <h1 className="font-heading text-3xl font-semibold text-warm-950">{reservation.guestName}</h1>
 
-      <div className="bg-white rounded-sm border border-warm-200 divide-y divide-warm-100">
+      <div className="bg-white rounded-sm border border-warm-300 shadow-sm divide-y divide-warm-200">
         <Section label="Séjour">
           <Row label="Chambre" value={reservation.room?.name ?? "—"} />
           <Row label="Arrivée" value={new Date(reservation.checkIn).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })} />
@@ -55,10 +56,13 @@ export default async function ReservationDetailPage({
 
         {reservation.notes && (
           <Section label="Notes">
-            <p className="text-sm text-warm-700 px-5 pb-4">{reservation.notes}</p>
+            <p className="text-sm text-warm-800 px-5 pb-4">{reservation.notes}</p>
           </Section>
         )}
       </div>
+
+      {/* PDF / Print */}
+      <ReservationPdfActions bookingId={id} />
 
       {/* Actions */}
       <div className="flex gap-3">
@@ -91,7 +95,7 @@ export default async function ReservationDetailPage({
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="py-4">
-      <p className="text-xs font-medium text-warm-400 uppercase tracking-wide px-5 mb-3">{label}</p>
+      <p className="text-xs font-semibold text-warm-500 uppercase tracking-wide px-5 mb-3">{label}</p>
       {children}
     </div>
   );
@@ -100,8 +104,8 @@ function Section({ label, children }: { label: string; children: React.ReactNode
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between px-5 py-1.5">
-      <span className="text-sm text-warm-500">{label}</span>
-      <span className="text-sm text-warm-900 font-medium">{value}</span>
+      <span className="text-sm text-warm-600">{label}</span>
+      <span className="text-sm text-warm-950 font-medium">{value}</span>
     </div>
   );
 }
