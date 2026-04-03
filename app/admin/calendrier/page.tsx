@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireSession } from "@/lib/session";
 import { getRoomsByTenant } from "@/lib/queries/rooms";
 import { getActiveBookingsForCalendar } from "@/lib/queries/bookings";
+import IcalSyncButton from "@/components/admin/IcalSyncButton";
 import {
   getCalendarMonth,
   prevMonth,
@@ -45,7 +46,9 @@ export default async function CalendrierPage({
         <h1 className="font-heading text-3xl font-semibold text-warm-950 capitalize">
           {formatMonthLabel(year, month)}
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <IcalSyncButton />
+          <div className="flex items-center gap-2">
           <Link
             href={`/admin/calendrier?year=${prev.year}&month=${prev.month}`}
             className="px-3 py-1.5 rounded-sm text-sm bg-warm-200 text-warm-700 hover:bg-warm-300 transition-colors font-medium"
@@ -64,6 +67,7 @@ export default async function CalendrierPage({
           >
             →
           </Link>
+          </div>
         </div>
       </div>
 

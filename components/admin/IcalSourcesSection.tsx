@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { addIcalSource, deleteIcalSource, toggleIcalSource } from "@/lib/actions/ical-sources";
 
 type Room = { id: string; name: string };
@@ -15,6 +15,26 @@ type IcalSource = {
   lastSyncAt: string | null;
 };
 
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = useCallback(() => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [text]);
+
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      className="text-xs font-medium text-warm-600 hover:text-warm-900 transition-colors"
+    >
+      {copied ? "Copié !" : "Copier le lien"}
+    </button>
+  );
+}
+
 export default function IcalSourcesSection({
   rooms,
   sources,
@@ -24,8 +44,14 @@ export default function IcalSourcesSection({
 }) {
   const [showForm, setShowForm] = useState(false);
 
-  // Grouper les sources par chambre
+  // Grouper les sources par chambre — inclure aussi les chambres sans sources
   const grouped = new Map<string, { roomName: string; sources: IcalSource[] }>();
+
+  // Initialiser avec toutes les chambres
+  for (const room of rooms) {
+    grouped.set(room.id, { roomName: room.name, sources: [] });
+  }
+
   for (const src of sources) {
     const existing = grouped.get(src.roomId);
     if (existing) {
@@ -137,9 +163,27 @@ export default function IcalSourcesSection({
             synchroniser automatiquement les disponibilités.
           </p>
         ) : (
-          Array.from(grouped.entries()).map(([roomId, { roomName, sources: roomSources }]) => (
-            <div key={roomId}>
-              <h3 className="text-sm font-semibold text-warm-800 mb-2">{roomName}</h3>
+          Array.from(grouped.entries()).map(([roomId, { roomName, sources: roomSources }]) => {
+            const exportUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/api/ical/${roomId}`;
+
+            return (
+            <div key={roomId} className="space-y-2">
+              <h3 className="text-sm font-semibold text-warm-800">{roomName}</h3>
+
+              {/* Lien d'export iCal */}
+              <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-sm">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-warm-700">
+                    Votre calendrier (à coller dans Airbnb / Booking)
+                  </p>
+                  <p className="text-xs text-warm-500 truncate mt-0.5 font-mono">
+                    {exportUrl}
+                  </p>
+                </div>
+                <CopyButton text={exportUrl} />
+              </div>
+
+              {/* Sources importées */}
               <div className="space-y-2">
                 {roomSources.map((src) => (
                   <div
@@ -204,7 +248,8 @@ export default function IcalSourcesSection({
                 ))}
               </div>
             </div>
-          ))
+          );
+          })
         )}
       </div>
     </section>

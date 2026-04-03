@@ -71,3 +71,4 @@ export async function toggleIcalSource(formData: FormData) {
 
   revalidatePath("/admin/parametres");
 }
+
