@@ -4,6 +4,15 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { and, eq } from "drizzle-orm";
 import { tenants, userTenants } from "@/db/schema";
+import { checkRateLimit, type RateLimitRule } from "@/lib/rate-limit";
+
+// ── Rate limiting rules ───────────────────────────────────────────────────────
+
+const RATE_RULES: Record<string, RateLimitRule> = {
+  login: { name: "login", limit: 10, windowSec: 60 },
+  api: { name: "api-public", limit: 60, windowSec: 60 },
+  webhook: { name: "webhook", limit: 30, windowSec: 60 },
+};
 
 // ── Cache in-memory tenant (5 min) ──────────────────────────────────────────
 
@@ -69,6 +78,34 @@ async function resolveTenant(host: string): Promise<CachedTenant | null> {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // ── Rate limiting ───────────────────────────────────────────────────────
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    ?? request.headers.get("x-real-ip")
+    ?? "unknown";
+
+  let rateRule: RateLimitRule | null = null;
+  if (pathname === "/login" || pathname.startsWith("/api/auth/")) {
+    rateRule = RATE_RULES.login;
+  } else if (pathname.startsWith("/api/webhooks/")) {
+    rateRule = RATE_RULES.webhook;
+  } else if (
+    pathname.startsWith("/api/") &&
+    !pathname.startsWith("/api/admin/") &&
+    !pathname.startsWith("/api/cron/")
+  ) {
+    rateRule = RATE_RULES.api;
+  }
+
+  if (rateRule) {
+    const result = checkRateLimit(rateRule, ip);
+    if (result.limited) {
+      return new NextResponse("Too Many Requests", {
+        status: 429,
+        headers: { "Retry-After": String(result.retryAfter) },
+      });
+    }
+  }
 
   // ── Routes login et API publiques → passe-plat ──────────────────────────
   if (pathname.startsWith("/login") || (pathname.startsWith("/api/") && !pathname.startsWith("/api/admin/"))) {

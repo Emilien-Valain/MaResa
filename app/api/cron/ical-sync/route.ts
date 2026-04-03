@@ -13,11 +13,14 @@ import { syncAllIcalSources } from "@/lib/ical-sync";
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
 
-  if (secret) {
-    const auth = request.headers.get("authorization");
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!secret) {
+    console.error("[iCal cron] CRON_SECRET non configuré — endpoint désactivé");
+    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
+  }
+
+  const auth = request.headers.get("authorization");
+  if (auth !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {

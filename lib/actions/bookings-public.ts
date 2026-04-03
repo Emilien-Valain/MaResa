@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { bookings, payments, rooms, tenants } from "@/db/schema";
 import { isRoomAvailable } from "@/lib/availability";
 import { stripe } from "@/lib/stripe";
+import { bookingPublicSchema, parseFormData } from "@/lib/validation";
 import type Stripe from "stripe";
 
 /**
@@ -22,34 +23,12 @@ export async function createBookingPublic(formData: FormData) {
     throw new Error("Tenant non trouvé");
   }
 
-  const roomId = formData.get("roomId") as string;
-  const checkInStr = formData.get("checkIn") as string;
-  const checkOutStr = formData.get("checkOut") as string;
-  const guestName = formData.get("guestName") as string;
-  const guestEmail = formData.get("guestEmail") as string;
-  const guestPhone = formData.get("guestPhone") as string | null;
-  const guestCountStr = formData.get("guestCount") as string;
+  const data = parseFormData(bookingPublicSchema, formData);
+  const { roomId, guestName, guestEmail, guestCount } = data;
+  const guestPhone = data.guestPhone || null;
 
-  // Validation
-  if (!roomId || !checkInStr || !checkOutStr || !guestName || !guestEmail || !guestCountStr) {
-    throw new Error("Champs obligatoires manquants");
-  }
-
-  const checkIn = new Date(checkInStr + "T00:00:00.000Z");
-  const checkOut = new Date(checkOutStr + "T00:00:00.000Z");
-
-  if (isNaN(checkIn.getTime()) || isNaN(checkOut.getTime())) {
-    throw new Error("Dates invalides");
-  }
-
-  if (checkOut <= checkIn) {
-    throw new Error("La date de départ doit être après la date d'arrivée");
-  }
-
-  const guestCount = parseInt(guestCountStr, 10);
-  if (isNaN(guestCount) || guestCount < 1) {
-    throw new Error("Nombre de personnes invalide");
-  }
+  const checkIn = new Date(data.checkIn + "T00:00:00.000Z");
+  const checkOut = new Date(data.checkOut + "T00:00:00.000Z");
 
   // Vérifier que la chambre appartient au tenant
   const [room] = await db

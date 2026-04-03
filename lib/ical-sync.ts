@@ -14,7 +14,20 @@ async function syncSource(source: {
 }) {
   // Import dynamique pour éviter le bundling statique (BigInt incompatible avec Turbopack)
   const ical = await import("node-ical");
-  const events = await ical.async.fromURL(source.url);
+
+  // Fetch avec timeout de 15 secondes pour éviter le DOS
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+  let icsText: string;
+  try {
+    const res = await fetch(source.url, { signal: controller.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    icsText = await res.text();
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  const events = ical.sync.parseICS(icsText);
 
   const vevents: import("node-ical").VEvent[] = [];
   for (const e of Object.values(events)) {

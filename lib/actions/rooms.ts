@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { rooms, properties, tenants } from "@/db/schema";
+import { roomSchema, roomUpdateSchema, parseFormData } from "@/lib/validation";
 
 async function requireTenantId(): Promise<string> {
   const { tenantId } = await requireSession();
@@ -24,10 +25,11 @@ function slugify(str: string) {
 export async function createRoom(formData: FormData) {
   const tenantId = await requireTenantId();
 
-  const name = formData.get("nom") as string;
-  const description = (formData.get("description") as string) || null;
-  const pricePerNight = formData.get("prix") as string;
-  const capacity = parseInt(formData.get("capacite") as string, 10);
+  const data = parseFormData(roomSchema, formData);
+  const name = data.nom;
+  const description = data.description || null;
+  const pricePerNight = data.prix.replace(",", ".");
+  const capacity = data.capacite;
 
   // 1 tenant = 1 property dans ce modèle — on auto-crée si absente
   let property = await db.query.properties.findFirst({
@@ -62,11 +64,12 @@ export async function createRoom(formData: FormData) {
 export async function updateRoom(id: string, formData: FormData) {
   const tenantId = await requireTenantId();
 
-  const name = formData.get("nom") as string;
-  const description = (formData.get("description") as string) || null;
-  const pricePerNight = formData.get("prix") as string;
-  const capacity = parseInt(formData.get("capacite") as string, 10);
-  const active = formData.get("actif") === "on";
+  const data = parseFormData(roomUpdateSchema, formData);
+  const name = data.nom;
+  const description = data.description || null;
+  const pricePerNight = data.prix.replace(",", ".");
+  const capacity = data.capacite;
+  const active = data.actif === "on";
 
   await db
     .update(rooms)

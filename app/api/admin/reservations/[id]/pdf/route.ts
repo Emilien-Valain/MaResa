@@ -270,7 +270,14 @@ export async function GET(
   // Serialize
   const pdfBytes = await pdfDoc.save();
 
-  const filename = `reservation-${booking.id.slice(0, 8)}-${booking.guestName.replace(/\s+/g, "-").toLowerCase()}.pdf`;
+  const safeName = booking.guestName
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .toLowerCase()
+    .slice(0, 50);
+  const filename = `reservation-${booking.id.slice(0, 8)}-${safeName || "guest"}.pdf`;
 
   return new Response(Buffer.from(pdfBytes), {
     status: 200,

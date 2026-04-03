@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { bookings, rooms } from "@/db/schema";
+import { bookingManualSchema, parseFormData } from "@/lib/validation";
 import type { BookingStatus } from "@/lib/queries/bookings";
 
 async function requireTenantId() {
@@ -42,14 +43,12 @@ export async function completeBooking(id: string) {
 export async function createBookingManual(formData: FormData) {
   const tenantId = await requireTenantId();
 
-  const roomId = formData.get("roomId") as string;
-  const guestName = formData.get("guestName") as string;
-  const guestEmail = formData.get("guestEmail") as string;
-  const guestPhone = (formData.get("guestPhone") as string) || null;
-  const guestCount = parseInt(formData.get("guestCount") as string, 10);
-  const checkIn = new Date(formData.get("checkIn") as string);
-  const checkOut = new Date(formData.get("checkOut") as string);
-  const notes = (formData.get("notes") as string) || null;
+  const data = parseFormData(bookingManualSchema, formData);
+  const { roomId, guestName, guestEmail, guestCount } = data;
+  const guestPhone = data.guestPhone || null;
+  const checkIn = new Date(data.checkIn + "T00:00:00.000Z");
+  const checkOut = new Date(data.checkOut + "T00:00:00.000Z");
+  const notes = data.notes || null;
 
   const room = await db.query.rooms.findFirst({
     where: eq(rooms.id, roomId),

@@ -47,8 +47,10 @@ export async function POST(request: NextRequest) {
       .where(eq(tenants.id, tenantId));
   }
 
-  // Générer le lien d'onboarding
-  const origin = request.headers.get("origin") ?? "http://localhost:3000";
+  // Générer le lien d'onboarding — utiliser le domaine du tenant, pas le header origin
+  const proto = request.headers.get("x-forwarded-proto") ?? "https";
+  const host = request.headers.get("host") ?? "localhost:3000";
+  const origin = `${proto}://${host}`;
 
   const accountLink = await stripe.accountLinks.create({
     account: accountId,

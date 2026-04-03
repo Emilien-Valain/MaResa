@@ -114,18 +114,14 @@ test.describe("Admin — Gestion des chambres", () => {
 
   // ─── Cas limites ─────────────────────────────────────────────────────────────
 
-  test("prix = 0 — chambre créée sans erreur", async ({ page }) => {
-    const name = `Prix Zéro ${RUN_ID}`;
+  test("prix = 0 — rejeté par la validation (prix doit être > 0)", async ({ page }) => {
     await page.goto("/admin/chambres/new");
-    await page.fill('[name="nom"]', name);
+    await page.fill('[name="nom"]', `Prix Zéro ${RUN_ID}`);
     await page.fill('[name="prix"]', "0");
     await page.fill('[name="capacite"]', "1");
     await page.click('[type="submit"]');
-    await expect(page).toHaveURL("/admin/chambres");
-    await expect(roomRow(page, name)).toBeVisible();
-    // Nettoyage
-    page.on("dialog", (d) => d.accept());
-    await roomRow(page, name).getByRole("button", { name: "Supprimer" }).click();
+    // La page reste sur /new — la validation Zod rejette le prix à 0
+    await expect(page).toHaveURL(/\/admin\/chambres\/new/);
   });
 
   test("nom très long (500 caractères) — pas de crash serveur", async ({ page }) => {

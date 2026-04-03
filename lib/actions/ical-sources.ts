@@ -5,17 +5,12 @@ import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { icalSources, rooms } from "@/db/schema";
+import { icalSourceSchema, parseFormData } from "@/lib/validation";
 
 export async function addIcalSource(formData: FormData) {
   const { tenantId } = await requireSession();
 
-  const roomId = formData.get("roomId") as string;
-  const name = formData.get("name") as string;
-  const url = formData.get("url") as string;
-
-  if (!roomId || !name || !url) {
-    throw new Error("Champs obligatoires manquants");
-  }
+  const { roomId, name, url } = parseFormData(icalSourceSchema, formData);
 
   // Vérifier que la chambre appartient au tenant
   const [room] = await db
