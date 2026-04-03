@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { requireSession } from "@/lib/session";
 import { getRoomsByTenant } from "@/lib/queries/rooms";
 import DeleteRoomButton from "@/components/admin/DeleteRoomButton";
@@ -33,14 +34,27 @@ export default async function ChambresPage() {
         <div className="bg-white rounded-sm border border-warm-300 shadow-sm divide-y divide-warm-200">
           {chambres.map((chambre) => (
             <div key={chambre.id} className="flex items-center justify-between px-5 py-4">
-              <div>
-                <p className="text-sm font-semibold text-warm-950">{chambre.name}</p>
-                <p className="text-xs text-warm-500 mt-0.5">
-                  {chambre.pricePerNight} €/nuit · {chambre.capacity} pers.
-                  {!chambre.active && (
-                    <span className="ml-2 text-orange-600 font-medium">Inactif</span>
-                  )}
-                </p>
+              <div className="flex items-center gap-4">
+                {(() => {
+                  const photos = Array.isArray(chambre.photos) ? chambre.photos as { url: string }[] : [];
+                  const thumb = photos[0];
+                  return thumb ? (
+                    <div className="relative w-12 h-9 rounded-sm overflow-hidden flex-shrink-0 bg-warm-100">
+                      <Image src={thumb.url} alt={chambre.name} fill className="object-cover" sizes="48px" />
+                    </div>
+                  ) : (
+                    <div className="w-12 h-9 rounded-sm bg-warm-100 flex-shrink-0" />
+                  );
+                })()}
+                <div>
+                  <p className="text-sm font-semibold text-warm-950">{chambre.name}</p>
+                  <p className="text-xs text-warm-500 mt-0.5">
+                    {chambre.pricePerNight} €/nuit · {chambre.capacity} pers.
+                    {!chambre.active && (
+                      <span className="ml-2 text-orange-600 font-medium">Inactif</span>
+                    )}
+                  </p>
+                </div>
               </div>
               <div className="flex items-center gap-3">
                 <Link

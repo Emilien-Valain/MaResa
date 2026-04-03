@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import PublicLayout from "@/components/public/PublicLayout";
+import RoomGallery from "@/components/public/RoomGallery";
 import { requireTenant } from "@/lib/tenant-context";
 import { getRoomBySlugPublic } from "@/lib/queries/public";
 
@@ -29,9 +30,9 @@ export default async function ChambreDetailPage({
           <span className="text-warm-900">{room.name}</span>
         </nav>
 
-        {/* Photo placeholder */}
-        <div className="bg-warm-100 rounded-sm h-72 flex items-center justify-center text-warm-400 mb-10 animate-fade-up">
-          Photo à venir
+        {/* Galerie photos */}
+        <div className="mb-10 animate-fade-up">
+          <RoomGallery photos={room.photos} alt={room.name} />
         </div>
 
         {/* Contenu */}

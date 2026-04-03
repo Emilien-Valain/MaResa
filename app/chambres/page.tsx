@@ -1,5 +1,6 @@
 import Link from "next/link";
 import PublicLayout from "@/components/public/PublicLayout";
+import RoomPhoto from "@/components/public/RoomPhoto";
 import { requireTenant } from "@/lib/tenant-context";
 import { getRoomsPublic } from "@/lib/queries/public";
 
@@ -28,9 +29,12 @@ export default async function ChambresPage() {
                 key={room.id}
                 className={`border border-warm-200 rounded-sm overflow-hidden hover:shadow-md transition-shadow animate-fade-up stagger-${Math.min(i + 2, 6)}`}
               >
-                <div className="bg-warm-100 h-44 flex items-center justify-center text-warm-400 text-sm">
-                  Photo à venir
-                </div>
+                <RoomPhoto
+                  photos={room.photos}
+                  alt={room.name}
+                  className="h-44"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                />
                 <div className="p-5">
                   <h2 className="font-heading text-xl font-semibold text-warm-900 mb-1">{room.name}</h2>
                   <p className="text-sm text-warm-500 mb-3">

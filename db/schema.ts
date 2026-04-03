@@ -22,6 +22,7 @@ export const tenants = pgTable(
     name: text("name").notNull(),
     domain: text("domain").unique(),
     config: jsonb("config").notNull().default({}),
+    stripeAccountId: text("stripe_account_id"),
     createdAt: timestamp("created_at").defaultNow(),
   },
   (table) => [index("tenants_domain_idx").on(table.domain)],

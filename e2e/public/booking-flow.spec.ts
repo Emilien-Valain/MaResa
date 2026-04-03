@@ -79,11 +79,18 @@ test.describe("Public — Parcours de réservation", () => {
     await expect(page.getByText("Disponible")).toBeVisible({ timeout: 5000 });
   });
 
-  test("formulaire complet crée un booking pending et redirige vers confirmation", async ({ page }) => {
+  test("formulaire complet crée un booking pending et redirige vers Stripe", async ({ page }) => {
+    const stripeKey = process.env.STRIPE_SECRET_KEY ?? "";
+    test.skip(!stripeKey || stripeKey.includes("XXXX"), "STRIPE_SECRET_KEY non configurée — skip");
+
     const { apiRoomId } = loadTestContext();
 
     // Nettoyer toute réservation existante pour ces dates de test
     const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+    await pool.query(
+      "DELETE FROM payments WHERE booking_id IN (SELECT id FROM bookings WHERE room_id = $1 AND check_in = $2 AND check_out = $3)",
+      [apiRoomId, BOOKING_TEST_CHECKIN + " 00:00:00", BOOKING_TEST_CHECKOUT + " 00:00:00"],
+    );
     await pool.query(
       "DELETE FROM bookings WHERE room_id = $1 AND check_in = $2 AND check_out = $3",
       [apiRoomId, BOOKING_TEST_CHECKIN + " 00:00:00", BOOKING_TEST_CHECKOUT + " 00:00:00"],
@@ -103,14 +110,15 @@ test.describe("Public — Parcours de réservation", () => {
 
     // Attendre la confirmation de disponibilité
     await expect(page.getByText("Disponible")).toBeVisible({ timeout: 8000 });
-    // Attendre que le bouton soit activé
+    // Le bouton doit indiquer "Procéder au paiement"
     await expect(page.locator('[type="submit"]')).toBeEnabled({ timeout: 5000 });
+    await expect(page.locator('[type="submit"]')).toContainText("Procéder au paiement");
 
-    // Soumettre
+    // Soumettre — redirige vers Stripe Checkout
     await page.click('[type="submit"]');
 
-    // Vérifier la redirection vers confirmation
-    await expect(page).toHaveURL(/\/reserver\/confirmation/, { timeout: 10000 });
+    // Vérifier la redirection vers Stripe Checkout
+    await expect(page).toHaveURL(/checkout\.stripe\.com/, { timeout: 15000 });
   });
 
   test("domaine inconnu retourne une 404 propre", async ({ page }) => {

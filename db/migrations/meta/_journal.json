@@ -22,6 +22,13 @@
       "when": 1775054789066,
       "tag": "0002_redundant_sunfire",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1775141185583,
+      "tag": "0003_illegal_starfox",
+      "breakpoints": true
     }
   ]
 }

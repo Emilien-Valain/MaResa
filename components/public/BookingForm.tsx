@@ -39,6 +39,7 @@ export default function BookingForm({
   const today = getToday();
   const tomorrow = getTomorrow();
   const searchParams = useSearchParams();
+  const wasCancelled = searchParams.get("cancelled") === "true";
 
   const [checkIn, setCheckIn] = useState(searchParams.get("checkIn") ?? today);
   const [checkOut, setCheckOut] = useState(searchParams.get("checkOut") ?? tomorrow);
@@ -116,6 +117,12 @@ export default function BookingForm({
   return (
     <form action={createBookingPublic} className="space-y-6">
       <input type="hidden" name="roomId" value={room.id} />
+
+      {wasCancelled && (
+        <div className="bg-amber-50 border border-amber-200 rounded-sm p-4 text-sm text-amber-800">
+          Le paiement a été annulé. Vous pouvez réessayer ci-dessous.
+        </div>
+      )}
 
       {/* Dates */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -248,7 +255,7 @@ export default function BookingForm({
         disabled={availability !== "available"}
         className="w-full py-3 px-6 rounded-sm font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-warm-900 text-warm-50 hover:bg-warm-800 disabled:bg-warm-400"
       >
-        Enregistrer la réservation
+        Procéder au paiement
       </button>
     </form>
   );

@@ -4,18 +4,14 @@ import { headers } from "next/headers";
 import { and, eq } from "drizzle-orm";
 import PublicLayout from "@/components/public/PublicLayout";
 import { db } from "@/lib/db";
-import { bookings, rooms } from "@/db/schema";
+import { bookings, payments, rooms } from "@/db/schema";
 
 export default async function ConfirmationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ bookingId?: string }>;
+  searchParams: Promise<{ bookingId?: string; session_id?: string }>;
 }) {
-  const { bookingId } = await searchParams;
-
-  if (!bookingId) {
-    notFound();
-  }
+  const { bookingId, session_id } = await searchParams;
 
   const headersList = await headers();
   const tenantId = headersList.get("x-tenant-id");
@@ -24,11 +20,32 @@ export default async function ConfirmationPage({
     notFound();
   }
 
-  const [booking] = await db
-    .select()
-    .from(bookings)
-    .where(and(eq(bookings.id, bookingId), eq(bookings.tenantId, tenantId)))
-    .limit(1);
+  let booking;
+
+  if (session_id) {
+    // Retour depuis Stripe — retrouver le booking via la session Stripe
+    const [payment] = await db
+      .select({ bookingId: payments.bookingId })
+      .from(payments)
+      .where(and(eq(payments.stripeSessionId, session_id), eq(payments.tenantId, tenantId)))
+      .limit(1);
+
+    if (!payment) {
+      notFound();
+    }
+
+    [booking] = await db
+      .select()
+      .from(bookings)
+      .where(and(eq(bookings.id, payment.bookingId), eq(bookings.tenantId, tenantId)))
+      .limit(1);
+  } else if (bookingId) {
+    [booking] = await db
+      .select()
+      .from(bookings)
+      .where(and(eq(bookings.id, bookingId), eq(bookings.tenantId, tenantId)))
+      .limit(1);
+  }
 
   if (!booking) {
     notFound();
@@ -49,6 +66,9 @@ export default async function ConfirmationPage({
   const nights = Math.round(
     (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24),
   );
+
+  // Le webhook peut ne pas encore avoir été traité — le statut peut être "pending" ou "confirmed"
+  const isPaid = booking.status === "confirmed";
 
   return (
     <PublicLayout>
@@ -71,10 +91,12 @@ export default async function ConfirmationPage({
         </div>
 
         <h1 className="font-heading text-4xl font-semibold text-warm-900 mb-3 animate-fade-up stagger-1">
-          Réservation reçue !
+          {isPaid ? "Paiement confirmé !" : "Paiement en cours de traitement"}
         </h1>
         <p className="text-warm-500 mb-10 animate-fade-up stagger-2">
-          Nous vous contacterons pour confirmer votre réservation.
+          {isPaid
+            ? "Votre réservation est confirmée. Vous recevrez un email de confirmation sous peu."
+            : "Votre paiement est en cours de vérification. Vous recevrez un email de confirmation dès qu'il sera validé."}
         </p>
 
         {/* Récapitulatif */}

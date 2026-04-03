@@ -1,6 +1,7 @@
 import Link from "next/link";
 import PublicLayout from "@/components/public/PublicLayout";
 import HomeSearch from "@/components/public/HomeSearch";
+import RoomPhoto from "@/components/public/RoomPhoto";
 import { requireTenant } from "@/lib/tenant-context";
 import { getRoomsPublic } from "@/lib/queries/public";
 import type { TenantConfig } from "@/lib/tenant-context";
@@ -43,9 +44,12 @@ export default async function HomePage() {
                 key={room.id}
                 className={`border border-warm-200 rounded-sm overflow-hidden hover:shadow-md transition-shadow animate-fade-up stagger-${i + 2}`}
               >
-                <div className="bg-warm-100 h-44 flex items-center justify-center text-warm-400 text-sm">
-                  Photo à venir
-                </div>
+                <RoomPhoto
+                  photos={room.photos}
+                  alt={room.name}
+                  className="h-44"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                />
                 <div className="p-5">
                   <h3 className="font-heading text-xl font-semibold text-warm-900 mb-1">{room.name}</h3>
                   <p className="text-sm text-warm-500 mb-2">

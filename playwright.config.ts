@@ -52,6 +52,11 @@ export default defineConfig({
       BETTER_AUTH_URL: "http://localhost:3001",
       BETTER_AUTH_SECRET: "test-secret-for-playwright-32chars",
       PUBLIC_TENANT_SLUG: "test-tenant",
+      STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ?? "sk_test_placeholder",
+      STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET ?? "whsec_test_XXXX",
+      SMTP_HOST: "localhost",
+      SMTP_PORT: "1025",
+      SMTP_FROM: "test@maresa.test",
     },
   },
 });

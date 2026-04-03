@@ -31,6 +31,7 @@ export default function AdminNav({
     { href: "/admin/chambres", label: "Chambres" },
     { href: "/admin/reservations", label: "Réservations" },
     { href: "/admin/calendrier", label: "Calendrier" },
+    { href: "/admin/parametres", label: "Paramètres" },
   ];
 
   const otherTenants = accessibleTenants.filter((t) => !t.isCurrent);
