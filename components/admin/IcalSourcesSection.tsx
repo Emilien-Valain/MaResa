@@ -36,9 +36,11 @@ function CopyButton({ text }: { text: string }) {
 }
 
 export default function IcalSourcesSection({
+  baseUrl,
   rooms,
   sources,
 }: {
+  baseUrl: string;
   rooms: Room[];
   sources: IcalSource[];
 }) {
@@ -164,7 +166,7 @@ export default function IcalSourcesSection({
           </p>
         ) : (
           Array.from(grouped.entries()).map(([roomId, { roomName, sources: roomSources }]) => {
-            const exportUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/api/ical/${roomId}`;
+            const exportUrl = `${baseUrl}/api/ical/${roomId}`;
 
             return (
             <div key={roomId} className="space-y-2">

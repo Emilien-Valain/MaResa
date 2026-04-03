@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Tenant, TenantConfig } from "@/lib/tenant-context";
+import MobileNav from "@/components/public/MobileNav";
 
 /**
  * Template "Boutique" — style élégant et minimaliste.
@@ -30,47 +31,56 @@ export default function BoutiqueLayout({
     >
       {/* Header — fond secondaire, logo centré */}
       <header
-        className="px-6 py-8 border-b"
+        className="relative px-6 py-8 border-b"
         style={{
           backgroundColor: "var(--color-secondary)",
           borderColor: "color-mix(in oklch, var(--color-primary) 15%, transparent)",
         }}
       >
-        <div className="max-w-4xl mx-auto flex flex-col items-center gap-5">
-          <Link href="/" className="hover:opacity-70 transition-opacity text-center">
-            {config.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={config.logoUrl}
-                alt={tenant.name}
-                className="h-14 object-contain mx-auto"
-              />
-            ) : (
-              <span
-                className="font-heading text-3xl font-semibold tracking-widest uppercase"
-                style={{ color: "var(--color-primary)" }}
-              >
-                {tenant.name}
-              </span>
-            )}
-          </Link>
-          <nav className="flex gap-8 text-xs font-medium tracking-widest uppercase">
+        <div className="max-w-4xl mx-auto">
+          {/* Mobile: logo + burger côte à côte */}
+          <div className="flex items-center justify-between md:justify-center">
+            <Link href="/" className="hover:opacity-70 transition-opacity text-center">
+              {config.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={config.logoUrl}
+                  alt={tenant.name}
+                  className="h-14 object-contain mx-auto"
+                />
+              ) : (
+                <span
+                  className="font-heading text-3xl font-semibold tracking-widest uppercase"
+                  style={{ color: "var(--color-primary)" }}
+                >
+                  {tenant.name}
+                </span>
+              )}
+            </Link>
+            <MobileNav primaryColor={primaryColor} secondaryColor={secondaryColor} iconColor={primaryColor} />
+          </div>
+
+          {/* Desktop nav */}
+          <nav
+            className="hidden md:flex justify-center gap-8 text-xs font-medium tracking-widest uppercase mt-5"
+            aria-label="Navigation principale"
+          >
             <Link
               href="/chambres"
-              className="hover:opacity-60 transition-opacity"
+              className="hover:opacity-60 transition-opacity py-1"
               style={{ color: "var(--color-primary)" }}
             >
               Chambres
             </Link>
             <span
               style={{ color: "var(--color-primary)", opacity: 0.2 }}
-              aria-hidden
+              aria-hidden="true"
             >
               ·
             </span>
             <Link
               href="/chambres"
-              className="hover:opacity-60 transition-opacity"
+              className="hover:opacity-60 transition-opacity py-1"
               style={{ color: "var(--color-primary)" }}
             >
               Réserver

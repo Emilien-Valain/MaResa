@@ -1,4 +1,5 @@
 import { eq, asc } from "drizzle-orm";
+import { headers } from "next/headers";
 import { requireSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { tenants, rooms, icalSources } from "@/db/schema";
@@ -7,6 +8,11 @@ import IcalSourcesSection from "@/components/admin/IcalSourcesSection";
 
 export default async function ParametresPage() {
   const { tenantId } = await requireSession();
+
+  const headersList = await headers();
+  const host = headersList.get("host") ?? "localhost:3000";
+  const proto = headersList.get("x-forwarded-proto") ?? "http";
+  const baseUrl = `${proto}://${host}`;
 
   const [tenant] = await db
     .select({
@@ -51,6 +57,7 @@ export default async function ParametresPage() {
       <StripeConnectSection hasAccount={!!tenant.stripeAccountId} />
 
       <IcalSourcesSection
+        baseUrl={baseUrl}
         rooms={tenantRooms}
         sources={sources.map((s) => ({
           id: s.id,

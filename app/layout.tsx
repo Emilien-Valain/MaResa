@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Figtree, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -22,6 +22,12 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "MaResa",
   description: "Plateforme de reservation directe pour hotels",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({

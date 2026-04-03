@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import RoomPhoto from "@/components/public/RoomPhoto";
 
 type Room = {
   id: string;
@@ -10,6 +11,7 @@ type Room = {
   pricePerNight: string;
   capacity: number;
   description: string | null;
+  photos: unknown;
 };
 
 type SearchStatus = "idle" | "searching" | "done";
@@ -97,55 +99,59 @@ export default function HomeSearch({ tenantId }: { tenantId: string }) {
     <div className="w-full">
       {/* Widget de recherche */}
       <div className="bg-white rounded-sm shadow-lg p-4 flex flex-col sm:flex-row gap-3 items-end">
-        <div className="flex-1 min-w-0">
-          <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wide mb-1">
+        <div className="flex-1 min-w-0 w-full">
+          <label htmlFor="search-checkin" className="block text-sm font-semibold text-warm-500 uppercase tracking-wide mb-1.5">
             Arrivée
           </label>
           <input
+            id="search-checkin"
             type="date"
             value={checkIn}
             min={today}
             onChange={(e) => handleCheckInChange(e.target.value)}
-            className="w-full border-0 border-b-2 border-warm-200 focus:border-warm-900 outline-none py-2 text-warm-900 font-medium text-sm bg-transparent transition-colors"
+            className="w-full border-0 border-b-2 border-warm-200 focus:border-warm-900 focus-visible:ring-2 focus-visible:ring-amber-accent/40 outline-none py-2.5 text-warm-900 font-medium text-base bg-transparent transition-colors"
           />
         </div>
 
         <div className="hidden sm:block w-px h-10 bg-warm-200 self-end mb-2" />
 
-        <div className="flex-1 min-w-0">
-          <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wide mb-1">
+        <div className="flex-1 min-w-0 w-full">
+          <label htmlFor="search-checkout" className="block text-sm font-semibold text-warm-500 uppercase tracking-wide mb-1.5">
             Départ
           </label>
           <input
+            id="search-checkout"
             ref={checkOutRef}
             type="date"
             value={checkOut}
             min={checkIn ? addDay(checkIn) : today}
             onChange={(e) => handleCheckOutChange(e.target.value)}
-            className="w-full border-0 border-b-2 border-warm-200 focus:border-warm-900 outline-none py-2 text-warm-900 font-medium text-sm bg-transparent transition-colors"
+            className="w-full border-0 border-b-2 border-warm-200 focus:border-warm-900 focus-visible:ring-2 focus-visible:ring-amber-accent/40 outline-none py-2.5 text-warm-900 font-medium text-base bg-transparent transition-colors"
           />
         </div>
 
         {nights > 0 && (
-          <div className="text-xs text-warm-400 whitespace-nowrap pb-2">
+          <div className="text-sm text-warm-400 whitespace-nowrap pb-2">
             {nights} nuit{nights > 1 ? "s" : ""}
           </div>
         )}
       </div>
 
-      {/* Résultats */}
-      {status === "searching" && (
-        <div className="mt-8 flex items-center justify-center gap-2 text-warm-300 text-sm">
-          <span className="inline-block w-4 h-4 border-2 border-warm-400 border-t-transparent rounded-full animate-spin" />
-          Recherche des chambres disponibles…
-        </div>
-      )}
+      {/* Résultats — aria-live pour les lecteurs d'écran */}
+      <div aria-live="polite" aria-atomic="true">
+        {status === "searching" && (
+          <div className="mt-8 flex items-center justify-center gap-2 text-warm-300 text-sm">
+            <span className="inline-block w-4 h-4 border-2 border-warm-400 border-t-transparent rounded-full animate-spin" aria-hidden="true" />
+            Recherche des chambres disponibles…
+          </div>
+        )}
 
-      {status === "done" && availableRooms.length === 0 && (
-        <div className="mt-8 text-center text-warm-300 text-sm">
-          Aucune chambre disponible pour ces dates.
-        </div>
-      )}
+        {status === "done" && availableRooms.length === 0 && (
+          <div className="mt-8 text-center text-warm-300 text-sm">
+            Aucune chambre disponible pour ces dates.
+          </div>
+        )}
+      </div>
 
       {status === "done" && availableRooms.length > 0 && (
         <div className="mt-8">
@@ -158,9 +164,12 @@ export default function HomeSearch({ tenantId }: { tenantId: string }) {
                 key={room.id}
                 className={`bg-white rounded-sm border border-warm-200 overflow-hidden hover:shadow-md transition-shadow animate-fade-up stagger-${i + 1}`}
               >
-                <div className="bg-warm-100 h-36 flex items-center justify-center text-warm-400 text-sm">
-                  Photo à venir
-                </div>
+                <RoomPhoto
+                  photos={room.photos}
+                  alt={room.name}
+                  className="h-36"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                />
                 <div className="p-4">
                   <h3 className="font-heading text-lg font-semibold text-warm-900 mb-1">{room.name}</h3>
                   <p className="text-sm text-warm-500 mb-3">

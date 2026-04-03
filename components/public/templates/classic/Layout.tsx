@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Tenant, TenantConfig } from "@/lib/tenant-context";
+import MobileNav from "@/components/public/MobileNav";
 
 export default function ClassicLayout({
   tenant,
@@ -25,7 +26,7 @@ export default function ClassicLayout({
     >
       {/* Header */}
       <header
-        className="px-6 py-5"
+        className="relative px-6 py-5"
         style={{ backgroundColor: "var(--color-primary)", color: "var(--color-secondary)" }}
       >
         <div className="max-w-5xl mx-auto flex items-center justify-between">
@@ -39,7 +40,9 @@ export default function ClassicLayout({
               </span>
             )}
           </Link>
-          <nav className="flex items-center gap-8 text-sm">
+
+          {/* Desktop nav */}
+          <nav className="hidden md:flex items-center gap-8 text-sm" aria-label="Navigation principale">
             <Link
               href="/chambres"
               className="opacity-80 hover:opacity-100 transition-opacity tracking-wide"
@@ -48,15 +51,18 @@ export default function ClassicLayout({
             </Link>
             <Link
               href="/chambres"
-              className="px-5 py-2 rounded-sm text-sm font-medium transition-all hover:brightness-90"
+              className="px-5 py-2.5 rounded-sm text-sm font-medium transition-all hover:brightness-90"
               style={{
                 backgroundColor: "var(--color-secondary)",
                 color: "var(--color-primary)",
               }}
             >
-              Reserver
+              Réserver
             </Link>
           </nav>
+
+          {/* Mobile nav */}
+          <MobileNav primaryColor={primaryColor} secondaryColor={secondaryColor} />
         </div>
       </header>
 
