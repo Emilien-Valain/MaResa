@@ -110,6 +110,54 @@ export const icalSourceSchema = z.object({
   url: icalUrl,
 });
 
+export const locationSchema = z.object({
+  googleMapsUrl: z
+    .string()
+    .max(2000, "URL trop longue")
+    .refine(
+      (url) => {
+        if (!url) return true;
+        try {
+          const parsed = new URL(url);
+          return (
+            parsed.hostname.includes("google") ||
+            parsed.hostname.includes("goo.gl") ||
+            parsed.hostname.includes("maps.app")
+          );
+        } catch {
+          return false;
+        }
+      },
+      "L'URL doit être un lien Google Maps",
+    )
+    .optional()
+    .or(z.literal("")),
+  latitude: z
+    .string()
+    .refine(
+      (s) => {
+        if (!s) return true;
+        const n = parseFloat(s);
+        return !isNaN(n) && n >= -90 && n <= 90;
+      },
+      "Latitude invalide (entre -90 et 90)",
+    )
+    .optional()
+    .or(z.literal("")),
+  longitude: z
+    .string()
+    .refine(
+      (s) => {
+        if (!s) return true;
+        const n = parseFloat(s);
+        return !isNaN(n) && n >= -180 && n <= 180;
+      },
+      "Longitude invalide (entre -180 et 180)",
+    )
+    .optional()
+    .or(z.literal("")),
+});
+
 // ── Helper : parse un FormData avec un schéma Zod ────────────────────────────
 
 export function parseFormData<T extends z.ZodTypeAny>(

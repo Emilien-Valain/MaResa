@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { tenants, rooms, icalSources } from "@/db/schema";
 import StripeConnectSection from "@/components/admin/StripeConnectSection";
 import IcalSourcesSection from "@/components/admin/IcalSourcesSection";
+import LocationSection from "@/components/admin/LocationSection";
+import type { TenantConfig } from "@/lib/tenant-context";
 
 export default async function ParametresPage() {
   const { tenantId } = await requireSession();
@@ -19,10 +21,13 @@ export default async function ParametresPage() {
       id: tenants.id,
       name: tenants.name,
       stripeAccountId: tenants.stripeAccountId,
+      config: tenants.config,
     })
     .from(tenants)
     .where(eq(tenants.id, tenantId))
     .limit(1);
+
+  const config = (tenant.config ?? {}) as TenantConfig;
 
   // Charger les chambres actives (pour le formulaire d'ajout iCal)
   const tenantRooms = await db
@@ -53,6 +58,12 @@ export default async function ParametresPage() {
         <h1 className="font-heading text-3xl font-semibold text-warm-950">Paramètres</h1>
         <p className="text-sm text-warm-600 mt-1">{tenant.name}</p>
       </div>
+
+      <LocationSection
+        googleMapsUrl={config.googleMapsUrl}
+        latitude={config.latitude}
+        longitude={config.longitude}
+      />
 
       <StripeConnectSection hasAccount={!!tenant.stripeAccountId} />
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import PublicLayout from "@/components/public/PublicLayout";
 import HomeSearch from "@/components/public/HomeSearch";
 import RoomPhoto from "@/components/public/RoomPhoto";
+import LocationMap from "@/components/public/LocationMap";
 import { requireTenant } from "@/lib/tenant-context";
 import { getRoomsPublic } from "@/lib/queries/public";
 import type { TenantConfig } from "@/lib/tenant-context";
@@ -79,6 +80,13 @@ export default async function HomePage() {
           )}
         </section>
       )}
+
+      {/* Localisation */}
+      <LocationMap
+        config={config}
+        primaryColor={config.primaryColor ?? "#1c1917"}
+        secondaryColor={config.secondaryColor ?? "#faf8f5"}
+      />
     </PublicLayout>
   );
 }

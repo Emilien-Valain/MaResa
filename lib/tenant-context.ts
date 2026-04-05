@@ -42,4 +42,7 @@ export type TenantConfig = {
   email?: string;
   logoUrl?: string;
   template?: TemplateName;
+  googleMapsUrl?: string;
+  latitude?: number;
+  longitude?: number;
 };
