@@ -288,8 +288,12 @@ test.describe("Admin — Gestion des réservations", () => {
     }
   });
 
-  test.skip("les réservations d'un tenant ne sont pas visibles par un autre tenant", async ({ page }) => {
-    // TODO: nécessite deux tenants en DB de test — implémenter quand seed.ts est prêt
+  test("les réservations d'un tenant ne sont pas visibles par un autre tenant", async ({ page }) => {
+    // Le global-setup crée une réservation "Client Rival Secret" pour le tenant rival
+    // L'admin connecté (tenant principal) ne doit jamais voir cette réservation
+    await page.goto("/admin/reservations");
+    await expect(page.getByText("Client Rival Secret")).not.toBeVisible();
+    await expect(page.getByText("rival-secret@example.com")).not.toBeVisible();
   });
 
   // ─── PDF / Impression ─────────────────────────────────────────────────────────

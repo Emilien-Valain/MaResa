@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { Pool } from "pg";
 import { test, expect } from "@playwright/test";
+import { cleanRules } from "../helpers/clean-rules";
 
 /**
  * Spécification : Tests de non-régression > Public > Parcours de réservation
@@ -15,6 +16,8 @@ function loadTestContext() {
     apiRoomId: string;
     bookedCheckIn: string;
     bookedCheckOut: string;
+    rivalTenantId: string;
+    rivalRoomId: string;
   };
 }
 
@@ -23,6 +26,11 @@ const BOOKING_TEST_CHECKIN = "2026-07-20";
 const BOOKING_TEST_CHECKOUT = "2026-07-24";
 
 test.describe("Public — Parcours de réservation", () => {
+  // Nettoyer les rules potentiellement laissées par les tests admin
+  test.beforeAll(async () => {
+    const ctx = loadTestContext();
+    await cleanRules(ctx.tenantId);
+  });
   test("page d'accueil affiche les informations de l'hôtel", async ({ page }) => {
     await page.goto("/");
     // Un heading visible doit être présent (nom du tenant ou heroTitle)
@@ -128,7 +136,29 @@ test.describe("Public — Parcours de réservation", () => {
     expect(response.status()).toBe(404);
   });
 
-  test.skip("isolation multi-tenant (seed.ts pas prêt)", async () => {
-    // TODO: implémenter quand le seed multi-tenant sera disponible
+  test("isolation multi-tenant — la chambre du rival n'est pas visible", async ({ page }) => {
+    const ctx = loadTestContext();
+
+    // La page /chambres ne doit lister que les chambres du tenant courant
+    await page.goto("/chambres");
+    // La chambre "Suite Rival" ne doit pas apparaître
+    await expect(page.getByText("Suite Rival")).not.toBeVisible();
+    // La chambre API Test (du tenant principal) doit être visible
+    await expect(page.getByText("Chambre API Test")).toBeVisible();
+
+    // L'API availability avec le roomId rival + le tenantId du tenant principal
+    // doit retourner available=true (aucune booking pour ce roomId dans ce tenant)
+    const res = await page.request.get("/api/availability", {
+      params: {
+        roomId: ctx.rivalRoomId,
+        from: "2026-06-10",
+        to: "2026-06-15",
+        tenantId: ctx.tenantId,
+      },
+    });
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    // La réservation du rival ne doit pas bloquer — pas de fuite inter-tenant
+    expect(body.available).toBe(true);
   });
 });

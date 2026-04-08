@@ -262,3 +262,84 @@ export const icalBlocks = pgTable(
     ),
   ],
 );
+
+// ─── MANUAL BLOCKS ──────────────────────────────────────────────────────────
+// Blocages manuels de dates (par chambre ou global)
+
+export const manualBlocks = pgTable(
+  "manual_blocks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    roomId: uuid("room_id").references(() => rooms.id), // NULL = toutes les chambres
+    startDate: timestamp("start_date").notNull(),
+    endDate: timestamp("end_date").notNull(),
+    recurring: boolean("recurring").notNull().default(false),
+    recurrenceType: text("recurrence_type"), // "weekly"
+    recurrenceDays: jsonb("recurrence_days").default([]), // [0..6] (0=dimanche)
+    recurrenceUntil: timestamp("recurrence_until"), // NULL = indéfini
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("manual_blocks_tenant_room_idx").on(table.tenantId, table.roomId),
+    index("manual_blocks_dates_idx").on(table.startDate, table.endDate),
+  ],
+);
+
+// ─── BOOKING RULES ──────────────────────────────────────────────────────────
+// Règles de réservation (global tenant ou override par chambre)
+
+export const bookingRules = pgTable(
+  "booking_rules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    roomId: uuid("room_id").references(() => rooms.id), // NULL = règle globale
+    validFrom: timestamp("valid_from"), // NULL = toute l'année
+    validTo: timestamp("valid_to"),
+    minStay: integer("min_stay"), // nuits minimum
+    maxStay: integer("max_stay"), // nuits maximum
+    allowedCheckInDays: jsonb("allowed_check_in_days"), // [0..6] ou NULL = tous
+    allowedCheckOutDays: jsonb("allowed_check_out_days"), // [0..6] ou NULL = tous
+    priority: integer("priority").notNull().default(0),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("booking_rules_tenant_room_idx").on(table.tenantId, table.roomId),
+    index("booking_rules_validity_idx").on(table.validFrom, table.validTo),
+  ],
+);
+
+// ─── PRICING RULES ──────────────────────────────────────────────────────────
+// Tarification dynamique (global % ou override chambre prix fixe)
+
+export const pricingRules = pgTable(
+  "pricing_rules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id),
+    roomId: uuid("room_id").references(() => rooms.id), // NULL = règle globale
+    name: text("name").notNull(), // "Haute saison", "Week-end", etc.
+    validFrom: timestamp("valid_from"), // NULL = toute l'année
+    validTo: timestamp("valid_to"),
+    daysOfWeek: jsonb("days_of_week"), // [0..6] ou NULL = tous les jours
+    fixedPrice: decimal("fixed_price", { precision: 10, scale: 2 }), // prix fixe par nuit
+    percentageModifier: decimal("percentage_modifier", {
+      precision: 6,
+      scale: 2,
+    }), // ex: 30.00 = +30%, -15.00 = -15%
+    priority: integer("priority").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("pricing_rules_tenant_room_idx").on(table.tenantId, table.roomId),
+    index("pricing_rules_validity_idx").on(table.validFrom, table.validTo),
+  ],
+);

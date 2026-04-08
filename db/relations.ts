@@ -9,6 +9,9 @@ import {
   payments,
   icalSources,
   icalBlocks,
+  manualBlocks,
+  bookingRules,
+  pricingRules,
 } from "./schema";
 
 export const tenantsRelations = relations(tenants, ({ many }) => ({
@@ -17,6 +20,9 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   properties: many(properties),
   rooms: many(rooms),
   bookings: many(bookings),
+  manualBlocks: many(manualBlocks),
+  bookingRules: many(bookingRules),
+  pricingRules: many(pricingRules),
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -40,6 +46,9 @@ export const roomsRelations = relations(rooms, ({ one, many }) => ({
   bookings: many(bookings),
   icalSources: many(icalSources),
   icalBlocks: many(icalBlocks),
+  manualBlocks: many(manualBlocks),
+  bookingRules: many(bookingRules),
+  pricingRules: many(pricingRules),
 }));
 
 export const bookingsRelations = relations(bookings, ({ one }) => ({
@@ -63,4 +72,19 @@ export const icalBlocksRelations = relations(icalBlocks, ({ one }) => ({
   tenant: one(tenants, { fields: [icalBlocks.tenantId], references: [tenants.id] }),
   room: one(rooms, { fields: [icalBlocks.roomId], references: [rooms.id] }),
   source: one(icalSources, { fields: [icalBlocks.sourceId], references: [icalSources.id] }),
+}));
+
+export const manualBlocksRelations = relations(manualBlocks, ({ one }) => ({
+  tenant: one(tenants, { fields: [manualBlocks.tenantId], references: [tenants.id] }),
+  room: one(rooms, { fields: [manualBlocks.roomId], references: [rooms.id] }),
+}));
+
+export const bookingRulesRelations = relations(bookingRules, ({ one }) => ({
+  tenant: one(tenants, { fields: [bookingRules.tenantId], references: [tenants.id] }),
+  room: one(rooms, { fields: [bookingRules.roomId], references: [rooms.id] }),
+}));
+
+export const pricingRulesRelations = relations(pricingRules, ({ one }) => ({
+  tenant: one(tenants, { fields: [pricingRules.tenantId], references: [tenants.id] }),
+  room: one(rooms, { fields: [pricingRules.roomId], references: [rooms.id] }),
 }));

@@ -200,7 +200,10 @@ test.describe("Admin — Gestion des chambres", () => {
     expect(xssFired).toBe(false);
   });
 
-  test.skip("les chambres d'un tenant ne sont pas visibles par un autre tenant", async ({ page }) => {
-    // TODO: nécessite deux tenants en DB de test — implémenter quand seed.ts est prêt
+  test("les chambres d'un tenant ne sont pas visibles par un autre tenant", async ({ page }) => {
+    // Le global-setup crée un tenant "rival-hotel" avec une chambre "Suite Rival"
+    // L'admin connecté appartient au tenant principal — il ne doit pas voir la chambre rival
+    await page.goto("/admin/chambres");
+    await expect(page.getByText("Suite Rival")).not.toBeVisible();
   });
 });

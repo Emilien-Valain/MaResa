@@ -5,6 +5,7 @@ import RoomPhoto from "@/components/public/RoomPhoto";
 import LocationMap from "@/components/public/LocationMap";
 import { requireTenant } from "@/lib/tenant-context";
 import { getRoomsPublic } from "@/lib/queries/public";
+import { getMinPricePerNight } from "@/lib/pricing";
 import type { TenantConfig } from "@/lib/tenant-context";
 
 export default async function HomePage() {
@@ -12,7 +13,13 @@ export default async function HomePage() {
   const config = (tenant.config ?? {}) as TenantConfig;
 
   const allRooms = await getRoomsPublic(tenant.id);
-  const featuredRooms = allRooms.slice(0, 3);
+  const featuredRoomsRaw = allRooms.slice(0, 3);
+  const featuredRooms = await Promise.all(
+    featuredRoomsRaw.map(async (room) => ({
+      ...room,
+      minPrice: await getMinPricePerNight(room.id, tenant.id),
+    })),
+  );
 
   const heroTitle = config.heroTitle ?? tenant.name;
 
@@ -55,7 +62,9 @@ export default async function HomePage() {
                   <h3 className="font-heading text-xl font-semibold text-warm-900 mb-1">{room.name}</h3>
                   <p className="text-sm text-warm-500 mb-2">
                     {room.capacity} personne{room.capacity > 1 ? "s" : ""} ·{" "}
-                    {parseFloat(room.pricePerNight).toFixed(0)} €/nuit
+                    {room.minPrice < parseFloat(room.pricePerNight)
+                      ? `à partir de ${room.minPrice.toFixed(0)} €/nuit`
+                      : `${parseFloat(room.pricePerNight).toFixed(0)} €/nuit`}
                   </p>
                   <Link
                     href={`/chambres/${room.slug}`}

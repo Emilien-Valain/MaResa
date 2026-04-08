@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import fs from "fs";
 import path from "path";
+import { cleanRules } from "../helpers/clean-rules";
 
 /**
  * Spécification : Tests de non-régression > API > Disponibilité
@@ -21,6 +22,10 @@ const ctx = JSON.parse(
   apiRoomId: string;
   bookedCheckIn: string;  // "2026-06-10"
   bookedCheckOut: string; // "2026-06-15"
+  icalBlockStart: string; // "2026-06-20"
+  icalBlockEnd: string;   // "2026-06-23"
+  rivalTenantId: string;
+  rivalRoomId: string;
 };
 
 function apiUrl(params: Record<string, string>) {
@@ -42,6 +47,10 @@ function freeParams(overrides: Partial<Record<string, string>> = {}) {
 // ─── Happy path ────────────────────────────────────────────────────────────────
 
 test.describe("API — Disponibilité", () => {
+  // Nettoyer les rules potentiellement laissées par les tests admin
+  test.beforeAll(async () => {
+    await cleanRules(ctx.tenantId);
+  });
   test("GET /api/availability retourne disponible si aucune réservation", async ({ page }) => {
     const res = await page.request.get(apiUrl(freeParams()));
     expect(res.status()).toBe(200);
@@ -212,8 +221,15 @@ test.describe("API — Disponibilité", () => {
 
   // ─── iCal (Phase 6) ─────────────────────────────────────────────────────────
 
-  test.skip("retourne indisponible si chevauchement avec blocage iCal", async ({ page }) => {
-    // TODO: implémenter quand la Phase 6 (import iCal) est prête
-    // Le global-setup devra créer un ical_source + ical_block pour tester cela
+  test("retourne indisponible si chevauchement avec blocage iCal", async ({ page }) => {
+    // Le global-setup seed un ical_block du 2026-06-20 au 2026-06-23
+    const res = await page.request.get(
+      apiUrl(freeParams({ from: ctx.icalBlockStart, to: ctx.icalBlockEnd })),
+    );
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body.available).toBe(false);
+    expect(body.blockedDates.length).toBeGreaterThan(0);
+    expect(body.blockedDates).toContain("2026-06-20");
   });
 });

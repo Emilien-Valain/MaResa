@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isRoomAvailable, getBlockedDates } from "@/lib/availability";
+import { validateBookingRules } from "@/lib/booking-rules";
 
 /**
  * GET /api/availability
@@ -56,13 +57,15 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const [available, blockedDates] = await Promise.all([
+  const [available, blockedDates, violations] = await Promise.all([
     isRoomAvailable(roomId, tenantId, checkIn, checkOut),
     getBlockedDates(roomId, tenantId, checkIn, checkOut),
+    validateBookingRules(roomId, tenantId, checkIn, checkOut),
   ]);
 
   return NextResponse.json({
-    available,
+    available: available && violations.length === 0,
     blockedDates: blockedDates.map((d) => d.toISOString().split("T")[0]),
+    violations,
   });
 }

@@ -4,6 +4,7 @@ import PublicLayout from "@/components/public/PublicLayout";
 import BookingForm from "@/components/public/BookingForm";
 import { requireTenant } from "@/lib/tenant-context";
 import { getRoomByIdPublic } from "@/lib/queries/public";
+import { getMinPricePerNight } from "@/lib/pricing";
 
 export default async function ReserverPage({
   params,
@@ -17,6 +18,8 @@ export default async function ReserverPage({
   if (!room) {
     notFound();
   }
+
+  const minPrice = await getMinPricePerNight(room.id, tenant.id);
 
   return (
     <PublicLayout>
@@ -37,7 +40,9 @@ export default async function ReserverPage({
         </h1>
         <p className="text-warm-500 mb-8 animate-fade-up stagger-1">
           {room.capacity} personne{room.capacity > 1 ? "s" : ""} max ·{" "}
-          {parseFloat(room.pricePerNight).toFixed(0)} €/nuit
+          {minPrice < parseFloat(room.pricePerNight)
+            ? `à partir de ${minPrice.toFixed(0)} €/nuit`
+            : `${parseFloat(room.pricePerNight).toFixed(0)} €/nuit`}
         </p>
 
         <div className="border border-warm-200 rounded-sm p-6 bg-white shadow-sm animate-fade-up stagger-2">

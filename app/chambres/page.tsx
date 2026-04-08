@@ -3,10 +3,17 @@ import PublicLayout from "@/components/public/PublicLayout";
 import RoomPhoto from "@/components/public/RoomPhoto";
 import { requireTenant } from "@/lib/tenant-context";
 import { getRoomsPublic } from "@/lib/queries/public";
+import { getMinPricePerNight } from "@/lib/pricing";
 
 export default async function ChambresPage() {
   const tenant = await requireTenant();
-  const rooms = await getRoomsPublic(tenant.id);
+  const rawRooms = await getRoomsPublic(tenant.id);
+  const rooms = await Promise.all(
+    rawRooms.map(async (room) => ({
+      ...room,
+      minPrice: await getMinPricePerNight(room.id, tenant.id),
+    })),
+  );
 
   return (
     <PublicLayout>
@@ -40,7 +47,9 @@ export default async function ChambresPage() {
                   <p className="text-sm text-warm-500 mb-3">
                     {room.capacity} personne{room.capacity > 1 ? "s" : ""} ·{" "}
                     <span className="font-medium text-warm-700">
-                      {parseFloat(room.pricePerNight).toFixed(0)} €/nuit
+                      {room.minPrice < parseFloat(room.pricePerNight)
+                        ? `à partir de ${room.minPrice.toFixed(0)} €/nuit`
+                        : `${parseFloat(room.pricePerNight).toFixed(0)} €/nuit`}
                     </span>
                   </p>
                   {room.description && (

@@ -49,6 +49,7 @@ export const STATUS_COLORS: Record<string, string> = {
   confirmed: "bg-emerald-400 text-emerald-950",
   cancelled: "bg-warm-200 text-warm-500 line-through",
   completed: "bg-sky-300 text-sky-950",
+  blocked: "bg-red-200 text-red-700",
 };
 
 export const STATUS_LABELS: Record<string, string> = {

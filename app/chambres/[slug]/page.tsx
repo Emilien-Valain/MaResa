@@ -4,6 +4,7 @@ import PublicLayout from "@/components/public/PublicLayout";
 import RoomGallery from "@/components/public/RoomGallery";
 import { requireTenant } from "@/lib/tenant-context";
 import { getRoomBySlugPublic } from "@/lib/queries/public";
+import { getMinPricePerNight } from "@/lib/pricing";
 
 export default async function ChambreDetailPage({
   params,
@@ -17,6 +18,8 @@ export default async function ChambreDetailPage({
   if (!room) {
     notFound();
   }
+
+  const minPrice = await getMinPricePerNight(room.id, tenant.id);
 
   return (
     <PublicLayout>
@@ -43,7 +46,11 @@ export default async function ChambreDetailPage({
               <span>{room.capacity} personne{room.capacity > 1 ? "s" : ""}</span>
               <span className="text-warm-300">·</span>
               <span className="font-heading text-2xl font-semibold text-warm-900">
-                {parseFloat(room.pricePerNight).toFixed(0)} €<span className="text-sm font-sans text-warm-500 font-normal">/nuit</span>
+                {minPrice < parseFloat(room.pricePerNight) ? (
+                  <><span className="text-sm font-sans text-warm-500 font-normal">à partir de </span>{minPrice.toFixed(0)} €<span className="text-sm font-sans text-warm-500 font-normal">/nuit</span></>
+                ) : (
+                  <>{parseFloat(room.pricePerNight).toFixed(0)} €<span className="text-sm font-sans text-warm-500 font-normal">/nuit</span></>
+                )}
               </span>
             </div>
 

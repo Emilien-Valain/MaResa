@@ -7,7 +7,7 @@ import { hex } from "@better-auth/utils/hex";
 import { randomBytes } from "crypto";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { tenants, users, accounts, properties, rooms, bookings, userTenants } from "../db/schema";
+import { tenants, users, accounts, properties, rooms, bookings, userTenants, manualBlocks, bookingRules, pricingRules, icalSources, icalBlocks } from "../db/schema";
 
 async function hashPassword(password: string): Promise<string> {
   const salt = hex.encode(randomBytes(16));
@@ -144,7 +144,95 @@ export default async function globalSetup() {
     });
   }
 
-  // ── Écrire le contexte de test (tenantId, roomId) ───────────────────────────
+  // ── Blocage iCal de test ─────────────────────────────────────────────────────
+  // Source iCal fictive + un ical_block pour tester l'indisponibilité iCal
+  // Dates : 2026-06-20 → 2026-06-23 sur la chambre API Test
+
+  await db.delete(icalBlocks).where(eq(icalBlocks.roomId, apiRoom.id));
+  await db.delete(icalSources).where(eq(icalSources.roomId, apiRoom.id));
+
+  const [icalSource] = await db
+    .insert(icalSources)
+    .values({
+      tenantId: tenant.id,
+      roomId: apiRoom.id,
+      name: "Airbnb Test",
+      url: "https://example.com/ical-test.ics",
+      active: true,
+    })
+    .returning();
+
+  await db.insert(icalBlocks).values({
+    tenantId: tenant.id,
+    roomId: apiRoom.id,
+    sourceId: icalSource.id,
+    uid: "ical-test-block-001",
+    summary: "Réservation Airbnb Test",
+    start: new Date("2026-06-20T00:00:00.000Z"),
+    end: new Date("2026-06-23T00:00:00.000Z"),
+  });
+
+  // ── 2e tenant (pour les tests d'isolation multi-tenant) ────────────────────
+
+  let [rivalTenant] = await db.select().from(tenants).where(eq(tenants.slug, "rival-hotel"));
+
+  if (!rivalTenant) {
+    [rivalTenant] = await db
+      .insert(tenants)
+      .values({ name: "Hôtel Rival", slug: "rival-hotel" })
+      .returning();
+  }
+
+  let [rivalProperty] = await db.select().from(properties).where(eq(properties.tenantId, rivalTenant.id));
+
+  if (!rivalProperty) {
+    [rivalProperty] = await db
+      .insert(properties)
+      .values({ tenantId: rivalTenant.id, name: "Hôtel Rival" })
+      .returning();
+  }
+
+  let [rivalRoom] = await db.select().from(rooms).where(eq(rooms.slug, "chambre-rival-test"));
+
+  if (!rivalRoom) {
+    [rivalRoom] = await db
+      .insert(rooms)
+      .values({
+        tenantId: rivalTenant.id,
+        propertyId: rivalProperty.id,
+        name: "Suite Rival",
+        slug: "chambre-rival-test",
+        pricePerNight: "200.00",
+        capacity: 3,
+      })
+      .returning();
+  }
+
+  // Réservation du tenant rival (ne doit jamais fuiter vers le tenant principal)
+  const rivalBookingCheckIn = new Date("2026-06-10T00:00:00.000Z");
+  const rivalBookingCheckOut = new Date("2026-06-15T00:00:00.000Z");
+
+  const existingRivalBookings = await db
+    .select()
+    .from(bookings)
+    .where(eq(bookings.roomId, rivalRoom.id));
+
+  if (existingRivalBookings.length === 0) {
+    await db.insert(bookings).values({
+      tenantId: rivalTenant.id,
+      roomId: rivalRoom.id,
+      checkIn: rivalBookingCheckIn,
+      checkOut: rivalBookingCheckOut,
+      totalPrice: "1000.00",
+      status: "confirmed",
+      guestName: "Client Rival Secret",
+      guestEmail: "rival-secret@example.com",
+      guestCount: 2,
+      source: "manual",
+    });
+  }
+
+  // ── Écrire le contexte de test (tenantId, roomId, rival, iCal) ──────────────
 
   const authDir = path.join(process.cwd(), "e2e", ".auth");
   fs.mkdirSync(authDir, { recursive: true });
@@ -153,11 +241,19 @@ export default async function globalSetup() {
     JSON.stringify({
       tenantId: tenant.id,
       apiRoomId: apiRoom.id,
-      // Dates de la réservation de test (pour les assertions d'indisponibilité)
       bookedCheckIn: "2026-06-10",
       bookedCheckOut: "2026-06-15",
+      icalBlockStart: "2026-06-20",
+      icalBlockEnd: "2026-06-23",
+      rivalTenantId: rivalTenant.id,
+      rivalRoomId: rivalRoom.id,
     }),
   );
+
+  // ── Nettoyage des règles de tests précédents ───────────────────────────────
+  await db.delete(manualBlocks).where(eq(manualBlocks.tenantId, tenant.id));
+  await db.delete(bookingRules).where(eq(bookingRules.tenantId, tenant.id));
+  await db.delete(pricingRules).where(eq(pricingRules.tenantId, tenant.id));
 
   await pool.end();
 

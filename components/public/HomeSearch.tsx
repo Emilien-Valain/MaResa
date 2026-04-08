@@ -9,6 +9,7 @@ type Room = {
   name: string;
   slug: string;
   pricePerNight: string;
+  minPricePerNight?: number;
   capacity: number;
   description: string | null;
   photos: unknown;
@@ -175,13 +176,11 @@ export default function HomeSearch({ tenantId }: { tenantId: string }) {
                   <p className="text-sm text-warm-500 mb-3">
                     {room.capacity} personne{room.capacity > 1 ? "s" : ""} ·{" "}
                     <span className="font-medium text-warm-700">
-                      {parseFloat(room.pricePerNight).toFixed(0)} €/nuit
+                      {room.minPricePerNight !== undefined &&
+                      room.minPricePerNight !== parseFloat(room.pricePerNight)
+                        ? `à partir de ${room.minPricePerNight.toFixed(0)} €/nuit`
+                        : `${parseFloat(room.pricePerNight).toFixed(0)} €/nuit`}
                     </span>
-                    {nights > 0 && (
-                      <span className="ml-1 text-warm-400">
-                        · {(parseFloat(room.pricePerNight) * nights).toFixed(0)} € total
-                      </span>
-                    )}
                   </p>
                   <Link
                     href={`/reserver/${room.id}?checkIn=${checkIn}&checkOut=${checkOut}`}

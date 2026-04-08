@@ -6,6 +6,8 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { bookings, payments, rooms, tenants } from "@/db/schema";
 import { isRoomAvailable } from "@/lib/availability";
+import { validateBookingRules } from "@/lib/booking-rules";
+import { calculatePrice } from "@/lib/pricing";
 import { stripe } from "@/lib/stripe";
 import { bookingPublicSchema, parseFormData } from "@/lib/validation";
 import type Stripe from "stripe";
@@ -47,10 +49,16 @@ export async function createBookingPublic(formData: FormData) {
     throw new Error("Chambre non disponible pour ces dates");
   }
 
-  // Calcul du prix
-  const nights = Math.round((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
-  const pricePerNight = parseFloat(room.pricePerNight);
-  const totalPrice = (nights * pricePerNight).toFixed(2);
+  // Vérifier les règles de réservation
+  const violations = await validateBookingRules(roomId, tenantId, checkIn, checkOut);
+  if (violations.length > 0) {
+    throw new Error(violations.map((v) => v.message).join(", "));
+  }
+
+  // Calcul du prix dynamique
+  const breakdown = await calculatePrice(roomId, tenantId, checkIn, checkOut);
+  const nights = breakdown.nights.length;
+  const totalPrice = breakdown.totalPrice.toFixed(2);
 
   // Récupérer le tenant (nom + compte Stripe Connect)
   const [tenant] = await db

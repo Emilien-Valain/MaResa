@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { bookings, rooms } from "@/db/schema";
+import { calculatePrice } from "@/lib/pricing";
 import { bookingManualSchema, parseFormData } from "@/lib/validation";
 import type { BookingStatus } from "@/lib/queries/bookings";
 
@@ -50,17 +51,9 @@ export async function createBookingManual(formData: FormData) {
   const checkOut = new Date(data.checkOut + "T00:00:00.000Z");
   const notes = data.notes || null;
 
-  const room = await db.query.rooms.findFirst({
-    where: eq(rooms.id, roomId),
-    columns: { pricePerNight: true },
-  });
-
-  const nights = Math.ceil(
-    (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24),
-  );
-  const totalPrice = room
-    ? (parseFloat(room.pricePerNight) * nights).toFixed(2)
-    : "0";
+  // Calcul du prix dynamique
+  const breakdown = await calculatePrice(roomId, tenantId, checkIn, checkOut);
+  const totalPrice = breakdown.totalPrice.toFixed(2);
 
   await db.insert(bookings).values({
     tenantId,

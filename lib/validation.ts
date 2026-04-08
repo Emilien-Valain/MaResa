@@ -110,6 +110,59 @@ export const icalSourceSchema = z.object({
   url: icalUrl,
 });
 
+// ── Règles de réservation ────────────────────────────────────────────────────
+
+export const manualBlockSchema = z
+  .object({
+    roomId: uuidString.optional().or(z.literal("")),
+    startDate: dateString,
+    endDate: dateString,
+    recurring: z.enum(["on"]).optional(),
+    recurrenceType: z.enum(["weekly"]).optional(),
+    recurrenceDays: z.string().optional().or(z.literal("")), // "0,1,6"
+    recurrenceUntil: dateString.optional().or(z.literal("")),
+  })
+  .refine(
+    (d) => {
+      if (d.recurring === "on") return true; // pas de contrainte date pour récurrent
+      return new Date(d.endDate + "T00:00:00Z") >= new Date(d.startDate + "T00:00:00Z");
+    },
+    { message: "La date de fin doit être après la date de début", path: ["endDate"] },
+  );
+
+export const bookingRuleSchema = z.object({
+  roomId: uuidString.optional().or(z.literal("")),
+  validFrom: dateString.optional().or(z.literal("")),
+  validTo: dateString.optional().or(z.literal("")),
+  minStay: z.coerce.number().int().min(1).optional().or(z.literal("").transform(() => undefined)),
+  maxStay: z.coerce.number().int().min(1).optional().or(z.literal("").transform(() => undefined)),
+  allowedCheckInDays: z.string().optional().or(z.literal("")), // "6" ou "0,6"
+  allowedCheckOutDays: z.string().optional().or(z.literal("")),
+});
+
+export const pricingRuleSchema = z
+  .object({
+    roomId: uuidString.optional().or(z.literal("")),
+    name: safeName,
+    validFrom: dateString.optional().or(z.literal("")),
+    validTo: dateString.optional().or(z.literal("")),
+    daysOfWeek: z.string().optional().or(z.literal("")), // "5,6"
+    fixedPrice: positiveDecimal.optional().or(z.literal("")),
+    percentageModifier: z
+      .string()
+      .regex(/^-?\d+([.,]\d{1,2})?$/, "Format invalide (ex: 30 ou -15.50)")
+      .optional()
+      .or(z.literal("")),
+  })
+  .refine(
+    (d) => {
+      const hasFP = d.fixedPrice && d.fixedPrice !== "";
+      const hasPM = d.percentageModifier && d.percentageModifier !== "";
+      return hasFP || hasPM;
+    },
+    { message: "Indiquez un prix fixe ou un modificateur en pourcentage", path: ["fixedPrice"] },
+  );
+
 export const locationSchema = z.object({
   googleMapsUrl: z
     .string()

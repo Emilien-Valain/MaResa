@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireSession } from "@/lib/session";
 import { getRoomsByTenant } from "@/lib/queries/rooms";
 import { getActiveBookingsForCalendar } from "@/lib/queries/bookings";
+import { getManualBlocksForCalendar } from "@/lib/queries/rules";
 import IcalSyncButton from "@/components/admin/IcalSyncButton";
 import {
   getCalendarMonth,
@@ -32,10 +33,47 @@ export default async function CalendrierPage({
   const prev = prevMonth(year, month);
   const next = nextMonth(year, month);
 
-  const [chambres, bookings] = await Promise.all([
+  const [chambres, bookings, rawManualBlocks] = await Promise.all([
     getRoomsByTenant(tenantId),
     getActiveBookingsForCalendar(tenantId, calendar.firstDay, calendar.lastDay),
+    getManualBlocksForCalendar(tenantId, calendar.firstDay, calendar.lastDay),
   ]);
+
+  // Expand manual blocks into a Set of "roomId|date" strings for fast lookup
+  // roomId = "__global__" for global blocks
+  const blockedSet = new Set<string>();
+  for (const block of rawManualBlocks) {
+    const key = block.roomId ?? "__global__";
+    if (block.recurring && block.recurrenceType === "weekly") {
+      const days = (block.recurrenceDays as number[]) ?? [];
+      const cur = new Date(Math.max(calendar.firstDay.getTime(), new Date(block.startDate).getTime()));
+      const end = block.recurrenceUntil
+        ? new Date(Math.min(calendar.lastDay.getTime() + 86400000, new Date(block.recurrenceUntil).getTime()))
+        : new Date(calendar.lastDay.getTime() + 86400000);
+      while (cur < end) {
+        if (days.includes(cur.getDay())) {
+          const dateStr = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}-${String(cur.getDate()).padStart(2, "0")}`;
+          blockedSet.add(`${key}|${dateStr}`);
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+    } else {
+      const start = new Date(block.startDate);
+      const end = new Date(block.endDate);
+      const cur = new Date(Math.max(start.getTime(), calendar.firstDay.getTime()));
+      const rangeEnd = new Date(Math.min(end.getTime(), calendar.lastDay.getTime() + 86400000));
+      while (cur < rangeEnd) {
+        const dateStr = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}-${String(cur.getDate()).padStart(2, "0")}`;
+        blockedSet.add(`${key}|${dateStr}`);
+        cur.setDate(cur.getDate() + 1);
+      }
+    }
+  }
+
+  function isDateBlocked(roomId: string, day: Date): boolean {
+    const dateStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+    return blockedSet.has(`${roomId}|${dateStr}`) || blockedSet.has(`__global__|${dateStr}`);
+  }
 
   const activeChambres = chambres.filter((c) => c.active);
 
@@ -187,6 +225,8 @@ export default async function CalendrierPage({
                           ),
                         );
 
+                        const blocked = isDateBlocked(chambre.id, day);
+
                         return (
                           <td key={day.getTime()} className="p-0.5 text-center">
                             {booking ? (
@@ -195,6 +235,13 @@ export default async function CalendrierPage({
                                 title={booking.guestName}
                                 className={`block w-full h-6 rounded-sm ${STATUS_COLORS[booking.status]}`}
                               />
+                            ) : blocked ? (
+                              <div
+                                className={`block w-full h-6 rounded-sm ${STATUS_COLORS.blocked} flex items-center justify-center text-xs font-bold`}
+                                title="Bloqué"
+                              >
+                                ✕
+                              </div>
                             ) : (
                               <div className="block w-full h-6 rounded-sm bg-warm-50" />
                             )}
@@ -220,6 +267,9 @@ export default async function CalendrierPage({
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm bg-sky-300 inline-block" /> Terminée
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-red-200 inline-block" /> Bloqué
         </span>
       </div>
     </div>

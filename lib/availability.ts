@@ -1,8 +1,9 @@
 "use server";
 
-import { and, asc, eq, gt, lt, or } from "drizzle-orm";
+import { and, asc, eq, gt, isNull, lt, or } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { bookings, icalBlocks, rooms } from "@/db/schema";
+import { bookings, icalBlocks, manualBlocks, rooms } from "@/db/schema";
+import { hasManualBlockOverlap, getManualBlockedDates } from "@/lib/manual-blocks";
 
 /**
  * Retourne true si la chambre est disponible pour la période [checkIn, checkOut[.
@@ -50,7 +51,11 @@ export async function isRoomAvailable(
     )
     .limit(1);
 
-  return !overlappingBlock;
+  if (overlappingBlock) return false;
+
+  // Vérifier les blocages manuels (par chambre + globaux)
+  const hasManualBlock = await hasManualBlockOverlap(roomId, tenantId, checkIn, checkOut);
+  return !hasManualBlock;
 }
 
 /**
@@ -58,7 +63,7 @@ export async function isRoomAvailable(
  * Exclut les chambres ayant une réservation pending/confirmed ou un blocage iCal qui chevauche.
  */
 export async function getAvailableRooms(tenantId: string, checkIn: Date, checkOut: Date) {
-  const [bookedRoomIds, blockedRoomIds, allRooms] = await Promise.all([
+  const [bookedRoomIds, blockedRoomIds, manualBlockedRoomIds, globalManualBlocks, allRooms] = await Promise.all([
     db
       .selectDistinct({ roomId: bookings.roomId })
       .from(bookings)
@@ -80,6 +85,36 @@ export async function getAvailableRooms(tenantId: string, checkIn: Date, checkOu
           gt(icalBlocks.end, checkIn),
         ),
       ),
+    // Blocages manuels par chambre (ponctuels)
+    db
+      .selectDistinct({ roomId: manualBlocks.roomId })
+      .from(manualBlocks)
+      .where(
+        and(
+          eq(manualBlocks.tenantId, tenantId),
+          manualBlocks.roomId !== null ? undefined : undefined,
+          eq(manualBlocks.recurring, false),
+          lt(manualBlocks.startDate, checkOut),
+          gt(manualBlocks.endDate, checkIn),
+        ),
+      ),
+    // Blocages manuels globaux (roomId IS NULL)
+    db
+      .select({ id: manualBlocks.id })
+      .from(manualBlocks)
+      .where(
+        and(
+          eq(manualBlocks.tenantId, tenantId),
+          isNull(manualBlocks.roomId),
+          or(
+            // Ponctuel global qui chevauche
+            and(eq(manualBlocks.recurring, false), lt(manualBlocks.startDate, checkOut), gt(manualBlocks.endDate, checkIn)),
+            // Récurrent global (vérification fine impossible ici, on les inclut)
+            eq(manualBlocks.recurring, true),
+          ),
+        ),
+      )
+      .limit(1),
     db
       .select()
       .from(rooms)
@@ -87,12 +122,30 @@ export async function getAvailableRooms(tenantId: string, checkIn: Date, checkOu
       .orderBy(asc(rooms.createdAt)),
   ]);
 
+  // Si un blocage global existe, toutes les chambres sont potentiellement bloquées
+  // Pour les récurrents globaux, on doit vérifier chambre par chambre
+  const hasGlobalBlock = globalManualBlocks.length > 0;
+
   const unavailableIds = new Set([
     ...bookedRoomIds.map((r) => r.roomId),
     ...blockedRoomIds.map((r) => r.roomId),
+    ...manualBlockedRoomIds.filter((r) => r.roomId !== null).map((r) => r.roomId!),
   ]);
 
-  return allRooms.filter((r) => !unavailableIds.has(r.id));
+  const candidateRooms = allRooms.filter((r) => !unavailableIds.has(r.id));
+
+  // Si pas de blocage global, pas besoin de vérifier plus
+  if (!hasGlobalBlock) return candidateRooms;
+
+  // Sinon, vérifier chaque chambre restante contre les blocages globaux
+  const results = await Promise.all(
+    candidateRooms.map(async (room) => {
+      const blocked = await hasManualBlockOverlap(room.id, tenantId, checkIn, checkOut);
+      return blocked ? null : room;
+    }),
+  );
+
+  return results.filter((r) => r !== null);
 }
 
 /**
@@ -134,6 +187,9 @@ export async function getBlockedDates(
       ),
   ]);
 
+  // Dates bloquées manuellement (par chambre + globaux, y compris récurrents)
+  const manualDates = await getManualBlockedDates(roomId, tenantId, from, to);
+
   const intervals = [
     ...overlappingBookings.map((b) => ({
       start: new Date(b.checkIn),
@@ -147,6 +203,12 @@ export async function getBlockedDates(
 
   // Générer l'ensemble des jours bloqués (intersection avec [from, to[)
   const blocked = new Set<string>();
+
+  // Ajouter les dates manuelles
+  for (const d of manualDates) {
+    blocked.add(d.toISOString().split("T")[0]);
+  }
+
   for (const { start, end } of intervals) {
     const cur = new Date(Math.max(start.getTime(), from.getTime()));
     const rangeEnd = new Date(Math.min(end.getTime(), to.getTime()));

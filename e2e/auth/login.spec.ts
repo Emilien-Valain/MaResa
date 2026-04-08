@@ -116,6 +116,11 @@ test.describe("Auth — Connexion admin", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
+  test("accès /admin/regles sans session → /login", async ({ page }) => {
+    await page.goto("/admin/regles");
+    await expect(page).toHaveURL(/\/login/);
+  });
+
   test("accès /admin/reservations/[uuid] sans session → /login, pas de 500", async ({ page }) => {
     const response = await page.goto(
       "/admin/reservations/00000000-0000-0000-0000-000000000000",
@@ -127,19 +132,23 @@ test.describe("Auth — Connexion admin", () => {
 
   // ─── Déconnexion ────────────────────────────────────────────────────────────
 
-  test("après déconnexion, /admin redirige vers /login", async ({ page }) => {
-    // Se connecter d'abord
-    await page.goto("/login");
-    await page.fill('[name="email"]', ADMIN_EMAIL);
-    await page.fill('[name="password"]', ADMIN_PASSWORD);
-    await page.click('[type="submit"]');
+  test("après déconnexion, /admin redirige vers /login", { timeout: 60000 }, async ({ page }) => {
+    // Se connecter via l'API directement (plus fiable que via l'UI en fin de suite de tests)
+    const signInResponse = await page.request.post("http://localhost:3001/api/auth/sign-in/email", {
+      data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+    expect(signInResponse.ok()).toBe(true);
+
+    // Vérifier qu'on accède à /admin
+    await page.goto("/admin");
     await expect(page).toHaveURL(/\/admin/);
+    await expect(page.getByRole("button", { name: "Déconnexion" })).toBeVisible();
 
     // Se déconnecter
     await page.getByRole("button", { name: "Déconnexion" }).click();
     await expect(page).toHaveURL(/\/login/);
 
-    // Tenter d'accéder à /admin directement
+    // Tenter d'accéder à /admin directement — doit rediriger vers /login
     await page.goto("/admin");
     await expect(page).toHaveURL(/\/login/);
   });

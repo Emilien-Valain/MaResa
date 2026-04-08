@@ -1,24 +1,23 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getAvailableRooms } from "@/lib/availability";
-import { getMinPricePerNight } from "@/lib/pricing";
+import { calculatePrice } from "@/lib/pricing";
 
 /**
- * GET /api/rooms/available?from=YYYY-MM-DD&to=YYYY-MM-DD
+ * GET /api/pricing?roomId=...&from=YYYY-MM-DD&to=YYYY-MM-DD
  *
- * Retourne les chambres actives du tenant disponibles pour la période donnée.
- * tenantId injecté par le middleware via x-tenant-id (ou query param pour les tests).
+ * Retourne le détail du prix par nuit pour une chambre et une période.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
 
+  const roomId = searchParams.get("roomId");
   const from = searchParams.get("from");
   const to = searchParams.get("to");
   const tenantId =
     request.headers.get("x-tenant-id") ?? searchParams.get("tenantId");
 
-  if (!from || !to || !tenantId) {
+  if (!roomId || !from || !to || !tenantId) {
     return NextResponse.json(
-      { error: "Paramètres manquants : from, to requis" },
+      { error: "Paramètres manquants : roomId, from, to requis" },
       { status: 400 },
     );
   }
@@ -40,15 +39,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const availableRooms = await getAvailableRooms(tenantId, checkIn, checkOut);
+  const breakdown = await calculatePrice(roomId, tenantId, checkIn, checkOut);
 
-  // Ajouter le prix minimum par chambre (pour "à partir de X€/nuit")
-  const roomsWithMinPrice = await Promise.all(
-    availableRooms.map(async (room) => ({
-      ...room,
-      minPricePerNight: await getMinPricePerNight(room.id, tenantId),
-    })),
-  );
-
-  return NextResponse.json({ rooms: roomsWithMinPrice });
+  return NextResponse.json(breakdown);
 }
