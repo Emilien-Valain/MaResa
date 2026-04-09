@@ -1,7 +1,10 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import * as schema from "@/db/schema";
+import { sendPasswordResetEmail } from "@/lib/email";
+import type { TenantConfig } from "@/lib/tenant-context";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -12,6 +15,36 @@ export const auth = betterAuth({
 
   emailAndPassword: {
     enabled: true,
+    async sendResetPassword({ user, url }) {
+      // Résoudre le tenant de l'admin pour brander l'email
+      let hotelName: string | undefined;
+      let config: TenantConfig | undefined;
+
+      const membership = await db.query.userTenants.findFirst({
+        where: eq(schema.userTenants.userId, user.id),
+      });
+
+      if (membership) {
+        const [tenant] = await db
+          .select({ name: schema.tenants.name, config: schema.tenants.config })
+          .from(schema.tenants)
+          .where(eq(schema.tenants.id, membership.tenantId))
+          .limit(1);
+
+        if (tenant) {
+          hotelName = tenant.name;
+          config = (tenant.config ?? {}) as TenantConfig;
+        }
+      }
+
+      await sendPasswordResetEmail({
+        userName: user.name,
+        userEmail: user.email,
+        resetUrl: url,
+        hotelName,
+        config,
+      });
+    },
   },
 
   // En dev, tous les *.localhost:<port> sont des origines de confiance

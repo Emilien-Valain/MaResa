@@ -5,7 +5,8 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { bookings, payments, rooms, tenants, users, userTenants } from "@/db/schema";
 import { stripe } from "@/lib/stripe";
-import { sendBookingConfirmation, sendAdminNotification } from "@/lib/email";
+import { sendBookingConfirmation, sendAdminNotification, sendBookingCancellation } from "@/lib/email";
+import type { TenantConfig } from "@/lib/tenant-context";
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -65,11 +66,12 @@ export async function POST(request: NextRequest) {
           .limit(1);
 
         const [tenant] = await db
-          .select({ name: tenants.name })
+          .select({ name: tenants.name, config: tenants.config })
           .from(tenants)
           .where(eq(tenants.id, tenantId))
           .limit(1);
 
+        const config = (tenant?.config ?? {}) as TenantConfig;
         const checkIn = new Date(booking.checkIn);
         const checkOut = new Date(booking.checkOut);
         const nights = Math.round(
@@ -85,10 +87,14 @@ export async function POST(request: NextRequest) {
           nights,
           totalPrice: parseFloat(booking.totalPrice).toFixed(2),
           hotelName: tenant?.name ?? "Hôtel",
+          config,
         };
 
-        // Email confirmation client
-        await sendBookingConfirmation(emailData);
+        // Email confirmation client (avec message personnalisé si configuré)
+        await sendBookingConfirmation({
+          ...emailData,
+          confirmationMessage: config.confirmationMessage,
+        });
 
         // Email notification admin — trouver l'email des admins du tenant
         const adminMemberships = await db
@@ -124,6 +130,7 @@ export async function POST(request: NextRequest) {
     case "checkout.session.expired": {
       const session = event.data.object as Stripe.Checkout.Session;
       const bookingId = session.metadata?.bookingId;
+      const tenantId = session.metadata?.tenantId;
 
       if (!bookingId) break;
 
@@ -138,6 +145,46 @@ export async function POST(request: NextRequest) {
         .update(bookings)
         .set({ status: "cancelled", updatedAt: new Date() })
         .where(eq(bookings.id, bookingId));
+
+      // Envoyer l'email d'annulation au client (best-effort)
+      if (tenantId) {
+        try {
+          const [booking] = await db
+            .select()
+            .from(bookings)
+            .where(eq(bookings.id, bookingId))
+            .limit(1);
+
+          if (booking) {
+            const [room] = await db
+              .select({ name: rooms.name })
+              .from(rooms)
+              .where(eq(rooms.id, booking.roomId))
+              .limit(1);
+
+            const [tenant] = await db
+              .select({ name: tenants.name, config: tenants.config })
+              .from(tenants)
+              .where(eq(tenants.id, tenantId))
+              .limit(1);
+
+            const config = (tenant?.config ?? {}) as TenantConfig;
+
+            await sendBookingCancellation({
+              guestName: booking.guestName,
+              guestEmail: booking.guestEmail,
+              roomName: room?.name ?? "Chambre",
+              checkIn: new Date(booking.checkIn),
+              checkOut: new Date(booking.checkOut),
+              hotelName: tenant?.name ?? "Hôtel",
+              config,
+              reason: "payment_expired",
+            });
+          }
+        } catch (emailError) {
+          console.error("Erreur envoi email annulation:", emailError);
+        }
+      }
 
       break;
     }

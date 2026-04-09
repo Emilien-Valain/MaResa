@@ -5,9 +5,11 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/session";
 import { db } from "@/lib/db";
-import { bookings, rooms } from "@/db/schema";
+import { bookings, rooms, tenants } from "@/db/schema";
 import { calculatePrice } from "@/lib/pricing";
 import { bookingManualSchema, parseFormData } from "@/lib/validation";
+import { sendBookingCancellation } from "@/lib/email";
+import type { TenantConfig } from "@/lib/tenant-context";
 import type { BookingStatus } from "@/lib/queries/bookings";
 
 async function requireTenantId() {
@@ -34,6 +36,44 @@ export async function confirmBooking(id: string) {
 export async function cancelBooking(id: string) {
   const tenantId = await requireTenantId();
   await updateStatus(id, tenantId, "cancelled");
+
+  // Envoyer l'email d'annulation au client (best-effort)
+  try {
+    const [booking] = await db
+      .select()
+      .from(bookings)
+      .where(and(eq(bookings.id, id), eq(bookings.tenantId, tenantId)))
+      .limit(1);
+
+    if (booking) {
+      const [room] = await db
+        .select({ name: rooms.name })
+        .from(rooms)
+        .where(eq(rooms.id, booking.roomId))
+        .limit(1);
+
+      const [tenant] = await db
+        .select({ name: tenants.name, config: tenants.config })
+        .from(tenants)
+        .where(eq(tenants.id, tenantId))
+        .limit(1);
+
+      const config = (tenant?.config ?? {}) as TenantConfig;
+
+      await sendBookingCancellation({
+        guestName: booking.guestName,
+        guestEmail: booking.guestEmail,
+        roomName: room?.name ?? "Chambre",
+        checkIn: new Date(booking.checkIn),
+        checkOut: new Date(booking.checkOut),
+        hotelName: tenant?.name ?? "Hôtel",
+        config,
+        reason: "admin",
+      });
+    }
+  } catch (emailError) {
+    console.error("Erreur envoi email annulation:", emailError);
+  }
 }
 
 export async function completeBooking(id: string) {

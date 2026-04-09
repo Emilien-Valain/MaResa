@@ -6,6 +6,7 @@ import { tenants, rooms, icalSources } from "@/db/schema";
 import StripeConnectSection from "@/components/admin/StripeConnectSection";
 import IcalSourcesSection from "@/components/admin/IcalSourcesSection";
 import LocationSection from "@/components/admin/LocationSection";
+import EmailSettingsSection from "@/components/admin/EmailSettingsSection";
 import type { TenantConfig } from "@/lib/tenant-context";
 
 export default async function ParametresPage() {
@@ -58,6 +59,12 @@ export default async function ParametresPage() {
         <h1 className="font-heading text-3xl font-semibold text-warm-950">Paramètres</h1>
         <p className="text-sm text-warm-600 mt-1">{tenant.name}</p>
       </div>
+
+      <EmailSettingsSection
+        confirmationMessage={config.confirmationMessage}
+        postStayMessage={config.postStayMessage}
+        reviewUrl={config.reviewUrl}
+      />
 
       <LocationSection
         googleMapsUrl={config.googleMapsUrl}

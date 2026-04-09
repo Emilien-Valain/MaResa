@@ -107,8 +107,9 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // ── Routes login et API publiques → passe-plat ──────────────────────────
-  if (pathname.startsWith("/login") || (pathname.startsWith("/api/") && !pathname.startsWith("/api/admin/"))) {
+  // ── Routes auth et API publiques → passe-plat ──────────────────────────
+  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/forgot-password") || pathname.startsWith("/reset-password");
+  if (isAuthPage || (pathname.startsWith("/api/") && !pathname.startsWith("/api/admin/"))) {
     return NextResponse.next();
   }
 

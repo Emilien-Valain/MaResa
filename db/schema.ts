@@ -184,6 +184,8 @@ export const bookings = pgTable(
     guestCount: integer("guest_count").notNull().default(1),
     notes: text("notes"),
     source: text("source").notNull().default("direct"),
+    reminderSentAt: timestamp("reminder_sent_at"),
+    thankYouSentAt: timestamp("thank_you_sent_at"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },

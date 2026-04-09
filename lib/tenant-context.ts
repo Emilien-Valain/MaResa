@@ -45,4 +45,7 @@ export type TenantConfig = {
   googleMapsUrl?: string;
   latitude?: number;
   longitude?: number;
+  confirmationMessage?: string;
+  postStayMessage?: string;
+  reviewUrl?: string;
 };

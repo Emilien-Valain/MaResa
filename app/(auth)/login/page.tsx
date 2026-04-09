@@ -1,11 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { signIn } from "@/lib/auth-client";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const resetSuccess = searchParams.get("reset") === "success";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +40,12 @@ export default function LoginPage() {
             <p className="text-sm text-warm-500 mt-1">Accédez à votre espace admin</p>
           </div>
 
+          {resetSuccess && (
+            <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-sm px-3 py-2">
+              Mot de passe réinitialisé avec succès. Connectez-vous avec votre nouveau mot de passe.
+            </p>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-warm-700 mb-1.5">
@@ -53,9 +63,17 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-warm-700 mb-1.5">
-                Mot de passe
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-warm-700">
+                  Mot de passe
+                </label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-warm-500 hover:text-warm-700 transition-colors"
+                >
+                  Mot de passe oublié ?
+                </Link>
+              </div>
               <input
                 name="password"
                 type="password"
@@ -78,7 +96,7 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full bg-warm-900 text-warm-50 rounded-sm px-4 py-2.5 text-sm font-medium hover:bg-warm-800 disabled:opacity-50 transition-colors"
             >
-              {loading ? "Connexion…" : "Se connecter"}
+              {loading ? "Connexion\u2026" : "Se connecter"}
             </button>
           </form>
         </div>
