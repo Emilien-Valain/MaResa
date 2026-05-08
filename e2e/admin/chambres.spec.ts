@@ -20,13 +20,11 @@ const RUN_ID = Date.now().toString(36).slice(-6);
 const CRUD_NAME = `Suite CRUD ${RUN_ID}`;
 const CRUD_NAME_EDITED = `Suite CRUD ${RUN_ID} Modifiée`;
 
-// ─── Helper : cibler une row par son nom et y agir ────────────────────────────
+// ─── Helper : cibler une carte de chambre par son nom et y agir ───────────────
+// La refonte UI de la liste utilise une grille de cartes avec data-room-name.
 
 function roomRow(page: Parameters<Parameters<typeof test>[1]>[0], name: string) {
-  return page
-    .locator("div.flex.items-center.justify-between")
-    .filter({ hasText: name })
-    .first();
+  return page.locator(`[data-room-name="${name}"]`).first();
 }
 
 // ─── Happy path — cycle CRUD ──────────────────────────────────────────────────
@@ -35,7 +33,7 @@ test.describe("Admin — Gestion des chambres", () => {
   test("liste des chambres est accessible depuis /admin/chambres", async ({ page }) => {
     await page.goto("/admin/chambres");
     await expect(page.getByRole("heading", { name: /chambres/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Nouvelle chambre" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Ajouter une chambre" })).toBeVisible();
   });
 
   test("création d'une chambre avec tous les champs obligatoires", async ({ page }) => {
@@ -67,8 +65,8 @@ test.describe("Admin — Gestion des chambres", () => {
     if (await checkbox.isChecked()) await checkbox.uncheck();
     await page.click('[type="submit"]');
     await expect(page).toHaveURL("/admin/chambres");
-    // Vérifier que NOTRE chambre affiche le badge Inactif
-    await expect(roomRow(page, CRUD_NAME_EDITED).getByText("Inactif")).toBeVisible();
+    // Vérifier que NOTRE chambre affiche le badge Inactive
+    await expect(roomRow(page, CRUD_NAME_EDITED).getByText("Inactive")).toBeVisible();
 
     // Remettre active (nettoyage état pour le reste de la suite)
     await roomRow(page, CRUD_NAME_EDITED).getByRole("link", { name: "Modifier" }).click();
@@ -136,7 +134,7 @@ test.describe("Admin — Gestion des chambres", () => {
     // Nettoyage si créée
     if (page.url().endsWith("/admin/chambres")) {
       page.on("dialog", (d) => d.accept());
-      const row = roomRow(page, longName.slice(0, 20));
+      const row = roomRow(page, longName);
       if (await row.isVisible()) {
         await row.getByRole("button", { name: "Supprimer" }).click();
       }
@@ -190,7 +188,7 @@ test.describe("Admin — Gestion des chambres", () => {
 
     if (page.url().endsWith("/admin/chambres")) {
       // Le texte "<script>..." doit apparaître brut dans la liste
-      const row = roomRow(page, "alert(");
+      const row = roomRow(page, xssPayload);
       if (await row.isVisible()) {
         // Contenu textuel présent → pas interprété comme HTML
         await row.getByRole("button", { name: "Supprimer" }).click();

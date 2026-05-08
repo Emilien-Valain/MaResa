@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { requireSession } from "@/lib/session";
 import { getDashboardData } from "@/lib/queries/dashboard";
-
-const CHANNEL_LABELS: Record<string, string> = {
-  direct: "Site direct",
-  manual: "Manuel",
-  airbnb: "Airbnb",
-  booking: "Booking.com",
-  ical: "iCal",
-};
+import {
+  Card,
+  CHANNEL_CONFIG,
+  GuestAvatar,
+  KPICard,
+  PageHeader,
+  PrimaryButton,
+  SectionHeader,
+  StatusBadge,
+} from "@/components/admin/ui";
 
 function formatDate(d: Date) {
   return d.toLocaleDateString("fr-FR", {
@@ -32,239 +34,310 @@ export default async function AdminDashboard() {
   const { checkIns, checkOuts, channels, occupancy, revenue } =
     await getDashboardData(tenantId);
 
-  const totalBookingsThisMonth = channels.reduce((acc, c) => acc + c.count, 0);
+  const totalThisMonth = channels.reduce((acc, c) => acc + c.count, 0);
+  const today = new Date().toLocaleDateString("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
   return (
-    <div className="space-y-8 animate-fade-up">
-      <h1 className="font-heading text-3xl font-semibold text-warm-950">Dashboard</h1>
-
-      {/* ── Raccourcis ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Link
-          href="/admin/chambres"
-          className="block p-5 bg-white rounded-sm border border-warm-300 hover:border-warm-500 shadow-sm transition-colors group"
-        >
-          <p className="text-sm font-semibold text-warm-950 group-hover:text-amber-accent transition-colors">
-            Chambres
-          </p>
-          <p className="text-xs text-warm-500 mt-1">Gérer le catalogue</p>
-        </Link>
-        <Link
-          href="/admin/reservations/new"
-          className="block p-5 bg-white rounded-sm border border-warm-300 hover:border-warm-500 shadow-sm transition-colors group"
-        >
-          <p className="text-sm font-semibold text-warm-950 group-hover:text-amber-accent transition-colors">
+    <div className="space-y-6">
+      <PageHeader
+        title={<>Bonjour 👋</>}
+        subtitle={<span className="capitalize">{today}</span>}
+        action={
+          <PrimaryButton href="/admin/reservations/new">
             Nouvelle réservation
-          </p>
-          <p className="text-xs text-warm-500 mt-1">Créer manuellement</p>
-        </Link>
-        <Link
-          href="/admin/calendrier"
-          className="block p-5 bg-white rounded-sm border border-warm-300 hover:border-warm-500 shadow-sm transition-colors group"
-        >
-          <p className="text-sm font-semibold text-warm-950 group-hover:text-amber-accent transition-colors">
-            Calendrier
-          </p>
-          <p className="text-xs text-warm-500 mt-1">Vue mensuelle</p>
-        </Link>
-      </div>
-      {/* ── KPIs ──────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Occupation */}
-        <div className="bg-white border border-warm-300 rounded-sm p-5 shadow-sm">
-          <p className="text-xs font-medium text-warm-500 uppercase tracking-wide">
-            Occupation aujourd&apos;hui
-          </p>
-          <p className="font-heading text-3xl font-semibold text-warm-950 mt-2">
-            {occupancy.rate}%
-          </p>
-          <p className="text-xs text-warm-400 mt-1">
-            {occupancy.occupied}/{occupancy.total} chambre{occupancy.total > 1 ? "s" : ""}
-          </p>
-        </div>
+          </PrimaryButton>
+        }
+      />
 
-        {/* CA jour */}
-        <div className="bg-white border border-warm-300 rounded-sm p-5 shadow-sm">
-          <p className="text-xs font-medium text-warm-500 uppercase tracking-wide">
-            CA aujourd&apos;hui
-          </p>
-          <p className="font-heading text-3xl font-semibold text-warm-950 mt-2">
-            {formatCurrency(revenue.day)}
-          </p>
-        </div>
-
-        {/* CA semaine */}
-        <div className="bg-white border border-warm-300 rounded-sm p-5 shadow-sm">
-          <p className="text-xs font-medium text-warm-500 uppercase tracking-wide">
-            CA cette semaine
-          </p>
-          <p className="font-heading text-3xl font-semibold text-warm-950 mt-2">
-            {formatCurrency(revenue.week)}
-          </p>
-        </div>
-
-        {/* CA mois */}
-        <div className="bg-white border border-warm-300 rounded-sm p-5 shadow-sm">
-          <p className="text-xs font-medium text-warm-500 uppercase tracking-wide">
-            CA ce mois
-          </p>
-          <p className="font-heading text-3xl font-semibold text-warm-950 mt-2">
-            {formatCurrency(revenue.month)}
-          </p>
-        </div>
+      {/* KPI row */}
+      <div className="flex flex-wrap gap-3.5">
+        <KPICard
+          title="Taux d'occupation"
+          value={`${occupancy.rate}%`}
+          sub={`${occupancy.occupied}/${occupancy.total} chambre${occupancy.total > 1 ? "s" : ""}`}
+          accent
+        />
+        <KPICard
+          title="CA Aujourd'hui"
+          value={formatCurrency(revenue.day)}
+          sub={`${checkIns.length} arrivée${checkIns.length > 1 ? "s" : ""}`}
+        />
+        <KPICard
+          title="CA Semaine"
+          value={formatCurrency(revenue.week)}
+          sub="7 derniers jours"
+        />
+        <KPICard
+          title="CA Mois"
+          value={formatCurrency(revenue.month)}
+          sub="Mois en cours"
+        />
+        <KPICard
+          title="Départs auj."
+          value={String(checkOuts.length)}
+          sub="Chambres à préparer"
+        />
       </div>
 
-      {/* ── Canaux + Arrivées/Départs ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Répartition par canal */}
-        <div className="bg-white border border-warm-300 rounded-sm shadow-sm">
-          <div className="px-5 py-4 border-b border-warm-200">
-            <h2 className="text-sm font-semibold text-warm-950">
-              Réservations par canal
-            </h2>
-            <p className="text-xs text-warm-400">Ce mois</p>
-          </div>
-          <div className="px-5 py-4">
-            {channels.length === 0 ? (
-              <p className="text-sm text-warm-400 text-center py-4">
-                Aucune réservation ce mois
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {channels.map((ch) => {
-                  const pct =
-                    totalBookingsThisMonth > 0
-                      ? Math.round((ch.count / totalBookingsThisMonth) * 100)
-                      : 0;
-                  return (
-                    <div key={ch.source}>
-                      <div className="flex items-center justify-between text-sm mb-1">
-                        <span className="text-warm-700">
-                          {CHANNEL_LABELS[ch.source] ?? ch.source}
-                        </span>
-                        <span className="text-warm-500 tabular-nums">
-                          {ch.count} ({pct}%)
-                        </span>
-                      </div>
-                      <div className="h-1.5 bg-warm-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-warm-700 rounded-full transition-all"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
+      {/* Main grid : channels + arrivals + departures */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Channel breakdown */}
+        <Card style={{ padding: "20px 24px" }}>
+          <SectionHeader
+            title="Réservations par canal"
+            subtitle="Ce mois-ci"
+          />
+          {channels.length === 0 ? (
+            <p
+              className="text-[13px] text-center py-8"
+              style={{ color: "var(--admin-text-muted)" }}
+            >
+              Aucune réservation ce mois
+            </p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {channels.map((ch) => {
+                const cfg = CHANNEL_CONFIG[ch.source] ?? CHANNEL_CONFIG.manual;
+                const pct =
+                  totalThisMonth > 0
+                    ? Math.round((ch.count / totalThisMonth) * 100)
+                    : 0;
+                return (
+                  <div key={ch.source}>
+                    <div className="flex justify-between text-[13px] mb-1.5">
+                      <span
+                        className="font-semibold"
+                        style={{ color: "var(--admin-text)" }}
+                      >
+                        {cfg.label}
+                      </span>
+                      <span
+                        className="font-bold tabular-nums"
+                        style={{ color: "var(--admin-text)" }}
+                      >
+                        {pct}%
+                      </span>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Prochaines arrivées */}
-        <div className="bg-white border border-warm-300 rounded-sm shadow-sm">
-          <div className="px-5 py-4 border-b border-warm-200 flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-semibold text-warm-950">
-                Prochaines arrivées
-              </h2>
-              <p className="text-xs text-warm-400">{checkIns.length} à venir</p>
+                    <div
+                      className="h-2 rounded overflow-hidden"
+                      style={{ background: "var(--admin-surface-2)" }}
+                    >
+                      <div
+                        className="h-full rounded transition-[width] duration-700"
+                        style={{
+                          width: `${pct}%`,
+                          background: cfg.color,
+                        }}
+                      />
+                    </div>
+                    <div
+                      className="text-[11.5px] mt-1"
+                      style={{ color: "var(--admin-text-muted)" }}
+                    >
+                      {ch.count} réservation{ch.count > 1 ? "s" : ""} ce mois
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <span className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-sm px-2 py-0.5">
-              Check-in
-            </span>
-          </div>
-          <div className="divide-y divide-warm-100">
-            {checkIns.length === 0 ? (
-              <p className="text-sm text-warm-400 text-center py-6">
-                Aucune arrivée prévue
-              </p>
-            ) : (
-              checkIns.map((b) => (
+          )}
+        </Card>
+
+        {/* Arrivals */}
+        <Card style={{ padding: "20px 24px" }} className="arrivals-card">
+          <SectionHeader
+            title="Prochaines arrivées"
+            subtitle={`${checkIns.length} à venir`}
+            action={
+              <span
+                className="text-[11px] font-semibold uppercase tracking-[0.06em] rounded-md px-2 py-[3px]"
+                style={{
+                  background: "#DCFCE7",
+                  color: "#15803D",
+                }}
+              >
+                Check-in
+              </span>
+            }
+          />
+          {checkIns.length === 0 ? (
+            <p
+              className="text-[13px] text-center py-6"
+              style={{ color: "var(--admin-text-muted)" }}
+            >
+              Aucune arrivée prévue
+            </p>
+          ) : (
+            <div>
+              {checkIns.slice(0, 6).map((b) => (
                 <Link
                   key={b.id}
                   href={`/admin/reservations/${b.id}`}
-                  className="flex items-center justify-between px-5 py-3 hover:bg-warm-50 transition-colors"
+                  className="flex items-center gap-3 py-2.5 transition-colors hover:opacity-80"
+                  style={{
+                    borderBottom: "1px solid var(--admin-border-light)",
+                  }}
                 >
-                  <div>
-                    <p className="text-sm font-medium text-warm-900">
+                  <GuestAvatar name={b.guestName} size={36} />
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className="text-[13.5px] font-semibold truncate"
+                      style={{ color: "var(--admin-text)" }}
+                    >
                       {b.guestName}
-                    </p>
-                    <p className="text-xs text-warm-400">{b.room?.name}</p>
+                    </div>
+                    <div
+                      className="text-[12px] mt-0.5 truncate"
+                      style={{ color: "var(--admin-text-muted)" }}
+                    >
+                      {b.room?.name}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm tabular-nums text-warm-700">
+                  <div className="text-right flex-shrink-0">
+                    <div
+                      className="text-[13px] tabular-nums"
+                      style={{ color: "var(--admin-text)" }}
+                    >
                       {formatDate(new Date(b.checkIn))}
-                    </p>
-                    <StatusBadge status={b.status} />
+                    </div>
+                    <div className="mt-1">
+                      <StatusBadge status={b.status} />
+                    </div>
                   </div>
                 </Link>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Prochains départs */}
-        <div className="bg-white border border-warm-300 rounded-sm shadow-sm">
-          <div className="px-5 py-4 border-b border-warm-200 flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-semibold text-warm-950">
-                Prochains départs
-              </h2>
-              <p className="text-xs text-warm-400">{checkOuts.length} à venir</p>
+              ))}
             </div>
-            <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-sm px-2 py-0.5">
-              Check-out
-            </span>
-          </div>
-          <div className="divide-y divide-warm-100">
-            {checkOuts.length === 0 ? (
-              <p className="text-sm text-warm-400 text-center py-6">
-                Aucun départ prévu
-              </p>
-            ) : (
-              checkOuts.map((b) => (
+          )}
+        </Card>
+
+        {/* Departures */}
+        <Card style={{ padding: "20px 24px" }} className="departures-card">
+          <SectionHeader
+            title="Prochains départs"
+            subtitle={`${checkOuts.length} à venir`}
+            action={
+              <span
+                className="text-[11px] font-semibold uppercase tracking-[0.06em] rounded-md px-2 py-[3px]"
+                style={{
+                  background: "var(--admin-accent-light)",
+                  color: "var(--admin-accent)",
+                }}
+              >
+                Check-out
+              </span>
+            }
+          />
+          {checkOuts.length === 0 ? (
+            <p
+              className="text-[13px] text-center py-6"
+              style={{ color: "var(--admin-text-muted)" }}
+            >
+              Aucun départ prévu
+            </p>
+          ) : (
+            <div>
+              {checkOuts.slice(0, 6).map((b) => (
                 <Link
                   key={b.id}
                   href={`/admin/reservations/${b.id}`}
-                  className="flex items-center justify-between px-5 py-3 hover:bg-warm-50 transition-colors"
+                  className="flex items-center gap-3 py-2.5 transition-colors hover:opacity-80"
+                  style={{
+                    borderBottom: "1px solid var(--admin-border-light)",
+                  }}
                 >
-                  <div>
-                    <p className="text-sm font-medium text-warm-900">
+                  <GuestAvatar
+                    name={b.guestName}
+                    size={36}
+                    bg="var(--admin-accent-light)"
+                    color="var(--admin-accent)"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className="text-[13.5px] font-semibold truncate"
+                      style={{ color: "var(--admin-text)" }}
+                    >
                       {b.guestName}
-                    </p>
-                    <p className="text-xs text-warm-400">{b.room?.name}</p>
+                    </div>
+                    <div
+                      className="text-[12px] mt-0.5 truncate"
+                      style={{ color: "var(--admin-text-muted)" }}
+                    >
+                      {b.room?.name}
+                    </div>
                   </div>
-                  <p className="text-sm tabular-nums text-warm-700">
+                  <div
+                    className="text-[13px] tabular-nums flex-shrink-0"
+                    style={{ color: "var(--admin-text)" }}
+                  >
                     {formatDate(new Date(b.checkOut))}
-                  </p>
+                  </div>
                 </Link>
-              ))
-            )}
-          </div>
-        </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* Quick actions */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <ShortcutCard
+          href="/admin/chambres"
+          title="Chambres"
+          desc="Gérer le catalogue"
+        />
+        <ShortcutCard
+          href="/admin/calendrier"
+          title="Calendrier"
+          desc="Vue mensuelle"
+        />
+        <ShortcutCard
+          href="/admin/parametres"
+          title="Paramètres"
+          desc="iCal, Stripe, emails"
+        />
       </div>
     </div>
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    pending: "text-amber-700 bg-amber-50",
-    confirmed: "text-green-700 bg-green-50",
-    completed: "text-warm-500 bg-warm-100",
-    cancelled: "text-red-600 bg-red-50",
-  };
-
-  const labels: Record<string, string> = {
-    pending: "En attente",
-    confirmed: "Confirmée",
-    completed: "Terminée",
-    cancelled: "Annulée",
-  };
-
+function ShortcutCard({
+  href,
+  title,
+  desc,
+}: {
+  href: string;
+  title: string;
+  desc: string;
+}) {
   return (
-    <span className={`text-xs rounded-sm px-1.5 py-0.5 ${styles[status] ?? ""}`}>
-      {labels[status] ?? status}
-    </span>
+    <Link
+      href={href}
+      className="group block transition-all hover:-translate-y-0.5"
+      style={{
+        background: "var(--admin-surface)",
+        border: "1px solid var(--admin-border)",
+        borderRadius: "var(--admin-radius)",
+        boxShadow: "var(--admin-shadow-sm)",
+        padding: "18px 20px",
+      }}
+    >
+      <p
+        className="text-[14px] font-bold transition-colors group-hover:opacity-90"
+        style={{ color: "var(--admin-primary)" }}
+      >
+        {title}
+      </p>
+      <p
+        className="text-[12.5px] mt-1"
+        style={{ color: "var(--admin-text-muted)" }}
+      >
+        {desc}
+      </p>
+    </Link>
   );
 }

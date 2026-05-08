@@ -49,7 +49,8 @@ test.describe("Admin — Gestion des réservations", () => {
   test("liste des réservations est accessible", async ({ page }) => {
     await page.goto("/admin/reservations");
     await expect(page.getByRole("heading", { name: /réservations/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Nouvelle réservation" })).toBeVisible();
+    // Le bouton de la PageHeader sur /admin/reservations affiche "Nouvelle"
+    await expect(page.getByRole("link", { name: "Nouvelle", exact: true })).toBeVisible();
   });
 
   test("création manuelle d'une réservation redirige vers la liste", async ({ page }) => {
@@ -129,18 +130,19 @@ test.describe("Admin — Gestion des réservations", () => {
   test("vue calendrier mensuelle affiche navigation et grille", async ({ page }) => {
     await page.goto("/admin/calendrier");
     await expect(page.getByRole("heading")).toBeVisible();
-    await expect(page.getByRole("link", { name: "←" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "→" })).toBeVisible();
+    // Les flèches utilisent désormais des icônes SVG avec aria-label.
+    await expect(page.getByRole("link", { name: "Mois précédent" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Mois suivant" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Aujourd'hui" })).toBeVisible();
   });
 
   test("navigation calendrier — mois précédent et suivant ne crashent pas", async ({ page }) => {
     await page.goto("/admin/calendrier");
-    await page.getByRole("link", { name: "←" }).click();
+    await page.getByRole("link", { name: "Mois précédent" }).click();
     await page.waitForLoadState("networkidle");
     await expect(page.getByRole("heading")).toBeVisible();
 
-    await page.getByRole("link", { name: "→" }).click();
+    await page.getByRole("link", { name: "Mois suivant" }).click();
     await page.waitForLoadState("networkidle");
     await expect(page.getByRole("heading")).toBeVisible();
   });
@@ -206,7 +208,7 @@ test.describe("Admin — Gestion des réservations", () => {
     expect(response?.status()).not.toBe(500);
     await expect(page.getByRole("heading")).toBeVisible();
     // Navigation vers le mois suivant (janvier 2026) ne doit pas crasher
-    await page.getByRole("link", { name: "→" }).click();
+    await page.getByRole("link", { name: "Mois suivant" }).click();
     await page.waitForLoadState("networkidle");
     await expect(page.getByRole("heading")).toBeVisible();
   });
@@ -216,7 +218,7 @@ test.describe("Admin — Gestion des réservations", () => {
     expect(response?.status()).not.toBe(500);
     await expect(page.getByRole("heading")).toBeVisible();
     // Navigation vers le mois précédent (décembre 2024) ne doit pas crasher
-    await page.getByRole("link", { name: "←" }).click();
+    await page.getByRole("link", { name: "Mois précédent" }).click();
     await page.waitForLoadState("networkidle");
     await expect(page.getByRole("heading")).toBeVisible();
   });

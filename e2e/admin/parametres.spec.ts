@@ -41,7 +41,11 @@ test.describe("Admin — Paramètres", () => {
 
   test("le lien Paramètres est visible dans la navigation admin", async ({ page }) => {
     await page.goto("/admin");
-    await expect(page.getByRole("link", { name: "Paramètres" })).toBeVisible();
+    // Le dashboard contient deux liens vers /admin/parametres : la sidebar (texte exact "Paramètres")
+    // et la carte raccourci (texte composé). On cible la sidebar avec exact: true.
+    await expect(
+      page.getByRole("link", { name: "Paramètres", exact: true }),
+    ).toBeVisible();
   });
 
   // ─── iCal sources CRUD ────────────────────────────────────────────────────

@@ -10,12 +10,12 @@ test.describe("Admin — Dashboard", () => {
 
   test("le dashboard affiche le titre et les KPIs", async ({ page }) => {
     await page.goto("/admin");
-    await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
-    // Les 4 KPIs doivent être visibles
-    await expect(page.getByText("Occupation aujourd'hui")).toBeVisible();
-    await expect(page.getByText("CA aujourd'hui")).toBeVisible();
-    await expect(page.getByText("CA cette semaine")).toBeVisible();
-    await expect(page.getByText("CA ce mois")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /bonjour/i })).toBeVisible();
+    // Les KPIs doivent être visibles (refonte UI : nouveaux libellés)
+    await expect(page.getByText("Taux d'occupation")).toBeVisible();
+    await expect(page.getByText("CA Aujourd'hui")).toBeVisible();
+    await expect(page.getByText("CA Semaine")).toBeVisible();
+    await expect(page.getByText("CA Mois")).toBeVisible();
   });
 
   test("le dashboard affiche les sections arrivées et départs", async ({ page }) => {

@@ -54,10 +54,20 @@ export default async function ParametresPage() {
     .orderBy(asc(rooms.name), asc(icalSources.name));
 
   return (
-    <div className="space-y-10 animate-fade-up">
+    <div className="space-y-10">
       <div>
-        <h1 className="font-heading text-3xl font-semibold text-warm-950">Paramètres</h1>
-        <p className="text-sm text-warm-600 mt-1">{tenant.name}</p>
+        <h1
+          className="text-[24px] font-extrabold tracking-[-0.6px]"
+          style={{ color: "var(--admin-text)" }}
+        >
+          Paramètres
+        </h1>
+        <p
+          className="text-[14px] mt-1"
+          style={{ color: "var(--admin-text-muted)" }}
+        >
+          {tenant.name}
+        </p>
       </div>
 
       <EmailSettingsSection

@@ -25,12 +25,18 @@ export default async function ReglesPage() {
     ]);
 
   return (
-    <div className="space-y-6 animate-fade-up">
+    <div className="space-y-6">
       <div>
-        <h1 className="font-heading text-3xl font-semibold text-warm-950">
+        <h1
+          className="text-[24px] font-extrabold tracking-[-0.6px]"
+          style={{ color: "var(--admin-text)" }}
+        >
           Règles de réservation
         </h1>
-        <p className="text-sm text-warm-600 mt-1">
+        <p
+          className="text-[14px] mt-1"
+          style={{ color: "var(--admin-text-muted)" }}
+        >
           Blocages, contraintes de séjour et tarification dynamique
         </p>
       </div>

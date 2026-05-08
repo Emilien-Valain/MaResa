@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { userTenants, tenants } from "@/db/schema";
-import AdminNav from "@/components/admin/AdminNav";
+import Sidebar from "@/components/admin/Sidebar";
 
 export default async function AdminLayout({
   children,
@@ -20,7 +20,6 @@ export default async function AdminLayout({
 
   const tenantId = headersList.get("x-tenant-id");
 
-  // Charger tous les tenants auxquels l'utilisateur a accès
   const memberships = await db.query.userTenants.findMany({
     where: eq(userTenants.userId, session.user.id),
     with: { tenant: true },
@@ -43,13 +42,20 @@ export default async function AdminLayout({
   }));
 
   return (
-    <div className="min-h-screen flex flex-col bg-warm-100">
-      <AdminNav
+    <div data-admin className="flex h-screen overflow-hidden">
+      <Sidebar
         userEmail={session.user.email}
+        userName={session.user.name ?? undefined}
         currentTenantName={currentTenant?.name ?? ""}
         accessibleTenants={accessibleTenants}
       />
-      <main className="flex-1 p-6 max-w-6xl mx-auto w-full">{children}</main>
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <main className="flex-1 overflow-y-auto">
+          <div className="px-5 sm:px-8 py-7 max-w-[1280px] mx-auto w-full admin-fade-in">
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
