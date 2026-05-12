@@ -1,6 +1,18 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Icon } from "@/components/admin/icons";
 
+// Re-export client primitives so consumers can import everything from ui.tsx.
+// The "use client" boundary lives in ui-inputs.tsx — keeping ui.tsx server-friendly
+// is required so server components (e.g. the dashboard) can read CHANNEL_CONFIG
+// and other plain-data exports without going through a client module.
+export {
+  AdminInput,
+  AdminTextarea,
+  AdminSelect,
+  Toggle,
+  Tabs,
+} from "@/components/admin/ui-inputs";
+
 export function Card({
   children,
   className = "",
@@ -289,6 +301,125 @@ export function KPICard({
         </div>
       )}
     </Card>
+  );
+}
+
+/* ── Settings primitives (shared between Paramètres + Règles) ───────── */
+
+export function SettingsSection({
+  title,
+  desc,
+  action,
+  children,
+}: {
+  title: string;
+  desc?: ReactNode;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      className="overflow-hidden mb-5"
+      style={{
+        background: "var(--admin-surface)",
+        border: "1px solid var(--admin-border)",
+        borderRadius: "var(--admin-radius)",
+      }}
+    >
+      <header
+        className="flex items-start justify-between gap-4 px-[22px] py-[18px]"
+        style={{ borderBottom: "1px solid var(--admin-border)" }}
+      >
+        <div>
+          <h2
+            className="text-[15px] font-extrabold"
+            style={{ color: "var(--admin-text)", letterSpacing: "-0.3px" }}
+          >
+            {title}
+          </h2>
+          {desc && (
+            <p
+              className="text-[12.5px] mt-1 leading-[1.5]"
+              style={{ color: "var(--admin-text-muted)" }}
+            >
+              {desc}
+            </p>
+          )}
+        </div>
+        {action}
+      </header>
+      <div className="px-[22px] py-5">{children}</div>
+    </section>
+  );
+}
+
+export function Field({
+  label,
+  hint,
+  error,
+  children,
+}: {
+  label: string;
+  hint?: ReactNode;
+  error?: string | null;
+  children: ReactNode;
+}) {
+  return (
+    <div className="mb-3.5">
+      <div
+        className="text-[11.5px] font-bold uppercase mb-1.5"
+        style={{
+          color: "var(--admin-text-muted)",
+          letterSpacing: "0.06em",
+        }}
+      >
+        {label}
+        {error && (
+          <span
+            className="font-medium ml-1 normal-case tracking-normal"
+            style={{ color: "#DC2626" }}
+          >
+            · {error}
+          </span>
+        )}
+      </div>
+      {children}
+      {hint && (
+        <div
+          className="text-[11.5px] mt-1.5 leading-[1.5]"
+          style={{ color: "var(--admin-text-subtle)" }}
+        >
+          {hint}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function StatusBanner({
+  variant,
+  children,
+}: {
+  variant: "success" | "error" | "warning" | "info";
+  children: ReactNode;
+}) {
+  const cfg = {
+    success: { bg: "#DCFCE7", border: "#86EFAC", color: "#15803D" },
+    error: { bg: "#FEE2E2", border: "#FCA5A5", color: "#991B1B" },
+    warning: { bg: "#FEF3C7", border: "#FCD34D", color: "#92400E" },
+    info: { bg: "var(--admin-primary-light)", border: "var(--admin-primary)", color: "var(--admin-primary)" },
+  }[variant];
+  return (
+    <div
+      className="px-3 py-2 mb-3 text-[12.5px] font-semibold rounded-lg"
+      style={{
+        background: cfg.bg,
+        border: `1px solid ${cfg.border}`,
+        color: cfg.color,
+      }}
+    >
+      {children}
+    </div>
   );
 }
 

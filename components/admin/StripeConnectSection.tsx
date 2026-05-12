@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { SettingsSection, StatusBanner } from "@/components/admin/ui";
 
 type StripeStatus = {
   connected: boolean;
@@ -44,7 +45,11 @@ export default function StripeConnectSection({
   }
 
   async function handleDisconnect() {
-    if (!confirm("Déconnecter votre compte Stripe ? Les paiements ne seront plus possibles.")) {
+    if (
+      !confirm(
+        "Déconnecter votre compte Stripe ? Les paiements ne seront plus possibles.",
+      )
+    ) {
       return;
     }
     setLoading(true);
@@ -57,95 +62,217 @@ export default function StripeConnectSection({
     }
   }
 
-  const isFullyConnected = status?.connected && status.chargesEnabled && status.detailsSubmitted;
+  const isFullyConnected =
+    status?.connected && status.chargesEnabled && status.detailsSubmitted;
   const needsCompletion = status?.connected && !status.detailsSubmitted;
 
   return (
-    <section className="bg-white border border-warm-300 rounded-sm shadow-sm">
-      <div className="px-6 py-4 border-b border-warm-200">
-        <h2 className="font-heading text-lg font-semibold text-warm-950">Paiement Stripe</h2>
-        <p className="text-xs text-warm-500 mt-0.5">
-          Connectez votre compte Stripe pour recevoir les paiements des réservations directement.
-        </p>
-      </div>
+    <SettingsSection
+      title="Paiement Stripe"
+      desc="Reçois les paiements directement sur ton compte Stripe. MaRésa ne prélève aucune commission."
+    >
+      {stripeParam === "success" && (
+        <StatusBanner variant="success">
+          Configuration Stripe mise à jour avec succès.
+        </StatusBanner>
+      )}
+      {stripeParam === "refresh" && (
+        <StatusBanner variant="warning">
+          La session a expiré. Clique ci-dessous pour reprendre la configuration.
+        </StatusBanner>
+      )}
 
-      <div className="px-6 py-5">
-        {stripeParam === "success" && (
-          <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-sm text-sm text-green-800">
-            Configuration Stripe mise à jour avec succès.
-          </div>
-        )}
-        {stripeParam === "refresh" && (
-          <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-sm text-sm text-amber-800">
-            La session a expiré. Cliquez ci-dessous pour reprendre la configuration.
-          </div>
-        )}
-
-        {isFullyConnected ? (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-2 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-sm px-3 py-1.5">
-                <span className="w-2 h-2 bg-green-500 rounded-full" />
+      {isFullyConnected ? (
+        <>
+          <div
+            className="mb-4"
+            style={{
+              padding: 16,
+              background: "linear-gradient(135deg, #635BFF 0%, #4D43E8 100%)",
+              borderRadius: 10,
+              color: "#fff",
+            }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div
+                className="font-extrabold"
+                style={{ fontSize: 18, letterSpacing: "-0.5px" }}
+              >
+                stripe
+              </div>
+              <span
+                style={{
+                  fontSize: 11.5,
+                  background: "rgba(255,255,255,0.2)",
+                  padding: "3px 10px",
+                  borderRadius: 12,
+                  fontWeight: 600,
+                }}
+              >
                 Connecté
               </span>
-              <span className="text-xs text-warm-400">{status.accountId}</span>
             </div>
-
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="flex items-center gap-2">
-                <StatusDot ok={status.chargesEnabled} />
-                <span className="text-warm-700">Paiements par carte</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <StatusDot ok={status.payoutsEnabled} />
-                <span className="text-warm-700">Virements</span>
-              </div>
+            <div
+              className="opacity-70"
+              style={{ fontSize: 12.5, marginBottom: 4 }}
+            >
+              Compte Stripe
             </div>
+            <div
+              className="font-mono font-semibold"
+              style={{ fontSize: 14 }}
+            >
+              {status.accountId}
+            </div>
+          </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <StatusItem ok={status.chargesEnabled} label="Paiements par carte" />
+            <StatusItem ok={status.payoutsEnabled} label="Virements" />
+          </div>
+
+          <div className="flex gap-2.5 mt-4">
+            <a
+              href="https://dashboard.stripe.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 text-center"
+              style={{
+                padding: 9,
+                background: "var(--admin-surface-2)",
+                border: "1px solid var(--admin-border)",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--admin-text)",
+                textDecoration: "none",
+              }}
+            >
+              Ouvrir le Dashboard Stripe ↗
+            </a>
             <button
+              type="button"
               onClick={handleDisconnect}
               disabled={loading}
-              className="text-xs text-red-600 hover:text-red-800 transition-colors disabled:opacity-50"
+              style={{
+                padding: "9px 16px",
+                background: "transparent",
+                border: "1px solid #DC2626",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#DC2626",
+                cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading ? 0.5 : 1,
+              }}
             >
-              Déconnecter le compte Stripe
+              Déconnecter
             </button>
           </div>
-        ) : needsCompletion ? (
-          <div className="space-y-3">
-            <p className="text-sm text-amber-700">
-              La configuration de votre compte Stripe n&apos;est pas terminée. Reprenez l&apos;onboarding pour activer les paiements.
-            </p>
-            <button
-              onClick={handleConnect}
-              disabled={loading}
-              className="px-4 py-2 text-sm font-medium bg-warm-900 text-white rounded-sm hover:bg-warm-800 transition-colors disabled:opacity-50"
-            >
-              {loading ? "Chargement…" : "Reprendre la configuration"}
-            </button>
+        </>
+      ) : needsCompletion ? (
+        <>
+          <p
+            className="text-[13px] mb-3"
+            style={{ color: "var(--admin-text-muted)" }}
+          >
+            La configuration de votre compte Stripe n&apos;est pas terminée.
+            Reprenez l&apos;onboarding pour activer les paiements.
+          </p>
+          <button
+            type="button"
+            onClick={handleConnect}
+            disabled={loading}
+            style={{
+              padding: "10px 20px",
+              background: "#635BFF",
+              color: "#fff",
+              border: "none",
+              borderRadius: 8,
+              fontSize: 13.5,
+              fontWeight: 700,
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.6 : 1,
+            }}
+          >
+            {loading ? "Chargement…" : "Reprendre la configuration"}
+          </button>
+        </>
+      ) : (
+        <div
+          className="text-center"
+          style={{
+            padding: 24,
+            background: "var(--admin-surface-2)",
+            borderRadius: 10,
+            border: "1px dashed var(--admin-border)",
+          }}
+        >
+          <div
+            className="font-bold mb-1.5"
+            style={{ fontSize: 15, color: "var(--admin-text)" }}
+          >
+            Aucun compte Stripe connecté
           </div>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-sm text-warm-600">
-              Aucun compte Stripe connecté. Les réservations ne peuvent pas être payées en ligne.
-            </p>
-            <button
-              onClick={handleConnect}
-              disabled={loading}
-              className="px-4 py-2 text-sm font-medium bg-warm-900 text-white rounded-sm hover:bg-warm-800 transition-colors disabled:opacity-50"
-            >
-              {loading ? "Chargement…" : "Connecter Stripe"}
-            </button>
+          <div
+            className="text-[13px] mb-4 mx-auto"
+            style={{
+              color: "var(--admin-text-muted)",
+              maxWidth: 360,
+            }}
+          >
+            Connecte ton compte Stripe pour activer les paiements en ligne sur ton site.
           </div>
-        )}
-      </div>
-    </section>
+          <button
+            type="button"
+            onClick={handleConnect}
+            disabled={loading}
+            style={{
+              padding: "10px 20px",
+              background: "#635BFF",
+              color: "#fff",
+              border: "none",
+              borderRadius: 8,
+              fontSize: 13.5,
+              fontWeight: 700,
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.6 : 1,
+            }}
+          >
+            {loading ? "Chargement…" : "Connecter Stripe →"}
+          </button>
+        </div>
+      )}
+    </SettingsSection>
   );
 }
 
-function StatusDot({ ok }: { ok?: boolean }) {
+function StatusItem({ ok, label }: { ok?: boolean; label: string }) {
   return (
-    <span
-      className={`w-2 h-2 rounded-full ${ok ? "bg-green-500" : "bg-warm-300"}`}
-    />
+    <div
+      className="flex items-center gap-2"
+      style={{
+        padding: "10px 12px",
+        background: "var(--admin-surface-2)",
+        borderRadius: 8,
+        border: "1px solid var(--admin-border-light)",
+      }}
+    >
+      <span
+        className="rounded-full"
+        style={{
+          width: 8,
+          height: 8,
+          background: ok ? "#16A34A" : "var(--admin-border)",
+          flexShrink: 0,
+        }}
+      />
+      <span
+        className="text-[13px] font-medium"
+        style={{ color: "var(--admin-text)" }}
+      >
+        {label}
+      </span>
+    </div>
   );
 }

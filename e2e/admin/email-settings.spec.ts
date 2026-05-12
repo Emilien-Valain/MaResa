@@ -27,15 +27,15 @@ test.describe("Admin — Paramètres emails", () => {
   });
 
   test("la section Emails est visible dans /admin/parametres", async ({ page }) => {
-    await page.goto("/admin/parametres");
-    await expect(page.getByText("Emails")).toBeVisible();
+    await page.goto("/admin/parametres?tab=email");
+    await expect(page.getByRole("heading", { name: "Emails", level: 2 })).toBeVisible();
     await expect(page.locator("#email-confirmation")).toBeVisible();
     await expect(page.locator("#email-poststay")).toBeVisible();
     await expect(page.locator("#email-review-url")).toBeVisible();
   });
 
   test("sauvegarder un message de confirmation fonctionne", async ({ page }) => {
-    await page.goto("/admin/parametres");
+    await page.goto("/admin/parametres?tab=email");
 
     const textarea = page.locator("#email-confirmation");
     await textarea.fill("Bienvenue ! Nous avons hâte de vous accueillir.");
@@ -52,7 +52,7 @@ test.describe("Admin — Paramètres emails", () => {
   });
 
   test("sauvegarder un message post-séjour fonctionne", async ({ page }) => {
-    await page.goto("/admin/parametres");
+    await page.goto("/admin/parametres?tab=email");
 
     const textarea = page.locator("#email-poststay");
     await textarea.fill("Merci pour votre séjour !");
@@ -67,7 +67,7 @@ test.describe("Admin — Paramètres emails", () => {
   });
 
   test("sauvegarder une URL de review fonctionne", async ({ page }) => {
-    await page.goto("/admin/parametres");
+    await page.goto("/admin/parametres?tab=email");
 
     const input = page.locator("#email-review-url");
     await input.fill("https://g.page/r/mon-hotel/review");
@@ -84,7 +84,11 @@ test.describe("Admin — Paramètres emails", () => {
   // ─── Cas limites ────────────────────────────────────────────────────────────
 
   test("sauvegarder des champs vides réinitialise les valeurs", async ({ page }) => {
-    await page.goto("/admin/parametres");
+    await page.goto("/admin/parametres?tab=email");
+    // Attendre la fin de l'hydratation React avant de remplir des champs déjà
+    // remplis : sinon Playwright fill() rencontre une race avec le streaming
+    // Suspense (un seul caractère est supprimé au lieu du contenu complet).
+    await page.waitForLoadState("networkidle");
 
     await page.locator("#email-confirmation").fill("");
     await page.locator("#email-poststay").fill("");
@@ -102,7 +106,8 @@ test.describe("Admin — Paramètres emails", () => {
   });
 
   test("un message très long (500 caractères) est accepté", async ({ page }) => {
-    await page.goto("/admin/parametres");
+    await page.goto("/admin/parametres?tab=email");
+    await page.waitForLoadState("networkidle");
 
     const longText = "A".repeat(500);
     await page.locator("#email-confirmation").fill(longText);
@@ -116,7 +121,8 @@ test.describe("Admin — Paramètres emails", () => {
   // ─── Sécurité ──────────────────────────────────────────────────────────────
 
   test("XSS dans le message de confirmation → le texte est affiché échappé", async ({ page }) => {
-    await page.goto("/admin/parametres");
+    await page.goto("/admin/parametres?tab=email");
+    await page.waitForLoadState("networkidle");
 
     const xss = '<script>alert("XSS")</script>';
     await page.locator("#email-confirmation").fill(xss);
@@ -141,7 +147,7 @@ test.describe("Admin — Paramètres emails", () => {
     // Créer un contexte sans storageState (pas de session admin)
     const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
     const page = await context.newPage();
-    await page.goto("/admin/parametres");
+    await page.goto("/admin/parametres?tab=email");
     await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
     await context.close();
   });

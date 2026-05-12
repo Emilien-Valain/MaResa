@@ -30,12 +30,14 @@ test.describe("Admin — Paramètres", () => {
 
   test("la section Stripe est affichée", async ({ page }) => {
     await page.goto("/admin/parametres");
+    await page.getByRole("button", { name: "Paiements" }).click();
     await expect(page.getByText("Paiement Stripe")).toBeVisible();
     await expect(page.getByRole("button", { name: /connecter stripe/i })).toBeVisible();
   });
 
   test("la section calendriers externes est affichée", async ({ page }) => {
     await page.goto("/admin/parametres");
+    await page.getByRole("button", { name: "iCal" }).click();
     await expect(page.getByText("Calendriers externes")).toBeVisible();
   });
 
@@ -53,6 +55,7 @@ test.describe("Admin — Paramètres", () => {
   test("ajout, affichage et suppression d'une source iCal", async ({ page }) => {
     const { apiRoomId, tenantId } = loadTestContext();
     await page.goto("/admin/parametres");
+    await page.getByRole("button", { name: "iCal" }).click();
 
     // Cliquer sur Ajouter
     await page.getByRole("button", { name: "Ajouter" }).click();
@@ -91,6 +94,7 @@ test.describe("Admin — Paramètres", () => {
   test("XSS dans le nom de source iCal est échappé", async ({ page }) => {
     const { apiRoomId, tenantId } = loadTestContext();
     await page.goto("/admin/parametres");
+    await page.getByRole("button", { name: "iCal" }).click();
 
     await page.getByRole("button", { name: "Ajouter" }).click();
 

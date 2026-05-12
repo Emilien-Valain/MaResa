@@ -133,6 +133,12 @@ export const Icon = {
       <polyline points="12 5 19 12 12 19" />
     </svg>
   ),
+  Block: (p: IconProps) => (
+    <svg {...base(p)}>
+      <circle cx="12" cy="12" r="9" />
+      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+    </svg>
+  ),
   Eye: (p: IconProps) => (
     <svg {...base(p)}>
       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />

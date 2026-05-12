@@ -41,12 +41,28 @@ export default function IcalSyncButton() {
         type="button"
         disabled={loading}
         onClick={handleSync}
-        className="px-3 py-1.5 rounded-sm text-sm bg-warm-200 text-warm-700 hover:bg-warm-300 transition-colors font-medium disabled:opacity-50"
+        style={{
+          padding: "6px 14px",
+          background: "var(--admin-surface-2)",
+          color: "var(--admin-text)",
+          border: "1px solid var(--admin-border)",
+          borderRadius: 7,
+          fontSize: 13,
+          fontWeight: 600,
+          cursor: loading ? "not-allowed" : "pointer",
+          opacity: loading ? 0.5 : 1,
+          transition: "background 0.15s",
+        }}
       >
         {loading ? "Sync…" : "Synchroniser"}
       </button>
       {result && (
-        <span className="text-xs text-warm-500 animate-fade-in">{result}</span>
+        <span
+          className="text-[12px]"
+          style={{ color: "var(--admin-text-muted)" }}
+        >
+          {result}
+        </span>
       )}
     </div>
   );

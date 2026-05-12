@@ -1,17 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { Tabs } from "@/components/admin/ui";
 import ManualBlockSection from "./ManualBlockSection";
 import BookingRuleSection from "./BookingRuleSection";
 import PricingRuleSection from "./PricingRuleSection";
 
-const TABS = [
-  { id: "blocks", label: "Blocages" },
-  { id: "rules", label: "Règles de séjour" },
-  { id: "pricing", label: "Tarification" },
-] as const;
+type Tab = "booking" | "pricing" | "blocks";
 
-type Tab = (typeof TABS)[number]["id"];
+const TABS: { id: Tab; label: string }[] = [
+  { id: "booking", label: "Règles de réservation" },
+  { id: "pricing", label: "Tarification" },
+  { id: "blocks", label: "Blocages manuels" },
+];
 
 interface Props {
   rooms: { id: string; name: string }[];
@@ -68,37 +69,23 @@ export default function RulesPageClient({
   bookingRules,
   pricingRules,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>("blocks");
+  const [tab, setTab] = useState<Tab>("booking");
 
   return (
-    <div className="space-y-6">
-      {/* Onglets */}
-      <div className="flex gap-1 bg-warm-200 p-1 rounded-sm">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 px-4 py-2 text-sm font-medium rounded-sm transition-colors ${
-              activeTab === tab.id
-                ? "bg-white text-warm-900 shadow-sm"
-                : "text-warm-600 hover:text-warm-800"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+    <>
+      <Tabs<Tab> tabs={TABS} active={tab} onChange={setTab} />
 
-      {/* Contenu */}
-      {activeTab === "blocks" && (
-        <ManualBlockSection rooms={rooms} blocks={manualBlocks} />
-      )}
-      {activeTab === "rules" && (
-        <BookingRuleSection rooms={rooms} rules={bookingRules} />
-      )}
-      {activeTab === "pricing" && (
-        <PricingRuleSection rooms={rooms} rules={pricingRules} />
-      )}
-    </div>
+      <div className="max-w-[760px]">
+        {tab === "booking" && (
+          <BookingRuleSection rooms={rooms} rules={bookingRules} />
+        )}
+        {tab === "pricing" && (
+          <PricingRuleSection rooms={rooms} rules={pricingRules} />
+        )}
+        {tab === "blocks" && (
+          <ManualBlockSection rooms={rooms} blocks={manualBlocks} />
+        )}
+      </div>
+    </>
   );
 }

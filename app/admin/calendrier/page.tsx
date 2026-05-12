@@ -4,16 +4,24 @@ import { getRoomsByTenant } from "@/lib/queries/rooms";
 import { getActiveBookingsForCalendar } from "@/lib/queries/bookings";
 import { getManualBlocksForCalendar } from "@/lib/queries/rules";
 import IcalSyncButton from "@/components/admin/IcalSyncButton";
+import CalendarTimeline, {
+  type BookingSpan,
+  type BlockSpan,
+} from "@/components/admin/CalendarTimeline";
 import {
   getCalendarMonth,
   prevMonth,
   nextMonth,
-  isDateInBooking,
   formatMonthLabel,
-  STATUS_COLORS,
 } from "@/lib/calendar";
-import { Card, GhostButton, PageHeader } from "@/components/admin/ui";
 import { Icon } from "@/components/admin/icons";
+
+const VALID_STATUSES = ["pending", "confirmed", "completed", "cancelled"] as const;
+type Status = (typeof VALID_STATUSES)[number];
+
+function dateKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 export default async function CalendrierPage({
   searchParams,
@@ -42,26 +50,61 @@ export default async function CalendrierPage({
     getManualBlocksForCalendar(tenantId, calendar.firstDay, calendar.lastDay),
   ]);
 
+  const activeChambres = chambres.filter((c) => c.active);
+  const daysInMonth = calendar.days.length;
+  const monthEndExclusive = new Date(
+    calendar.lastDay.getFullYear(),
+    calendar.lastDay.getMonth(),
+    calendar.lastDay.getDate() + 1,
+  );
+
+  // ── Build booking spans (clipped to current month) ───────────────────
+  const bookingSpans: BookingSpan[] = [];
+  for (const b of bookings) {
+    if (!VALID_STATUSES.includes(b.status as Status)) continue;
+    const checkIn = new Date(b.checkIn);
+    const checkOut = new Date(b.checkOut);
+    if (checkOut <= calendar.firstDay || checkIn >= monthEndExclusive) continue;
+    const startDay =
+      checkIn < calendar.firstDay ? 1 : checkIn.getDate();
+    const endDay =
+      checkOut > monthEndExclusive ? daysInMonth + 1 : checkOut.getDate();
+    if (endDay <= startDay) continue;
+    bookingSpans.push({
+      id: b.id,
+      roomId: b.roomId,
+      guestName: b.guestName,
+      startDay,
+      endDay,
+      status: b.status as Status,
+      checkIn: checkIn.toISOString(),
+      checkOut: checkOut.toISOString(),
+    });
+  }
+
+  // ── Build block ranges from per-day Set ───────────────────────────────
   const blockedSet = new Set<string>();
   for (const block of rawManualBlocks) {
     const key = block.roomId ?? "__global__";
     if (block.recurring && block.recurrenceType === "weekly") {
       const days = (block.recurrenceDays as number[]) ?? [];
       const cur = new Date(
-        Math.max(calendar.firstDay.getTime(), new Date(block.startDate).getTime()),
+        Math.max(
+          calendar.firstDay.getTime(),
+          new Date(block.startDate).getTime(),
+        ),
       );
       const end = block.recurrenceUntil
         ? new Date(
             Math.min(
-              calendar.lastDay.getTime() + 86400000,
+              monthEndExclusive.getTime(),
               new Date(block.recurrenceUntil).getTime(),
             ),
           )
-        : new Date(calendar.lastDay.getTime() + 86400000);
+        : monthEndExclusive;
       while (cur < end) {
         if (days.includes(cur.getDay())) {
-          const dateStr = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}-${String(cur.getDate()).padStart(2, "0")}`;
-          blockedSet.add(`${key}|${dateStr}`);
+          blockedSet.add(`${key}|${dateKey(cur)}`);
         }
         cur.setDate(cur.getDate() + 1);
       }
@@ -70,80 +113,205 @@ export default async function CalendrierPage({
       const end = new Date(block.endDate);
       const cur = new Date(Math.max(start.getTime(), calendar.firstDay.getTime()));
       const rangeEnd = new Date(
-        Math.min(end.getTime(), calendar.lastDay.getTime() + 86400000),
+        Math.min(end.getTime(), monthEndExclusive.getTime()),
       );
       while (cur < rangeEnd) {
-        const dateStr = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}-${String(cur.getDate()).padStart(2, "0")}`;
-        blockedSet.add(`${key}|${dateStr}`);
+        blockedSet.add(`${key}|${dateKey(cur)}`);
         cur.setDate(cur.getDate() + 1);
       }
     }
   }
 
-  function isDateBlocked(roomId: string, day: Date): boolean {
-    const dateStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
-    return (
-      blockedSet.has(`${roomId}|${dateStr}`) ||
-      blockedSet.has(`__global__|${dateStr}`)
-    );
+  // Group blocked days into consecutive spans per room
+  const blockSpans: BlockSpan[] = [];
+  for (const room of activeChambres) {
+    let runStart: number | null = null;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const day = calendar.days[d - 1];
+      const k = dateKey(day);
+      const blocked =
+        blockedSet.has(`${room.id}|${k}`) ||
+        blockedSet.has(`__global__|${k}`);
+      if (blocked && runStart === null) {
+        runStart = d;
+      } else if (!blocked && runStart !== null) {
+        blockSpans.push({
+          roomId: room.id,
+          startDay: runStart,
+          endDay: d,
+        });
+        runStart = null;
+      }
+    }
+    if (runStart !== null) {
+      blockSpans.push({
+        roomId: room.id,
+        startDay: runStart,
+        endDay: daysInMonth + 1,
+      });
+    }
   }
 
-  const activeChambres = chambres.filter((c) => c.active);
+  // ── Header data ──────────────────────────────────────────────────────
+  const weekdayLabels: string[] = calendar.days.map((d) =>
+    d.toLocaleDateString("fr-FR", { weekday: "narrow" }).toUpperCase(),
+  );
+  const weekendDays: boolean[] = calendar.days.map((d) => {
+    const dow = d.getDay();
+    return dow === 0 || dow === 6;
+  });
+  const todayDay =
+    now.getFullYear() === year && now.getMonth() === month
+      ? now.getDate()
+      : null;
+
+  const navButtonStyle = {
+    background: "var(--admin-surface)",
+    border: "1px solid var(--admin-border)",
+    borderRadius: 8,
+    padding: "7px 12px",
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    color: "var(--admin-text-muted)",
+    textDecoration: "none" as const,
+  };
 
   return (
-    <div className="space-y-5">
-      <PageHeader
-        title={<span className="capitalize">{formatMonthLabel(year, month)}</span>}
-        subtitle={`${activeChambres.length} chambre${activeChambres.length > 1 ? "s" : ""} active${activeChambres.length > 1 ? "s" : ""}`}
-        action={
-          <div className="flex items-center gap-2 flex-wrap">
-            <IcalSyncButton />
-            <div className="flex items-center gap-1.5">
-              <GhostButton
-                href={`/admin/calendrier?year=${prev.year}&month=${prev.month}`}
-                ariaLabel="Mois précédent"
-              >
-                <Icon.ChevronLeft size={14} />
-              </GhostButton>
-              <GhostButton
-                href={`/admin/calendrier?year=${now.getFullYear()}&month=${now.getMonth()}`}
-              >
-                Aujourd&apos;hui
-              </GhostButton>
-              <GhostButton
-                href={`/admin/calendrier?year=${next.year}&month=${next.month}`}
-                ariaLabel="Mois suivant"
-              >
-                <Icon.ChevronRight size={14} />
-              </GhostButton>
-            </div>
+    <div className="space-y-4 admin-fade-in">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1
+            className="text-[22px] font-extrabold"
+            style={{ color: "var(--admin-text)", letterSpacing: "-0.5px" }}
+          >
+            Calendrier
+          </h1>
+          <p
+            className="text-[13.5px] mt-0.5 capitalize"
+            style={{ color: "var(--admin-text-muted)" }}
+          >
+            Disponibilités et séjours — {formatMonthLabel(year, month)}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <IcalSyncButton />
+          <Link
+            href={`/admin/calendrier?year=${prev.year}&month=${prev.month}`}
+            aria-label="Mois précédent"
+            style={navButtonStyle}
+          >
+            <Icon.ChevronLeft size={16} />
+          </Link>
+          <div
+            style={{
+              background: "var(--admin-surface)",
+              border: "1px solid var(--admin-border)",
+              borderRadius: 8,
+              padding: "7px 18px",
+              fontSize: 13.5,
+              fontWeight: 700,
+              color: "var(--admin-text)",
+              textTransform: "capitalize",
+            }}
+          >
+            {formatMonthLabel(year, month)}
           </div>
-        }
-      />
+          <Link
+            href={`/admin/calendrier?year=${next.year}&month=${next.month}`}
+            aria-label="Mois suivant"
+            style={navButtonStyle}
+          >
+            <Icon.ChevronRight size={16} />
+          </Link>
+          <Link
+            href={`/admin/calendrier?year=${now.getFullYear()}&month=${now.getMonth()}`}
+            style={{
+              background: "var(--admin-primary)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 8,
+              padding: "7px 14px",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+              textDecoration: "none",
+            }}
+          >
+            Aujourd&apos;hui
+          </Link>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-4">
+        <LegendItem color="#16A34A" label="Confirmée" />
+        <LegendItem color="#D97706" label="En attente" />
+        <LegendItem color="#94A3B8" label="Terminée" />
+        <LegendItem color="#DC2626" label="Annulée" />
+        <span className="flex items-center gap-1.5">
+          <span
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: 3,
+              background:
+                "repeating-linear-gradient(45deg, #CBD5E1, #CBD5E1 2px, transparent 2px, transparent 6px)",
+            }}
+          />
+          <span
+            className="text-[12px] font-medium"
+            style={{ color: "var(--admin-text-muted)" }}
+          >
+            Bloqué
+          </span>
+        </span>
+      </div>
 
       {activeChambres.length === 0 ? (
-        <Card style={{ padding: "60px 24px", textAlign: "center" }}>
+        <div
+          style={{
+            padding: "60px 24px",
+            textAlign: "center",
+            background: "var(--admin-surface)",
+            border: "1px solid var(--admin-border)",
+            borderRadius: "var(--admin-radius)",
+          }}
+        >
           <p
             className="text-[14px]"
             style={{ color: "var(--admin-text-muted)" }}
           >
             Aucune chambre active.
           </p>
-        </Card>
+        </div>
       ) : (
         <>
           {/* Mobile : list per room */}
           <div className="md:hidden space-y-4">
             {activeChambres.map((chambre) => {
-              const roomBookings = bookings.filter((b) => b.roomId === chambre.id);
+              const roomBookings = bookings.filter(
+                (b) => b.roomId === chambre.id,
+              );
               const uniqueBookings = roomBookings.filter(
                 (b, i, arr) => arr.findIndex((x) => x.id === b.id) === i,
               );
               return (
-                <Card key={chambre.id}>
+                <div
+                  key={chambre.id}
+                  style={{
+                    background: "var(--admin-surface)",
+                    border: "1px solid var(--admin-border)",
+                    borderRadius: "var(--admin-radius)",
+                    overflow: "hidden",
+                  }}
+                >
                   <div
                     className="px-4 py-3"
-                    style={{ borderBottom: "1px solid var(--admin-border-light)" }}
+                    style={{
+                      borderBottom: "1px solid var(--admin-border-light)",
+                    }}
                   >
                     <h2
                       className="text-[14px] font-bold"
@@ -167,7 +335,8 @@ export default async function CalendrierPage({
                           href={`/admin/reservations/${b.id}`}
                           className="flex items-center gap-3 px-4 py-3 hover:opacity-80 transition-opacity"
                           style={{
-                            borderBottom: "1px solid var(--admin-border-light)",
+                            borderBottom:
+                              "1px solid var(--admin-border-light)",
                           }}
                         >
                           <span
@@ -176,7 +345,7 @@ export default async function CalendrierPage({
                               background:
                                 b.status === "confirmed"
                                   ? "#16A34A"
-                                  : "#EAB308",
+                                  : "#D97706",
                             }}
                           />
                           <div className="min-w-0 flex-1">
@@ -190,15 +359,15 @@ export default async function CalendrierPage({
                               className="text-[12px]"
                               style={{ color: "var(--admin-text-muted)" }}
                             >
-                              {new Date(b.checkIn).toLocaleDateString("fr-FR", {
-                                day: "numeric",
-                                month: "short",
-                              })}{" "}
+                              {new Date(b.checkIn).toLocaleDateString(
+                                "fr-FR",
+                                { day: "numeric", month: "short" },
+                              )}{" "}
                               →{" "}
-                              {new Date(b.checkOut).toLocaleDateString("fr-FR", {
-                                day: "numeric",
-                                month: "short",
-                              })}
+                              {new Date(b.checkOut).toLocaleDateString(
+                                "fr-FR",
+                                { day: "numeric", month: "short" },
+                              )}
                             </p>
                           </div>
                           <Icon.ArrowRight
@@ -209,139 +378,46 @@ export default async function CalendrierPage({
                       ))}
                     </div>
                   )}
-                </Card>
+                </div>
               );
             })}
           </div>
 
-          {/* Desktop : timeline grid */}
-          <Card className="hidden md:block overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-[12px]">
-                <thead>
-                  <tr style={{ borderBottom: "1px solid var(--admin-border)" }}>
-                    <th
-                      className="text-left font-bold sticky left-0 z-10"
-                      style={{
-                        padding: "12px 16px",
-                        width: 140,
-                        background: "var(--admin-surface)",
-                        color: "var(--admin-text-muted)",
-                        fontSize: 11.5,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.06em",
-                      }}
-                    >
-                      Chambre
-                    </th>
-                    {calendar.days.map((day) => {
-                      const isToday =
-                        day.toDateString() === new Date().toDateString();
-                      return (
-                        <th
-                          key={day.getTime()}
-                          className="text-center font-bold min-w-[28px]"
-                          style={{
-                            padding: "12px 4px",
-                            color: isToday
-                              ? "var(--admin-accent)"
-                              : "var(--admin-text-muted)",
-                            fontSize: 11.5,
-                          }}
-                        >
-                          {day.getDate()}
-                        </th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-                <tbody>
-                  {activeChambres.map((chambre) => {
-                    const roomBookings = bookings.filter(
-                      (b) => b.roomId === chambre.id,
-                    );
-                    return (
-                      <tr
-                        key={chambre.id}
-                        style={{
-                          borderBottom: "1px solid var(--admin-border-light)",
-                        }}
-                      >
-                        <td
-                          className="font-semibold sticky left-0 z-10"
-                          style={{
-                            padding: "8px 16px",
-                            background: "var(--admin-surface)",
-                            color: "var(--admin-text)",
-                            fontSize: 13,
-                          }}
-                        >
-                          {chambre.name}
-                        </td>
-                        {calendar.days.map((day) => {
-                          const booking = roomBookings.find((b) =>
-                            isDateInBooking(
-                              day,
-                              new Date(b.checkIn),
-                              new Date(b.checkOut),
-                            ),
-                          );
-                          const blocked = isDateBlocked(chambre.id, day);
-                          return (
-                            <td
-                              key={day.getTime()}
-                              className="p-[2px] text-center"
-                            >
-                              {booking ? (
-                                <Link
-                                  href={`/admin/reservations/${booking.id}`}
-                                  title={booking.guestName}
-                                  className={`block w-full h-6 rounded ${STATUS_COLORS[booking.status]}`}
-                                />
-                              ) : blocked ? (
-                                <div
-                                  className={`block w-full h-6 rounded flex items-center justify-center text-[11px] font-bold ${STATUS_COLORS.blocked}`}
-                                  title="Bloqué"
-                                >
-                                  ✕
-                                </div>
-                              ) : (
-                                <div
-                                  className="block w-full h-6 rounded"
-                                  style={{
-                                    background: "var(--admin-surface-2)",
-                                  }}
-                                />
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+          {/* Desktop : timeline */}
+          <div className="hidden md:block">
+            <CalendarTimeline
+              rooms={activeChambres.map((c) => ({ id: c.id, name: c.name }))}
+              bookings={bookingSpans}
+              blocks={blockSpans}
+              daysInMonth={daysInMonth}
+              weekdayLabels={weekdayLabels}
+              weekendDays={weekendDays}
+              todayDay={todayDay}
+            />
+          </div>
         </>
       )}
-
-      {/* Légende */}
-      <div className="flex flex-wrap gap-4 text-[12px] font-semibold">
-        <Legend color="bg-amber-300" label="En attente" />
-        <Legend color="bg-emerald-400" label="Confirmée" />
-        <Legend color="bg-sky-300" label="Terminée" />
-        <Legend color="bg-red-200" label="Bloqué" />
-      </div>
     </div>
   );
 }
 
-function Legend({ color, label }: { color: string; label: string }) {
+function LegendItem({ color, label }: { color: string; label: string }) {
   return (
-    <span className="flex items-center gap-1.5" style={{ color: "var(--admin-text-muted)" }}>
-      <span className={`w-3 h-3 rounded-sm inline-block ${color}`} />
-      {label}
+    <span className="flex items-center gap-1.5">
+      <span
+        style={{
+          width: 10,
+          height: 10,
+          borderRadius: 3,
+          background: color,
+        }}
+      />
+      <span
+        className="text-[12px] font-medium"
+        style={{ color: "var(--admin-text-muted)" }}
+      >
+        {label}
+      </span>
     </span>
   );
 }

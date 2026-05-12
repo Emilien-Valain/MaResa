@@ -47,7 +47,7 @@ export function formatMonthLabel(year: number, month: number) {
 export const STATUS_COLORS: Record<string, string> = {
   pending: "bg-amber-300 text-amber-950",
   confirmed: "bg-emerald-400 text-emerald-950",
-  cancelled: "bg-warm-200 text-warm-500 line-through",
+  cancelled: "bg-stone-200 text-stone-500 line-through",
   completed: "bg-sky-300 text-sky-950",
   blocked: "bg-red-200 text-red-700",
 };

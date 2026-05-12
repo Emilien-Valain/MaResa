@@ -181,6 +181,32 @@
 }
 .admin-fade-in { animation: admin-fade-in 0.22s ease forwards; }
 
+/* Shared admin field styling — driven by CSS only (no inline event handlers
+   so React 19 hydration can't race with Playwright's fill() calls). */
+[data-admin] .admin-field {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid var(--admin-border);
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: var(--admin-text);
+  background: var(--admin-surface);
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+[data-admin] .admin-field:focus {
+  border-color: var(--admin-primary);
+}
+[data-admin] .admin-field--textarea {
+  padding: 10px 12px;
+  resize: vertical;
+  min-height: 80px;
+}
+[data-admin] .admin-field--select {
+  cursor: pointer;
+}
+
 /* ── Animations d'entrée stagées ──────────────────────────────────── */
 
 @keyframes fade-up {

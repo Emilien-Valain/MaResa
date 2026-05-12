@@ -2,13 +2,24 @@
 
 import { useState } from "react";
 import { createBookingRule, deleteBookingRule } from "@/lib/actions/rules";
+import {
+  AdminInput,
+  AdminSelect,
+  Field,
+  SettingsSection,
+} from "@/components/admin/ui";
 import type { BookingRuleRow } from "./RulesPageClient";
 
 const DAY_NAMES = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
-const DAY_NAMES_FR = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
-
-const inputClass =
-  "w-full px-3 py-2 border border-warm-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-amber-accent/40 focus:border-amber-accent";
+const DAY_NAMES_FR = [
+  "dimanche",
+  "lundi",
+  "mardi",
+  "mercredi",
+  "jeudi",
+  "vendredi",
+  "samedi",
+];
 
 interface Props {
   rooms: { id: string; name: string }[];
@@ -31,24 +42,28 @@ export default function BookingRuleSection({ rooms, rules }: Props) {
   };
 
   return (
-    <div className="bg-white border border-warm-300 rounded-sm shadow-sm">
-      <div className="px-6 py-4 border-b border-warm-200 flex items-center justify-between">
-        <div>
-          <h2 className="font-heading text-lg font-semibold text-warm-950">
-            Règles de séjour
-          </h2>
-          <p className="text-xs text-warm-500 mt-0.5">
-            Durée min/max, jours d&apos;arrivée et de départ autorisés
-          </p>
-        </div>
+    <SettingsSection
+      title="Règles de séjour"
+      desc="Durée min/max, jours d'arrivée et de départ autorisés."
+      action={
         <button
+          type="button"
           onClick={() => setShowForm(!showForm)}
-          className="px-3 py-1.5 rounded-sm text-sm font-medium bg-warm-900 text-warm-50 hover:bg-warm-800 transition-colors"
+          style={{
+            padding: "7px 14px",
+            background: showForm ? "transparent" : "var(--admin-primary)",
+            color: showForm ? "var(--admin-text-muted)" : "#fff",
+            border: showForm ? "1px solid var(--admin-border)" : "none",
+            borderRadius: 7,
+            fontSize: 12.5,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
         >
           {showForm ? "Annuler" : "Ajouter"}
         </button>
-      </div>
-
+      }
+    >
       {showForm && (
         <form
           action={async (formData) => {
@@ -63,147 +78,173 @@ export default function BookingRuleSection({ rooms, rules }: Props) {
             setCheckInDays([]);
             setCheckOutDays([]);
           }}
-          className="px-6 py-4 border-b border-warm-200 space-y-4"
+          className="mb-5"
+          style={{
+            padding: 14,
+            background: "var(--admin-surface-2)",
+            borderRadius: 10,
+            border: "1px dashed var(--admin-border)",
+          }}
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-warm-800 mb-1">
-                Chambre
-              </label>
-              <select name="roomId" className={inputClass}>
-                <option value="">Toutes les chambres (global)</option>
-                {rooms.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-warm-800 mb-1">
-                Saison — début (optionnel)
-              </label>
-              <input type="date" name="validFrom" className={inputClass} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-warm-800 mb-1">
-                Saison — fin (optionnel)
-              </label>
-              <input type="date" name="validTo" className={inputClass} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-warm-800 mb-1">
-                Nuits minimum
-              </label>
-              <input
-                type="number"
-                name="minStay"
-                min="1"
-                placeholder="ex: 2"
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-warm-800 mb-1">
-                Nuits maximum
-              </label>
-              <input
-                type="number"
-                name="maxStay"
-                min="1"
-                placeholder="ex: 14"
-                className={inputClass}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-warm-800 mb-2">
-              Jours d&apos;arrivée autorisés
-            </label>
-            <div className="flex gap-2">
-              {DAY_NAMES.map((name, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => toggleDay(checkInDays, setCheckInDays, i)}
-                  className={`w-10 h-10 rounded-sm text-xs font-medium transition-colors ${
-                    checkInDays.includes(i)
-                      ? "bg-emerald-500 text-white"
-                      : "bg-warm-100 text-warm-600 hover:bg-warm-200"
-                  }`}
-                >
-                  {name}
-                </button>
+          <Field label="Chambre">
+            <AdminSelect name="roomId">
+              <option value="">Toutes les chambres (global)</option>
+              {rooms.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
               ))}
-            </div>
-            <p className="text-xs text-warm-400 mt-1">
-              Aucun sélectionné = tous les jours autorisés
-            </p>
+            </AdminSelect>
+          </Field>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Saison — début (optionnel)">
+              <AdminInput type="date" name="validFrom" />
+            </Field>
+            <Field label="Saison — fin (optionnel)">
+              <AdminInput type="date" name="validTo" />
+            </Field>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-warm-800 mb-2">
-              Jours de départ autorisés
-            </label>
-            <div className="flex gap-2">
-              {DAY_NAMES.map((name, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => toggleDay(checkOutDays, setCheckOutDays, i)}
-                  className={`w-10 h-10 rounded-sm text-xs font-medium transition-colors ${
-                    checkOutDays.includes(i)
-                      ? "bg-sky-500 text-white"
-                      : "bg-warm-100 text-warm-600 hover:bg-warm-200"
-                  }`}
-                >
-                  {name}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-warm-400 mt-1">
-              Aucun sélectionné = tous les jours autorisés
-            </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Nuits minimum">
+              <AdminInput type="number" name="minStay" min="1" placeholder="ex: 2" />
+            </Field>
+            <Field label="Nuits maximum">
+              <AdminInput type="number" name="maxStay" min="1" placeholder="ex: 14" />
+            </Field>
           </div>
 
-          <button
-            type="submit"
-            className="px-4 py-2 rounded-sm text-sm font-medium bg-warm-900 text-warm-50 hover:bg-warm-800 transition-colors"
+          <Field
+            label="Jours d'arrivée autorisés"
+            hint="Aucun sélectionné = tous les jours autorisés"
           >
-            Créer la règle
-          </button>
+            <div className="flex gap-2">
+              {DAY_NAMES.map((name, i) => {
+                const active = checkInDays.includes(i);
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => toggleDay(checkInDays, setCheckInDays, i)}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 8,
+                      background: active
+                        ? "var(--admin-primary)"
+                        : "var(--admin-surface)",
+                      border: `1px solid ${active ? "var(--admin-primary)" : "var(--admin-border)"}`,
+                      color: active ? "#fff" : "var(--admin-text-muted)",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {name}
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
+
+          <Field
+            label="Jours de départ autorisés"
+            hint="Aucun sélectionné = tous les jours autorisés"
+          >
+            <div className="flex gap-2">
+              {DAY_NAMES.map((name, i) => {
+                const active = checkOutDays.includes(i);
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => toggleDay(checkOutDays, setCheckOutDays, i)}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 8,
+                      background: active
+                        ? "var(--admin-accent)"
+                        : "var(--admin-surface)",
+                      border: `1px solid ${active ? "var(--admin-accent)" : "var(--admin-border)"}`,
+                      color: active ? "#fff" : "var(--admin-text-muted)",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {name}
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
+
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              style={{
+                padding: "9px 18px",
+                background: "var(--admin-primary)",
+                color: "#fff",
+                border: "none",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Créer la règle
+            </button>
+          </div>
         </form>
       )}
 
-      {/* Liste */}
       {rules.length === 0 ? (
-        <p className="px-6 py-8 text-sm text-warm-400 text-center">
+        <p
+          className="text-center py-6 text-[13px]"
+          style={{ color: "var(--admin-text-muted)" }}
+        >
           Aucune règle configurée
         </p>
       ) : (
-        <div className="divide-y divide-warm-100">
-          {rules.map((rule) => (
+        <div>
+          {rules.map((rule, i) => (
             <div
               key={rule.id}
-              className="px-6 py-3 flex items-center justify-between"
+              className="flex items-center justify-between py-3"
+              style={{
+                borderBottom:
+                  i < rules.length - 1
+                    ? "1px solid var(--admin-border-light)"
+                    : "none",
+              }}
             >
               <div className="min-w-0">
-                <p className="text-sm font-medium text-warm-900">
+                <p
+                  className="text-[13.5px] font-semibold"
+                  style={{ color: "var(--admin-text)" }}
+                >
                   {rule.roomName ?? "Global (toutes les chambres)"}
                   {rule.validFrom && (
-                    <span className="ml-2 text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-sm">
+                    <span
+                      className="ml-2 text-[11px] font-bold"
+                      style={{
+                        padding: "2px 8px",
+                        borderRadius: 12,
+                        background: "var(--admin-primary-light)",
+                        color: "var(--admin-primary)",
+                      }}
+                    >
                       Saisonnier
                     </span>
                   )}
                 </p>
-                <p className="text-xs text-warm-500 space-x-2">
+                <p
+                  className="text-[11.5px] space-x-2"
+                  style={{ color: "var(--admin-text-muted)" }}
+                >
                   {rule.minStay && <span>Min {rule.minStay} nuit(s)</span>}
                   {rule.maxStay && <span>Max {rule.maxStay} nuit(s)</span>}
                   {Array.isArray(rule.allowedCheckInDays) && (
@@ -233,11 +274,18 @@ export default function BookingRuleSection({ rooms, rules }: Props) {
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => {
                   if (confirm("Supprimer cette règle ?"))
                     deleteBookingRule(rule.id);
                 }}
-                className="text-xs text-red-600 hover:text-red-800 font-medium"
+                className="text-[12px] font-semibold"
+                style={{
+                  color: "#DC2626",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                }}
               >
                 Supprimer
               </button>
@@ -245,6 +293,6 @@ export default function BookingRuleSection({ rooms, rules }: Props) {
           ))}
         </div>
       )}
-    </div>
+    </SettingsSection>
   );
 }

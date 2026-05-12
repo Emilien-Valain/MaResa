@@ -2,12 +2,16 @@
 
 import { useState } from "react";
 import { createManualBlock, deleteManualBlock } from "@/lib/actions/rules";
+import {
+  AdminInput,
+  AdminSelect,
+  Field,
+  SettingsSection,
+} from "@/components/admin/ui";
+import { Icon } from "@/components/admin/icons";
 import type { ManualBlockRow } from "./RulesPageClient";
 
 const DAY_NAMES = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
-
-const inputClass =
-  "w-full px-3 py-2 border border-warm-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-amber-accent/40 focus:border-amber-accent";
 
 interface Props {
   rooms: { id: string; name: string }[];
@@ -26,24 +30,28 @@ export default function ManualBlockSection({ rooms, blocks }: Props) {
   };
 
   return (
-    <div className="bg-white border border-warm-300 rounded-sm shadow-sm">
-      <div className="px-6 py-4 border-b border-warm-200 flex items-center justify-between">
-        <div>
-          <h2 className="font-heading text-lg font-semibold text-warm-950">
-            Blocages manuels
-          </h2>
-          <p className="text-xs text-warm-500 mt-0.5">
-            Bloquer des dates pour empêcher les réservations
-          </p>
-        </div>
+    <SettingsSection
+      title="Blocages manuels"
+      desc="Bloque une chambre sur une période hors réservation (maintenance, congés…). Apparaît en barré sur le calendrier."
+      action={
         <button
+          type="button"
           onClick={() => setShowForm(!showForm)}
-          className="px-3 py-1.5 rounded-sm text-sm font-medium bg-warm-900 text-warm-50 hover:bg-warm-800 transition-colors"
+          style={{
+            padding: "7px 14px",
+            background: showForm ? "transparent" : "var(--admin-primary)",
+            color: showForm ? "var(--admin-text-muted)" : "#fff",
+            border: showForm ? "1px solid var(--admin-border)" : "none",
+            borderRadius: 7,
+            fontSize: 12.5,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
         >
           {showForm ? "Annuler" : "Ajouter"}
         </button>
-      </div>
-
+      }
+    >
       {showForm && (
         <form
           action={async (formData) => {
@@ -55,114 +63,164 @@ export default function ManualBlockSection({ rooms, blocks }: Props) {
             setIsRecurring(false);
             setSelectedDays([]);
           }}
-          className="px-6 py-4 border-b border-warm-200 space-y-4"
+          className="mb-5"
+          style={{
+            padding: 14,
+            background: "var(--admin-surface-2)",
+            borderRadius: 10,
+            border: "1px dashed var(--admin-border)",
+          }}
         >
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-warm-800 mb-1">
-                Chambre
-              </label>
-              <select name="roomId" className={inputClass}>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Field label="Chambre">
+              <AdminSelect name="roomId">
                 <option value="">Toutes les chambres</option>
                 {rooms.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.name}
                   </option>
                 ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-warm-800 mb-1">
-                Date début
-              </label>
-              <input type="date" name="startDate" required className={inputClass} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-warm-800 mb-1">
-                Date fin
-              </label>
-              <input type="date" name="endDate" required className={inputClass} />
-            </div>
+              </AdminSelect>
+            </Field>
+            <Field label="Date début">
+              <AdminInput type="date" name="startDate" required />
+            </Field>
+            <Field label="Date fin">
+              <AdminInput type="date" name="endDate" required />
+            </Field>
           </div>
 
-          <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 mb-3">
             <input
               type="checkbox"
               id="recurring"
               name="recurring"
               checked={isRecurring}
               onChange={(e) => setIsRecurring(e.target.checked)}
-              className="rounded-sm border-warm-300"
+              style={{ accentColor: "var(--admin-primary)" }}
             />
-            <label htmlFor="recurring" className="text-sm text-warm-700">
+            <span
+              className="text-[13px]"
+              style={{ color: "var(--admin-text)" }}
+            >
               Récurrent (chaque semaine)
-            </label>
-          </div>
+            </span>
+          </label>
 
           {isRecurring && (
-            <div className="space-y-3">
+            <>
               <input type="hidden" name="recurrenceType" value="weekly" />
-              <div>
-                <label className="block text-sm font-medium text-warm-800 mb-2">
-                  Jours bloqués
-                </label>
+              <Field label="Jours bloqués">
                 <div className="flex gap-2">
-                  {DAY_NAMES.map((name, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => toggleDay(i)}
-                      className={`w-10 h-10 rounded-sm text-xs font-medium transition-colors ${
-                        selectedDays.includes(i)
-                          ? "bg-red-500 text-white"
-                          : "bg-warm-100 text-warm-600 hover:bg-warm-200"
-                      }`}
-                    >
-                      {name}
-                    </button>
-                  ))}
+                  {DAY_NAMES.map((name, i) => {
+                    const active = selectedDays.includes(i);
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => toggleDay(i)}
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 8,
+                          background: active ? "#DC2626" : "var(--admin-surface)",
+                          border: `1px solid ${active ? "#DC2626" : "var(--admin-border)"}`,
+                          color: active ? "#fff" : "var(--admin-text-muted)",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        {name}
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
+              </Field>
               <div className="max-w-xs">
-                <label className="block text-sm font-medium text-warm-800 mb-1">
-                  Fin de récurrence (optionnel)
-                </label>
-                <input type="date" name="recurrenceUntil" className={inputClass} />
+                <Field label="Fin de récurrence (optionnel)">
+                  <AdminInput type="date" name="recurrenceUntil" />
+                </Field>
               </div>
-            </div>
+            </>
           )}
 
-          <button
-            type="submit"
-            className="px-4 py-2 rounded-sm text-sm font-medium bg-warm-900 text-warm-50 hover:bg-warm-800 transition-colors"
-          >
-            Créer le blocage
-          </button>
+          <div className="flex justify-end mt-2">
+            <button
+              type="submit"
+              style={{
+                padding: "9px 18px",
+                background: "var(--admin-primary)",
+                color: "#fff",
+                border: "none",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Créer le blocage
+            </button>
+          </div>
         </form>
       )}
 
-      {/* Liste */}
       {blocks.length === 0 ? (
-        <p className="px-6 py-8 text-sm text-warm-400 text-center">
+        <p
+          className="text-center py-6 text-[13px]"
+          style={{ color: "var(--admin-text-muted)" }}
+        >
           Aucun blocage configuré
         </p>
       ) : (
-        <div className="divide-y divide-warm-100">
-          {blocks.map((block) => (
+        <div>
+          {blocks.map((block, i) => (
             <div
               key={block.id}
-              className="px-6 py-3 flex items-center justify-between"
+              className="flex items-center gap-3 py-3"
+              style={{
+                borderBottom:
+                  i < blocks.length - 1
+                    ? "1px solid var(--admin-border-light)"
+                    : "none",
+              }}
             >
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-warm-900">
+              <div
+                className="flex items-center justify-center flex-shrink-0"
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  background: "#FEE2E2",
+                }}
+              >
+                <Icon.X size={16} style={{ color: "#DC2626" }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p
+                  className="text-[13.5px] font-semibold"
+                  style={{ color: "var(--admin-text)" }}
+                >
                   {block.roomName ?? "Toutes les chambres"}
                   {block.recurring && (
-                    <span className="ml-2 text-xs px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-sm">
+                    <span
+                      className="ml-2 text-[11px] font-bold"
+                      style={{
+                        padding: "2px 8px",
+                        borderRadius: 12,
+                        background: "#FEF3C7",
+                        color: "#92400E",
+                      }}
+                    >
                       Récurrent
                     </span>
                   )}
                 </p>
-                <p className="text-xs text-warm-500">
+                <p
+                  className="text-[11.5px]"
+                  style={{ color: "var(--admin-text-muted)" }}
+                >
                   {block.recurring
                     ? `Chaque ${((block.recurrenceDays as number[]) ?? [])
                         .map((d) => DAY_NAMES[d])
@@ -175,10 +233,18 @@ export default function ManualBlockSection({ rooms, blocks }: Props) {
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => {
-                  if (confirm("Supprimer ce blocage ?")) deleteManualBlock(block.id);
+                  if (confirm("Supprimer ce blocage ?"))
+                    deleteManualBlock(block.id);
                 }}
-                className="text-xs text-red-600 hover:text-red-800 font-medium"
+                className="text-[12px] font-semibold"
+                style={{
+                  color: "#DC2626",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                }}
               >
                 Supprimer
               </button>
@@ -186,6 +252,6 @@ export default function ManualBlockSection({ rooms, blocks }: Props) {
           ))}
         </div>
       )}
-    </div>
+    </SettingsSection>
   );
 }

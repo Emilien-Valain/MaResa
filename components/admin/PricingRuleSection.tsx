@@ -6,13 +6,24 @@ import {
   deletePricingRule,
   togglePricingRule,
 } from "@/lib/actions/rules";
+import {
+  AdminInput,
+  AdminSelect,
+  Field,
+  SettingsSection,
+} from "@/components/admin/ui";
 import type { PricingRuleRow } from "./RulesPageClient";
 
 const DAY_NAMES = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
-const DAY_NAMES_FR = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
-
-const inputClass =
-  "w-full px-3 py-2 border border-warm-300 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-amber-accent/40 focus:border-amber-accent";
+const DAY_NAMES_FR = [
+  "dimanche",
+  "lundi",
+  "mardi",
+  "mercredi",
+  "jeudi",
+  "vendredi",
+  "samedi",
+];
 
 interface Props {
   rooms: { id: string; name: string }[];
@@ -31,24 +42,28 @@ export default function PricingRuleSection({ rooms, rules }: Props) {
   };
 
   return (
-    <div className="bg-white border border-warm-300 rounded-sm shadow-sm">
-      <div className="px-6 py-4 border-b border-warm-200 flex items-center justify-between">
-        <div>
-          <h2 className="font-heading text-lg font-semibold text-warm-950">
-            Tarification dynamique
-          </h2>
-          <p className="text-xs text-warm-500 mt-0.5">
-            Prix saisonniers, majorations week-end, promotions
-          </p>
-        </div>
+    <SettingsSection
+      title="Tarification dynamique"
+      desc="Prix saisonniers, majorations week-end, promotions. Les règles à plus haute priorité gagnent en cas de conflit."
+      action={
         <button
+          type="button"
           onClick={() => setShowForm(!showForm)}
-          className="px-3 py-1.5 rounded-sm text-sm font-medium bg-warm-900 text-warm-50 hover:bg-warm-800 transition-colors"
+          style={{
+            padding: "7px 14px",
+            background: showForm ? "transparent" : "var(--admin-primary)",
+            color: showForm ? "var(--admin-text-muted)" : "#fff",
+            border: showForm ? "1px solid var(--admin-border)" : "none",
+            borderRadius: 7,
+            fontSize: 12.5,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
         >
           {showForm ? "Annuler" : "Ajouter"}
         </button>
-      </div>
-
+      }
+    >
       {showForm && (
         <form
           action={async (formData) => {
@@ -60,214 +75,280 @@ export default function PricingRuleSection({ rooms, rules }: Props) {
             setSelectedDays([]);
             setPriceType("fixed");
           }}
-          className="px-6 py-4 border-b border-warm-200 space-y-4"
+          className="mb-5"
+          style={{
+            padding: 14,
+            background: "var(--admin-surface-2)",
+            borderRadius: 10,
+            border: "1px dashed var(--admin-border)",
+          }}
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-warm-800 mb-1">
-                Nom de la règle
-              </label>
-              <input
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Nom de la règle">
+              <AdminInput
                 type="text"
                 name="name"
                 required
                 placeholder="ex: Haute saison"
-                className={inputClass}
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-warm-800 mb-1">
-                Chambre
-              </label>
-              <select name="roomId" className={inputClass}>
+            </Field>
+            <Field label="Chambre">
+              <AdminSelect name="roomId">
                 <option value="">Toutes les chambres (global)</option>
                 {rooms.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.name}
                   </option>
                 ))}
-              </select>
-            </div>
+              </AdminSelect>
+            </Field>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-warm-800 mb-1">
-                Période — début (optionnel)
-              </label>
-              <input type="date" name="validFrom" className={inputClass} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-warm-800 mb-1">
-                Période — fin (optionnel)
-              </label>
-              <input type="date" name="validTo" className={inputClass} />
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Période — début (optionnel)">
+              <AdminInput type="date" name="validFrom" />
+            </Field>
+            <Field label="Période — fin (optionnel)">
+              <AdminInput type="date" name="validTo" />
+            </Field>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-warm-800 mb-2">
-              Jours de la semaine (optionnel)
-            </label>
+          <Field
+            label="Jours de la semaine (optionnel)"
+            hint="Aucun sélectionné = tous les jours"
+          >
             <div className="flex gap-2">
-              {DAY_NAMES.map((name, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => toggleDay(i)}
-                  className={`w-10 h-10 rounded-sm text-xs font-medium transition-colors ${
-                    selectedDays.includes(i)
-                      ? "bg-amber-500 text-white"
-                      : "bg-warm-100 text-warm-600 hover:bg-warm-200"
-                  }`}
-                >
-                  {name}
-                </button>
-              ))}
+              {DAY_NAMES.map((name, i) => {
+                const active = selectedDays.includes(i);
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => toggleDay(i)}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 8,
+                      background: active
+                        ? "var(--admin-accent)"
+                        : "var(--admin-surface)",
+                      border: `1px solid ${active ? "var(--admin-accent)" : "var(--admin-border)"}`,
+                      color: active ? "#fff" : "var(--admin-text-muted)",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {name}
+                  </button>
+                );
+              })}
             </div>
-            <p className="text-xs text-warm-400 mt-1">
-              Aucun sélectionné = tous les jours
-            </p>
-          </div>
+          </Field>
 
-          <div>
-            <label className="block text-sm font-medium text-warm-800 mb-2">
-              Type de tarification
-            </label>
+          <Field label="Type de tarification">
             <div className="flex gap-4">
-              <label className="flex items-center gap-2 text-sm text-warm-700">
+              <label
+                className="flex items-center gap-2 text-[13px]"
+                style={{ color: "var(--admin-text)" }}
+              >
                 <input
                   type="radio"
                   checked={priceType === "fixed"}
                   onChange={() => setPriceType("fixed")}
-                  className="border-warm-300"
+                  style={{ accentColor: "var(--admin-primary)" }}
                 />
                 Prix fixe (€/nuit)
               </label>
-              <label className="flex items-center gap-2 text-sm text-warm-700">
+              <label
+                className="flex items-center gap-2 text-[13px]"
+                style={{ color: "var(--admin-text)" }}
+              >
                 <input
                   type="radio"
                   checked={priceType === "percentage"}
                   onChange={() => setPriceType("percentage")}
-                  className="border-warm-300"
+                  style={{ accentColor: "var(--admin-primary)" }}
                 />
                 Modificateur (%)
               </label>
             </div>
-          </div>
+          </Field>
 
           {priceType === "fixed" ? (
             <div className="max-w-xs">
-              <label className="block text-sm font-medium text-warm-800 mb-1">
-                Prix fixe (€/nuit)
-              </label>
-              <input
-                type="text"
-                name="fixedPrice"
-                placeholder="ex: 150"
-                className={inputClass}
-              />
+              <Field label="Prix fixe (€/nuit)">
+                <AdminInput
+                  type="text"
+                  name="fixedPrice"
+                  placeholder="ex: 150"
+                />
+              </Field>
             </div>
           ) : (
             <div className="max-w-xs">
-              <label className="block text-sm font-medium text-warm-800 mb-1">
-                Modificateur (%)
-              </label>
-              <input
-                type="text"
-                name="percentageModifier"
-                placeholder="ex: 30 ou -15"
-                className={inputClass}
-              />
-              <p className="text-xs text-warm-400 mt-1">
-                Positif = majoration, négatif = promotion
-              </p>
+              <Field
+                label="Modificateur (%)"
+                hint="Positif = majoration, négatif = promotion"
+              >
+                <AdminInput
+                  type="text"
+                  name="percentageModifier"
+                  placeholder="ex: 30 ou -15"
+                />
+              </Field>
             </div>
           )}
 
-          <button
-            type="submit"
-            className="px-4 py-2 rounded-sm text-sm font-medium bg-warm-900 text-warm-50 hover:bg-warm-800 transition-colors"
-          >
-            Créer la règle
-          </button>
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              style={{
+                padding: "9px 18px",
+                background: "var(--admin-primary)",
+                color: "#fff",
+                border: "none",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Créer la règle
+            </button>
+          </div>
         </form>
       )}
 
-      {/* Liste */}
       {rules.length === 0 ? (
-        <p className="px-6 py-8 text-sm text-warm-400 text-center">
+        <p
+          className="text-center py-6 text-[13px]"
+          style={{ color: "var(--admin-text-muted)" }}
+        >
           Aucune règle tarifaire configurée
         </p>
       ) : (
-        <div className="divide-y divide-warm-100">
-          {rules.map((rule) => (
-            <div
-              key={rule.id}
-              className="px-6 py-3 flex items-center justify-between"
-            >
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-warm-900">
-                  <span className={rule.active ? "" : "line-through text-warm-400"}>
-                    {rule.name}
-                  </span>
-                  {!rule.active && (
-                    <span className="ml-2 text-xs px-1.5 py-0.5 bg-warm-200 text-warm-500 rounded-sm">
-                      Désactivée
+        <div>
+          {rules.map((rule, i) => {
+            const isAdjPositive = rule.percentageModifier
+              ? parseFloat(rule.percentageModifier) > 0
+              : true;
+            return (
+              <div
+                key={rule.id}
+                className="flex items-center justify-between py-3"
+                style={{
+                  borderBottom:
+                    i < rules.length - 1
+                      ? "1px solid var(--admin-border-light)"
+                      : "none",
+                }}
+              >
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="text-[13.5px] font-semibold"
+                    style={{ color: "var(--admin-text)" }}
+                  >
+                    <span
+                      style={{
+                        textDecoration: rule.active ? "none" : "line-through",
+                        color: rule.active
+                          ? "var(--admin-text)"
+                          : "var(--admin-text-subtle)",
+                      }}
+                    >
+                      {rule.name}
                     </span>
-                  )}
-                  <span className="ml-2 text-xs text-warm-500">
-                    {rule.roomName ?? "Global"}
-                  </span>
-                </p>
-                <p className="text-xs text-warm-500 space-x-2">
-                  {rule.fixedPrice && <span>{parseFloat(rule.fixedPrice).toFixed(0)} €/nuit</span>}
-                  {rule.percentageModifier && (
-                    <span>
-                      {parseFloat(rule.percentageModifier) > 0 ? "+" : ""}
-                      {parseFloat(rule.percentageModifier).toFixed(0)}%
+                    {!rule.active && (
+                      <span
+                        className="ml-2 text-[11px] font-bold"
+                        style={{
+                          padding: "2px 8px",
+                          borderRadius: 12,
+                          background: "var(--admin-border-light)",
+                          color: "var(--admin-text-muted)",
+                        }}
+                      >
+                        Désactivée
+                      </span>
+                    )}
+                    <span
+                      className="ml-2 text-[11.5px]"
+                      style={{ color: "var(--admin-text-muted)" }}
+                    >
+                      {rule.roomName ?? "Global"}
                     </span>
-                  )}
-                  {Array.isArray(rule.daysOfWeek) && (
-                    <span>
-                      {(rule.daysOfWeek as number[]).map((d) => DAY_NAMES_FR[d]).join(", ")}
-                    </span>
-                  )}
-                  {rule.validFrom && (
-                    <span>
-                      {new Date(rule.validFrom).toLocaleDateString("fr-FR")} →{" "}
-                      {rule.validTo
-                        ? new Date(rule.validTo).toLocaleDateString("fr-FR")
-                        : "…"}
-                    </span>
-                  )}
-                </p>
+                  </p>
+                  <p
+                    className="text-[11.5px] space-x-2"
+                    style={{ color: "var(--admin-text-muted)" }}
+                  >
+                    {rule.fixedPrice && (
+                      <span>
+                        {parseFloat(rule.fixedPrice).toFixed(0)} €/nuit
+                      </span>
+                    )}
+                    {rule.percentageModifier && (
+                      <span style={{ color: isAdjPositive ? "#16A34A" : "#DC2626" }}>
+                        {isAdjPositive ? "+" : ""}
+                        {parseFloat(rule.percentageModifier).toFixed(0)}%
+                      </span>
+                    )}
+                    {Array.isArray(rule.daysOfWeek) && (
+                      <span>
+                        {(rule.daysOfWeek as number[])
+                          .map((d) => DAY_NAMES_FR[d])
+                          .join(", ")}
+                      </span>
+                    )}
+                    {rule.validFrom && (
+                      <span>
+                        {new Date(rule.validFrom).toLocaleDateString("fr-FR")} →{" "}
+                        {rule.validTo
+                          ? new Date(rule.validTo).toLocaleDateString("fr-FR")
+                          : "…"}
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => togglePricingRule(rule.id)}
+                    className="text-[12px] font-semibold"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: rule.active
+                        ? "var(--admin-text-muted)"
+                        : "#16A34A",
+                    }}
+                  >
+                    {rule.active ? "Désactiver" : "Activer"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm("Supprimer cette règle ?"))
+                        deletePricingRule(rule.id);
+                    }}
+                    className="text-[12px] font-semibold"
+                    style={{
+                      color: "#DC2626",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Supprimer
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => togglePricingRule(rule.id)}
-                  className={`text-xs font-medium ${
-                    rule.active
-                      ? "text-warm-500 hover:text-warm-700"
-                      : "text-emerald-600 hover:text-emerald-800"
-                  }`}
-                >
-                  {rule.active ? "Désactiver" : "Activer"}
-                </button>
-                <button
-                  onClick={() => {
-                    if (confirm("Supprimer cette règle ?"))
-                      deletePricingRule(rule.id);
-                  }}
-                  className="text-xs text-red-600 hover:text-red-800 font-medium"
-                >
-                  Supprimer
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
-    </div>
+    </SettingsSection>
   );
 }

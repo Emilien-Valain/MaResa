@@ -19,7 +19,7 @@ const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/admin/reservations", label: "Réservations", icon: "Reservations" },
   { href: "/admin/calendrier", label: "Calendrier", icon: "Calendar" },
   { href: "/admin/chambres", label: "Chambres", icon: "Rooms" },
-  { href: "/admin/regles", label: "Règles résa", icon: "Rules" },
+  { href: "/admin/regles", label: "Règles", icon: "Rules" },
   { href: "/admin/parametres", label: "Paramètres", icon: "Settings" },
 ];
 

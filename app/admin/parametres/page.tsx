@@ -1,12 +1,10 @@
+import { Suspense } from "react";
 import { eq, asc } from "drizzle-orm";
 import { headers } from "next/headers";
 import { requireSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { tenants, rooms, icalSources } from "@/db/schema";
-import StripeConnectSection from "@/components/admin/StripeConnectSection";
-import IcalSourcesSection from "@/components/admin/IcalSourcesSection";
-import LocationSection from "@/components/admin/LocationSection";
-import EmailSettingsSection from "@/components/admin/EmailSettingsSection";
+import SettingsPageClient from "@/components/admin/SettingsPageClient";
 import type { TenantConfig } from "@/lib/tenant-context";
 
 export default async function ParametresPage() {
@@ -21,6 +19,8 @@ export default async function ParametresPage() {
     .select({
       id: tenants.id,
       name: tenants.name,
+      slug: tenants.slug,
+      domain: tenants.domain,
       stripeAccountId: tenants.stripeAccountId,
       config: tenants.config,
     })
@@ -30,14 +30,12 @@ export default async function ParametresPage() {
 
   const config = (tenant.config ?? {}) as TenantConfig;
 
-  // Charger les chambres actives (pour le formulaire d'ajout iCal)
   const tenantRooms = await db
     .select({ id: rooms.id, name: rooms.name })
     .from(rooms)
     .where(eq(rooms.tenantId, tenantId))
     .orderBy(asc(rooms.name));
 
-  // Charger les sources iCal existantes avec le nom de la chambre
   const sources = await db
     .select({
       id: icalSources.id,
@@ -54,40 +52,18 @@ export default async function ParametresPage() {
     .orderBy(asc(rooms.name), asc(icalSources.name));
 
   return (
-    <div className="space-y-10">
-      <div>
-        <h1
-          className="text-[24px] font-extrabold tracking-[-0.6px]"
-          style={{ color: "var(--admin-text)" }}
-        >
-          Paramètres
-        </h1>
-        <p
-          className="text-[14px] mt-1"
-          style={{ color: "var(--admin-text-muted)" }}
-        >
-          {tenant.name}
-        </p>
-      </div>
-
-      <EmailSettingsSection
-        confirmationMessage={config.confirmationMessage}
-        postStayMessage={config.postStayMessage}
-        reviewUrl={config.reviewUrl}
-      />
-
-      <LocationSection
-        googleMapsUrl={config.googleMapsUrl}
-        latitude={config.latitude}
-        longitude={config.longitude}
-      />
-
-      <StripeConnectSection hasAccount={!!tenant.stripeAccountId} />
-
-      <IcalSourcesSection
+    <Suspense fallback={null}>
+      <SettingsPageClient
+        tenant={{
+          id: tenant.id,
+          name: tenant.name,
+          slug: tenant.slug,
+          domain: tenant.domain,
+        }}
+        config={config}
         baseUrl={baseUrl}
         rooms={tenantRooms}
-        sources={sources.map((s) => ({
+        icalSources={sources.map((s) => ({
           id: s.id,
           name: s.name,
           url: s.url,
@@ -96,7 +72,8 @@ export default async function ParametresPage() {
           roomName: s.roomName,
           lastSyncAt: s.lastSyncAt?.toISOString() ?? null,
         }))}
+        hasStripeAccount={!!tenant.stripeAccountId}
       />
-    </div>
+    </Suspense>
   );
 }

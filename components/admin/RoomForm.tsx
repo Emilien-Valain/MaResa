@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminInput, AdminTextarea, Field } from "@/components/admin/ui";
 
 type DefaultValues = {
   name?: string;
@@ -15,92 +16,99 @@ export default function RoomForm({
   action: (formData: FormData) => Promise<void>;
   defaultValues?: DefaultValues;
 }) {
-  const inputClass =
-    "w-full border border-warm-300 rounded-sm px-3 py-2.5 text-sm text-warm-900 bg-white focus:outline-none focus:ring-2 focus:ring-amber-accent/40 focus:border-amber-accent transition-colors";
-
   return (
-    <form action={action} className="space-y-4 bg-white p-6 rounded-sm border border-warm-300 shadow-sm">
-      <div>
-        <label className="block text-sm font-medium text-warm-800 mb-1.5">
-          Nom <span className="text-red-500">*</span>
-        </label>
-        <input
+    <form
+      action={action}
+      style={{
+        background: "var(--admin-surface)",
+        border: "1px solid var(--admin-border)",
+        borderRadius: "var(--admin-radius)",
+        padding: 24,
+      }}
+    >
+      <Field label="Nom *">
+        <AdminInput
           name="nom"
           type="text"
           required
           defaultValue={defaultValues?.name ?? ""}
-          className={inputClass}
         />
-      </div>
+      </Field>
 
-      <div>
-        <label className="block text-sm font-medium text-warm-800 mb-1.5">
-          Description
-        </label>
-        <textarea
+      <Field label="Description">
+        <AdminTextarea
           name="description"
           rows={3}
           defaultValue={defaultValues?.description ?? ""}
-          className={inputClass}
         />
-      </div>
+      </Field>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-warm-800 mb-1.5">
-            Prix / nuit (€) <span className="text-red-500">*</span>
-          </label>
-          <input
+      <div className="grid grid-cols-2 gap-3.5">
+        <Field label="Prix / nuit (€) *">
+          <AdminInput
             name="prix"
             type="number"
             step="0.01"
             min="0"
             required
             defaultValue={defaultValues?.pricePerNight ?? ""}
-            className={inputClass}
           />
-        </div>
+        </Field>
 
-        <div>
-          <label className="block text-sm font-medium text-warm-800 mb-1.5">
-            Capacité (pers.) <span className="text-red-500">*</span>
-          </label>
-          <input
+        <Field label="Capacité (pers.) *">
+          <AdminInput
             name="capacite"
             type="number"
             min="1"
             required
             defaultValue={defaultValues?.capacity ?? 2}
-            className={inputClass}
           />
-        </div>
+        </Field>
       </div>
 
       {defaultValues !== undefined && (
-        <div className="flex items-center gap-2">
+        <label className="flex items-center gap-2 mb-4">
           <input
             name="actif"
             id="actif"
             type="checkbox"
             defaultChecked={defaultValues.active ?? true}
-            className="rounded border-warm-400"
+            style={{ accentColor: "var(--admin-primary)" }}
           />
-          <label htmlFor="actif" className="text-sm text-warm-800">
+          <span
+            className="text-[13px]"
+            style={{ color: "var(--admin-text)" }}
+          >
             Chambre active (visible sur le site)
-          </label>
-        </div>
+          </span>
+        </label>
       )}
 
       <div className="flex gap-3 pt-2">
         <button
           type="submit"
-          className="bg-warm-900 text-white px-4 py-2.5 rounded-sm text-sm font-medium hover:bg-warm-800 transition-colors"
+          style={{
+            padding: "9px 18px",
+            background: "var(--admin-primary)",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
         >
           Enregistrer
         </button>
         <Link
           href="/admin/chambres"
-          className="px-4 py-2.5 rounded-sm text-sm text-warm-600 hover:text-warm-900 transition-colors"
+          style={{
+            padding: "9px 18px",
+            color: "var(--admin-text-muted)",
+            fontSize: 13,
+            fontWeight: 500,
+            textDecoration: "none",
+          }}
         >
           Annuler
         </Link>

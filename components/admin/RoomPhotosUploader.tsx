@@ -131,11 +131,22 @@ export default function RoomPhotosUploader({
 
   return (
     <div className="space-y-4">
-      <label className="block text-sm font-medium text-warm-800 mb-1.5">
-        Photos <span className="text-warm-500 font-normal">(max 10, 5 Mo chacune)</span>
-      </label>
+      <div
+        className="text-[11.5px] font-bold uppercase mb-1.5"
+        style={{
+          color: "var(--admin-text-muted)",
+          letterSpacing: "0.06em",
+        }}
+      >
+        Photos{" "}
+        <span
+          className="font-medium normal-case tracking-normal"
+          style={{ color: "var(--admin-text-subtle)" }}
+        >
+          (max 10, 5 Mo chacune)
+        </span>
+      </div>
 
-      {/* Grille de photos existantes */}
       {photos.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {photos.map((photo, idx) => (
@@ -145,11 +156,17 @@ export default function RoomPhotosUploader({
               onDragStart={() => handleDragStart(idx)}
               onDragOver={(e) => handleDragOver(e, idx)}
               onDragEnd={handleDragEnd}
-              className={`group relative aspect-[4/3] rounded-sm overflow-hidden border-2 cursor-grab active:cursor-grabbing transition-all ${
-                draggedIdx === idx
-                  ? "border-amber-accent opacity-60 scale-95"
-                  : "border-warm-200 hover:border-warm-400"
-              }`}
+              className="group relative aspect-[4/3] overflow-hidden cursor-grab active:cursor-grabbing transition-all"
+              style={{
+                borderRadius: 10,
+                border: `2px solid ${
+                  draggedIdx === idx
+                    ? "var(--admin-primary)"
+                    : "var(--admin-border)"
+                }`,
+                opacity: draggedIdx === idx ? 0.6 : 1,
+                transform: draggedIdx === idx ? "scale(0.95)" : "none",
+              }}
             >
               <Image
                 src={photo.url}
@@ -159,25 +176,38 @@ export default function RoomPhotosUploader({
                 sizes="(max-width: 640px) 50vw, 200px"
               />
 
-              {/* Badge position */}
               {idx === 0 && (
-                <span className="absolute top-1.5 left-1.5 bg-warm-900/80 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-sm">
+                <span
+                  className="absolute top-1.5 left-1.5 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
+                  style={{ background: "rgba(28, 25, 23, 0.8)" }}
+                >
                   Principale
                 </span>
               )}
 
-              {/* Bouton supprimer */}
               <button
                 type="button"
                 onClick={() => deletePhoto(photo.id)}
-                className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-600/80 hover:bg-red-600 text-white rounded-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                className="absolute top-1.5 right-1.5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 6,
+                  background: "rgba(220, 38, 38, 0.85)",
+                  color: "#fff",
+                  fontSize: 12,
+                  border: "none",
+                  cursor: "pointer",
+                }}
                 title="Supprimer"
               >
                 ✕
               </button>
 
-              {/* Handle visuel */}
-              <div className="absolute bottom-1.5 left-1.5 text-warm-50/70 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">
+              <div
+                className="absolute bottom-1.5 left-1.5 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                style={{ color: "rgba(255,255,255,0.85)" }}
+              >
                 ⠿ Glisser
               </div>
             </div>
@@ -185,7 +215,6 @@ export default function RoomPhotosUploader({
         </div>
       )}
 
-      {/* Zone de drop / bouton d'ajout */}
       {photos.length < 10 && (
         <div
           onDragOver={(e) => {
@@ -195,11 +224,17 @@ export default function RoomPhotosUploader({
           onDragLeave={() => setDragOver(false)}
           onDrop={handleFileDrop}
           onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-sm px-6 py-8 text-center cursor-pointer transition-colors ${
-            dragOver
-              ? "border-amber-accent bg-amber-50"
-              : "border-warm-300 hover:border-warm-400 hover:bg-warm-50"
-          }`}
+          className="text-center cursor-pointer transition-colors"
+          style={{
+            border: `2px dashed ${
+              dragOver ? "var(--admin-primary)" : "var(--admin-border)"
+            }`,
+            borderRadius: 10,
+            padding: "32px 24px",
+            background: dragOver
+              ? "var(--admin-primary-light)"
+              : "var(--admin-surface-2)",
+          }}
         >
           <input
             ref={fileInputRef}
@@ -216,25 +251,41 @@ export default function RoomPhotosUploader({
           />
 
           {uploading ? (
-            <div className="text-sm text-warm-500">
+            <div
+              className="text-[13px]"
+              style={{ color: "var(--admin-text-muted)" }}
+            >
               <span className="inline-block animate-spin mr-2">⏳</span>
               Upload en cours…
             </div>
           ) : (
-            <div>
-              <p className="text-sm text-warm-600 font-medium">
-                Glissez des images ici ou cliquez pour sélectionner
+            <>
+              <p
+                className="text-[13px] font-semibold"
+                style={{ color: "var(--admin-text)" }}
+              >
+                Glisse des images ici ou clique pour sélectionner
               </p>
-              <p className="text-xs text-warm-400 mt-1">
-                JPEG, PNG ou WebP · {10 - photos.length} place{10 - photos.length > 1 ? "s" : ""} restante{10 - photos.length > 1 ? "s" : ""}
+              <p
+                className="text-[11.5px] mt-1"
+                style={{ color: "var(--admin-text-subtle)" }}
+              >
+                JPEG, PNG ou WebP · {10 - photos.length} place
+                {10 - photos.length > 1 ? "s" : ""} restante
+                {10 - photos.length > 1 ? "s" : ""}
               </p>
-            </div>
+            </>
           )}
         </div>
       )}
 
       {error && (
-        <p className="text-sm text-red-600 font-medium">{error}</p>
+        <p
+          className="text-[13px] font-semibold"
+          style={{ color: "#DC2626" }}
+        >
+          {error}
+        </p>
       )}
     </div>
   );

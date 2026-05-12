@@ -26,8 +26,11 @@ Next.js 16 / React 19 / TypeScript / Tailwind v4 / Drizzle ORM / PostgreSQL / Be
 - [x] **Moteur de disponibilite** — reservations + blocages iCal, API temps reel, recherche multi-chambres
 - [x] **Admin chambres** — CRUD complet, activation/desactivation, suppression
 - [x] **Admin reservations** — liste, detail, cycle de statuts, creation manuelle, export PDF, impression
-- [x] **Calendrier** — vue mensuelle avec navigation
-- [x] **Auth** — Better Auth email/password, protection middleware, session par domaine
+- [x] **Calendrier** — timeline horizontale (chambres en lignes, jours en colonnes, séjours en spans cliquables, blocages hachurés), largeur fluide, label & en-tête sticky-left
+- [x] **Admin Paramètres** — 6 onglets (Général / Apparence / Localisation / Emails / iCal / Paiements), deep-linkables via `?tab=`
+- [x] **Admin Règles** — 3 onglets (Règles de réservation / Tarification / Blocages manuels) avec primitives partagées
+- [x] **Design admin unifié** — tokens `--admin-*` (Plus Jakarta Sans + palette Forêt) appliqués sur toutes les pages admin (chambres, réservations, calendrier, dashboard, paramètres, règles). L'ancienne palette `warm-*` / `amber-accent` / `font-heading` est restreinte aux templates publics
+- [x] **Auth** — Better Auth email/password, écrans `/login`, `/forgot-password` et `/reset-password` restylés (carte centrée + flow "email envoyé"), protection middleware, session par domaine
 - [x] **Securite** — isolation tenant, XSS echappe, 404 sur UUID d'un autre tenant
 - [x] **Tests E2E** — 65 tests Playwright (happy path + limites + erreurs + securite)
 - [x] **Infra** — Coolify, Traefik, SSL automatique, script CLI `create-admin`

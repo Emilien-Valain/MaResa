@@ -25,21 +25,21 @@ export default async function ReglesPage() {
     ]);
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="space-y-6 admin-fade-in">
+      <header>
         <h1
-          className="text-[24px] font-extrabold tracking-[-0.6px]"
-          style={{ color: "var(--admin-text)" }}
+          className="text-[22px] font-extrabold"
+          style={{ color: "var(--admin-text)", letterSpacing: "-0.5px" }}
         >
-          Règles de réservation
+          Règles
         </h1>
         <p
-          className="text-[14px] mt-1"
+          className="text-[13.5px] mt-1"
           style={{ color: "var(--admin-text-muted)" }}
         >
-          Blocages, contraintes de séjour et tarification dynamique
+          Contraintes de réservation, prix variables et blocages de calendrier.
         </p>
-      </div>
+      </header>
 
       <RulesPageClient
         rooms={tenantRooms}
