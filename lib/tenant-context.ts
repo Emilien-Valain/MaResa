@@ -33,10 +33,26 @@ export type Tenant = Awaited<ReturnType<typeof requireTenant>>;
 
 export type TemplateName = "classic" | "boutique";
 
+export type HeroPhoto = {
+  id: string;
+  filename: string;
+  url: string;
+};
+
+export type StoryStat = { value: string; label: string };
+
 export type TenantConfig = {
   primaryColor?: string;
   secondaryColor?: string;
   heroTitle?: string;
+  heroSubtitle?: string;
+  heroEyebrow?: string;
+  heroPhoto?: HeroPhoto | null;
+  storyEyebrow?: string;
+  storyTitle?: string;
+  storyText?: string;
+  storyStats?: StoryStat[];
+  footerTagline?: string;
   address?: string;
   phone?: string;
   email?: string;

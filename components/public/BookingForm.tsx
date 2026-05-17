@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { createBookingPublic } from "@/lib/actions/bookings-public";
+import type { TemplateName } from "@/lib/tenant-context";
 
 type Room = {
   id: string;
@@ -32,7 +33,15 @@ interface EffectiveRules {
   allowedCheckOutDays: number[] | null;
 }
 
-const DAY_NAMES_FR = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+const DAY_NAMES_FR = [
+  "dimanche",
+  "lundi",
+  "mardi",
+  "mercredi",
+  "jeudi",
+  "vendredi",
+  "samedi",
+];
 
 function getToday(): string {
   return new Date().toISOString().split("T")[0];
@@ -53,9 +62,11 @@ function addDay(dateStr: string): string {
 export default function BookingForm({
   room,
   tenantId,
+  template = "classic",
 }: {
   room: Room;
   tenantId: string;
+  template?: TemplateName;
 }) {
   const today = getToday();
   const tomorrow = getTomorrow();
@@ -73,7 +84,6 @@ export default function BookingForm({
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Charger les règles au montage
   useEffect(() => {
     const params = new URLSearchParams({ roomId: room.id, tenantId });
     fetch(`/api/rules?${params}`, { cache: "no-store" })
@@ -90,7 +100,6 @@ export default function BookingForm({
 
     const checkInDate = new Date(checkIn + "T00:00:00Z");
     const checkOutDate = new Date(checkOut + "T00:00:00Z");
-
     if (checkOutDate <= checkInDate) {
       setAvailability("idle");
       return;
@@ -100,7 +109,6 @@ export default function BookingForm({
 
     debounceRef.current = setTimeout(async () => {
       setAvailability("checking");
-
       try {
         const params = new URLSearchParams({
           roomId: room.id,
@@ -108,25 +116,24 @@ export default function BookingForm({
           to: checkOut,
           tenantId,
         });
-
         const res = await fetch(`/api/availability?${params}`, { cache: "no-store" });
         if (!res.ok) {
           setAvailability("idle");
           return;
         }
-
         const data = await res.json();
         setViolations(data.violations ?? []);
 
         if (data.available) {
-          // Fetch dynamic pricing
           const pricingParams = new URLSearchParams({
             roomId: room.id,
             from: checkIn,
             to: checkOut,
             tenantId,
           });
-          const pricingRes = await fetch(`/api/pricing?${pricingParams}`, { cache: "no-store" });
+          const pricingRes = await fetch(`/api/pricing?${pricingParams}`, {
+            cache: "no-store",
+          });
           if (pricingRes.ok) {
             const pricing = await pricingRes.json();
             setNights(pricing.nights.length);
@@ -134,7 +141,8 @@ export default function BookingForm({
             setNightPrices(pricing.nights);
           } else {
             const n = Math.round(
-              (checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24),
+              (checkOutDate.getTime() - checkInDate.getTime()) /
+                (1000 * 60 * 60 * 24),
             );
             setNights(n);
             setTotalPrice(n * parseFloat(room.pricePerNight));
@@ -161,8 +169,24 @@ export default function BookingForm({
     }
   };
 
-  const inputClass =
-    "w-full border border-warm-200 rounded-sm px-3 py-2.5 text-sm text-warm-900 bg-warm-50/50 focus:outline-none focus:ring-2 focus:ring-amber-accent/40 focus:border-amber-accent transition-colors";
+  // ── Styling helpers per template ─────────────────────────────────────────
+  const isBoutique = template === "boutique";
+
+  const inputClass = isBoutique
+    ? "w-full bg-transparent border-0 border-b py-3 text-[15px] text-[color:var(--color-primary)] outline-none transition-colors font-light focus:border-[color:var(--color-primary)]"
+    : "w-full border border-warm-200 rounded-sm px-3 py-2.5 text-sm text-warm-900 bg-warm-50/50 focus:outline-none focus:ring-2 focus:ring-amber-accent/40 focus:border-amber-accent transition-colors";
+
+  const inputBorderStyle = isBoutique
+    ? { borderBottomColor: "color-mix(in oklch, var(--color-primary) 20%, transparent)" }
+    : undefined;
+
+  const labelClass = isBoutique
+    ? "block text-[10px] font-semibold tracking-[0.14em] uppercase mb-1"
+    : "block text-sm font-medium text-warm-700 mb-1.5";
+
+  const labelStyle = isBoutique
+    ? { color: "color-mix(in oklch, var(--color-primary) 55%, transparent)" }
+    : undefined;
 
   return (
     <form action={createBookingPublic} className="space-y-6">
@@ -174,10 +198,9 @@ export default function BookingForm({
         </div>
       )}
 
-      {/* Dates */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="checkIn" className="block text-sm font-medium text-warm-700 mb-1.5">
+          <label htmlFor="checkIn" className={labelClass} style={labelStyle}>
             Date d&apos;arrivée
           </label>
           <input
@@ -189,10 +212,11 @@ export default function BookingForm({
             value={checkIn}
             onChange={(e) => handleCheckInChange(e.target.value)}
             className={inputClass}
+            style={inputBorderStyle}
           />
         </div>
         <div>
-          <label htmlFor="checkOut" className="block text-sm font-medium text-warm-700 mb-1.5">
+          <label htmlFor="checkOut" className={labelClass} style={labelStyle}>
             Date de départ
           </label>
           <input
@@ -204,25 +228,44 @@ export default function BookingForm({
             value={checkOut}
             onChange={(e) => setCheckOut(e.target.value)}
             className={inputClass}
+            style={inputBorderStyle}
           />
         </div>
       </div>
 
-      {/* Hints règles */}
-      {rules && (rules.minStay || rules.allowedCheckInDays || rules.allowedCheckOutDays) && (
-        <div className="text-xs text-warm-500 space-x-3">
-          {rules.minStay && <span>Min. {rules.minStay} nuit{rules.minStay > 1 ? "s" : ""}</span>}
-          {rules.maxStay && <span>Max. {rules.maxStay} nuit{rules.maxStay > 1 ? "s" : ""}</span>}
-          {rules.allowedCheckInDays && (
-            <span>Arrivée : {rules.allowedCheckInDays.map((d) => DAY_NAMES_FR[d]).join(", ")}</span>
-          )}
-          {rules.allowedCheckOutDays && (
-            <span>Départ : {rules.allowedCheckOutDays.map((d) => DAY_NAMES_FR[d]).join(", ")}</span>
-          )}
-        </div>
-      )}
+      {rules &&
+        (rules.minStay || rules.allowedCheckInDays || rules.allowedCheckOutDays) && (
+          <div
+            className="text-xs space-x-3"
+            style={{
+              color: isBoutique
+                ? "color-mix(in oklch, var(--color-primary) 50%, transparent)"
+                : undefined,
+            }}
+          >
+            {rules.minStay && (
+              <span>
+                Min. {rules.minStay} nuit{rules.minStay > 1 ? "s" : ""}
+              </span>
+            )}
+            {rules.maxStay && (
+              <span>
+                Max. {rules.maxStay} nuit{rules.maxStay > 1 ? "s" : ""}
+              </span>
+            )}
+            {rules.allowedCheckInDays && (
+              <span>
+                Arrivée : {rules.allowedCheckInDays.map((d) => DAY_NAMES_FR[d]).join(", ")}
+              </span>
+            )}
+            {rules.allowedCheckOutDays && (
+              <span>
+                Départ : {rules.allowedCheckOutDays.map((d) => DAY_NAMES_FR[d]).join(", ")}
+              </span>
+            )}
+          </div>
+        )}
 
-      {/* Badge disponibilité */}
       <div className="min-h-[28px] space-y-2">
         {availability === "checking" && (
           <span className="inline-flex items-center gap-1.5 text-sm text-warm-500">
@@ -256,9 +299,8 @@ export default function BookingForm({
         )}
       </div>
 
-      {/* Nombre de personnes */}
       <div>
-        <label htmlFor="guestCount" className="block text-sm font-medium text-warm-700 mb-1.5">
+        <label htmlFor="guestCount" className={labelClass} style={labelStyle}>
           Nombre de personnes
         </label>
         <input
@@ -270,14 +312,23 @@ export default function BookingForm({
           max={room.capacity}
           defaultValue={1}
           className={inputClass}
+          style={inputBorderStyle}
         />
-        <p className="text-xs text-warm-500 mt-1">Capacité maximale : {room.capacity} personnes</p>
+        <p
+          className="text-xs mt-1"
+          style={{
+            color: isBoutique
+              ? "color-mix(in oklch, var(--color-primary) 50%, transparent)"
+              : undefined,
+          }}
+        >
+          Capacité maximale : {room.capacity} personnes
+        </p>
       </div>
 
-      {/* Informations client */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="guestName" className="block text-sm font-medium text-warm-700 mb-1.5">
+          <label htmlFor="guestName" className={labelClass} style={labelStyle}>
             Nom complet <span className="text-red-500">*</span>
           </label>
           <input
@@ -286,10 +337,11 @@ export default function BookingForm({
             name="guestName"
             required
             className={inputClass}
+            style={inputBorderStyle}
           />
         </div>
         <div>
-          <label htmlFor="guestEmail" className="block text-sm font-medium text-warm-700 mb-1.5">
+          <label htmlFor="guestEmail" className={labelClass} style={labelStyle}>
             Email <span className="text-red-500">*</span>
           </label>
           <input
@@ -298,12 +350,13 @@ export default function BookingForm({
             name="guestEmail"
             required
             className={inputClass}
+            style={inputBorderStyle}
           />
         </div>
       </div>
 
       <div>
-        <label htmlFor="guestPhone" className="block text-sm font-medium text-warm-700 mb-1.5">
+        <label htmlFor="guestPhone" className={labelClass} style={labelStyle}>
           Téléphone
         </label>
         <input
@@ -311,17 +364,36 @@ export default function BookingForm({
           type="tel"
           name="guestPhone"
           className={inputClass}
+          style={inputBorderStyle}
         />
       </div>
 
-      {/* Récapitulatif prix */}
       {availability === "available" && violations.length === 0 && (
-        <div className="bg-warm-50 border border-warm-200 rounded-sm p-4 space-y-2">
+        <div
+          className={
+            isBoutique
+              ? "p-5 bg-white border space-y-2"
+              : "bg-warm-50 border border-warm-200 rounded-sm p-4 space-y-2"
+          }
+          style={
+            isBoutique
+              ? { borderColor: "color-mix(in oklch, var(--color-primary) 15%, transparent)" }
+              : undefined
+          }
+        >
           {nightPrices.length > 0 && nightPrices.some((n) => n.appliedRule) ? (
             <>
               <div className="space-y-1">
                 {nightPrices.map((np) => (
-                  <div key={np.date} className="flex justify-between text-xs text-warm-500">
+                  <div
+                    key={np.date}
+                    className="flex justify-between text-xs"
+                    style={
+                      isBoutique
+                        ? { color: "color-mix(in oklch, var(--color-primary) 55%, transparent)" }
+                        : { color: "var(--color-warm-500, #78716C)" }
+                    }
+                  >
                     <span>
                       {new Date(np.date + "T00:00:00Z").toLocaleDateString("fr-FR", {
                         weekday: "short",
@@ -336,17 +408,27 @@ export default function BookingForm({
                   </div>
                 ))}
               </div>
-              <div className="border-t border-warm-200 pt-2 flex justify-between text-sm text-warm-600">
-                <span>{nights} nuit{nights > 1 ? "s" : ""}</span>
-                <span className="font-semibold text-warm-900">{totalPrice.toFixed(2)} €</span>
+              <div
+                className="pt-2 mt-2 flex justify-between text-sm border-t"
+                style={
+                  isBoutique
+                    ? { borderColor: "color-mix(in oklch, var(--color-primary) 15%, transparent)" }
+                    : undefined
+                }
+              >
+                <span>
+                  {nights} nuit{nights > 1 ? "s" : ""}
+                </span>
+                <span className="font-semibold">{totalPrice.toFixed(2)} €</span>
               </div>
             </>
           ) : (
-            <div className="flex justify-between text-sm text-warm-600">
+            <div className="flex justify-between text-sm">
               <span>
-                {parseFloat(room.pricePerNight).toFixed(0)} € × {nights} nuit{nights > 1 ? "s" : ""}
+                {parseFloat(room.pricePerNight).toFixed(0)} € × {nights} nuit
+                {nights > 1 ? "s" : ""}
               </span>
-              <span className="font-semibold text-warm-900">{totalPrice.toFixed(2)} €</span>
+              <span className="font-semibold">{totalPrice.toFixed(2)} €</span>
             </div>
           )}
         </div>
@@ -355,7 +437,16 @@ export default function BookingForm({
       <button
         type="submit"
         disabled={availability !== "available" || violations.length > 0}
-        className="w-full py-3 px-6 rounded-sm font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-warm-900 text-warm-50 hover:bg-warm-800 disabled:bg-warm-400"
+        className={
+          isBoutique
+            ? "w-full py-4 text-[12px] font-semibold tracking-[0.12em] uppercase transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            : "w-full py-3 px-6 rounded-sm font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-warm-900 text-warm-50 hover:bg-warm-800 disabled:bg-warm-400"
+        }
+        style={
+          isBoutique
+            ? { background: "var(--color-primary)", color: "#fff" }
+            : undefined
+        }
       >
         Procéder au paiement
       </button>

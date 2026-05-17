@@ -9,7 +9,10 @@ export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: 0,
+  // Une seule reprise pour tolérer la lenteur ponctuelle du compilateur dev de
+  // Next.js qui peut faire dépasser le timeout du goto("/login") après une
+  // série d'écritures avec revalidatePath.
+  retries: 1,
   workers: 1,
   reporter: "list",
   globalSetup: "./e2e/global-setup.ts",

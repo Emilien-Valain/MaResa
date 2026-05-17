@@ -99,9 +99,12 @@ export default function ClassicLayout({
               )}
             </div>
           </div>
-          <div className="mt-8 pt-6 border-t border-white/10 text-center">
+          <div className="mt-8 pt-6 border-t border-white/10 text-center space-y-1">
+            {config.footerTagline && (
+              <p className="text-xs opacity-60 italic">{config.footerTagline}</p>
+            )}
             <p className="text-xs opacity-40">
-              &copy; {new Date().getFullYear()} {tenant.name}
+              &copy; {new Date().getFullYear()} {tenant.name} · Propulsé par MaRésa
             </p>
           </div>
         </div>

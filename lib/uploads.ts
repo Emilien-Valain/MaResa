@@ -36,3 +36,16 @@ export function photoPublicUrl(
 export async function ensureDir(dir: string) {
   await fs.mkdir(dir, { recursive: true });
 }
+
+/** Sous-dossier pour les photos d'un tenant (hero, story…) */
+export function tenantPhotosDir(tenantId: string) {
+  return path.join(UPLOADS_ROOT, "tenants", tenantId);
+}
+
+export function tenantPhotoFilePath(tenantId: string, filename: string) {
+  return path.join(tenantPhotosDir(tenantId), filename);
+}
+
+export function tenantPhotoPublicUrl(tenantId: string, filename: string) {
+  return `/api/uploads/tenants/${tenantId}/${filename}`;
+}

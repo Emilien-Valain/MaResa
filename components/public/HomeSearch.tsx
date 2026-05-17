@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import RoomPhoto from "@/components/public/RoomPhoto";
+import type { TemplateName } from "@/lib/tenant-context";
 
 type Room = {
   id: string;
@@ -27,7 +28,13 @@ function addDay(dateStr: string): string {
   return d.toISOString().split("T")[0];
 }
 
-export default function HomeSearch({ tenantId }: { tenantId: string }) {
+export default function HomeSearch({
+  tenantId,
+  template = "classic",
+}: {
+  tenantId: string;
+  template?: TemplateName;
+}) {
   const today = getToday();
 
   const [checkIn, setCheckIn] = useState("");
@@ -96,9 +103,123 @@ export default function HomeSearch({ tenantId }: { tenantId: string }) {
         )
       : 0;
 
+  if (template === "boutique") {
+    return (
+      <div className="w-full">
+        <div
+          className="backdrop-blur-md border flex flex-col sm:flex-row gap-0 items-stretch overflow-hidden"
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            borderColor: "rgba(255,255,255,0.12)",
+          }}
+        >
+          <div className="flex-1 px-6 py-4">
+            <label
+              htmlFor="search-checkin"
+              className="block text-[10px] font-semibold tracking-[0.18em] uppercase mb-1.5"
+              style={{ color: "rgba(255,255,255,0.45)" }}
+            >
+              Arrivée
+            </label>
+            <input
+              id="search-checkin"
+              type="date"
+              value={checkIn}
+              min={today}
+              onChange={(e) => handleCheckInChange(e.target.value)}
+              className="w-full bg-transparent border-none outline-none text-white text-[15px] font-medium cursor-pointer [color-scheme:dark]"
+            />
+          </div>
+
+          <div className="hidden sm:block w-px self-stretch" style={{ background: "rgba(255,255,255,0.12)" }} />
+
+          <div className="flex-1 px-6 py-4">
+            <label
+              htmlFor="search-checkout"
+              className="block text-[10px] font-semibold tracking-[0.18em] uppercase mb-1.5"
+              style={{ color: "rgba(255,255,255,0.45)" }}
+            >
+              Départ
+            </label>
+            <input
+              id="search-checkout"
+              ref={checkOutRef}
+              type="date"
+              value={checkOut}
+              min={checkIn ? addDay(checkIn) : today}
+              onChange={(e) => handleCheckOutChange(e.target.value)}
+              className="w-full bg-transparent border-none outline-none text-white text-[15px] font-medium cursor-pointer [color-scheme:dark]"
+            />
+          </div>
+
+          <button
+            type="button"
+            disabled
+            className="px-7 py-4 text-[12px] font-semibold tracking-[0.12em] uppercase whitespace-nowrap"
+            style={{ background: "var(--color-secondary)", color: "var(--color-primary)" }}
+          >
+            {nights > 0 ? `${nights} nuit${nights > 1 ? "s" : ""}` : "Voir"}
+          </button>
+        </div>
+
+        <div aria-live="polite" aria-atomic="true">
+          {status === "searching" && (
+            <div className="mt-8 flex items-center justify-center gap-2 text-sm" style={{ color: "rgba(255,255,255,0.45)" }}>
+              <span className="inline-block w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "rgba(255,255,255,0.4)" }} aria-hidden="true" />
+              Recherche en cours…
+            </div>
+          )}
+          {status === "done" && availableRooms.length === 0 && (
+            <div className="mt-8 text-center text-sm" style={{ color: "rgba(255,255,255,0.45)" }}>
+              Aucune chambre disponible pour ces dates.
+            </div>
+          )}
+        </div>
+
+        {status === "done" && availableRooms.length > 0 && (
+          <div className="mt-12 text-left">
+            <p className="text-xs uppercase tracking-[0.18em] mb-6" style={{ color: "var(--color-secondary)" }}>
+              {availableRooms.length} chambre{availableRooms.length > 1 ? "s" : ""} disponible{availableRooms.length > 1 ? "s" : ""}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {availableRooms.map((room, i) => (
+                <div
+                  key={room.id}
+                  className={`overflow-hidden animate-fade-up stagger-${Math.min(i + 1, 6)}`}
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}
+                >
+                  <RoomPhoto photos={room.photos} alt={room.name} className="h-44" sizes="(max-width: 640px) 100vw, 33vw" />
+                  <div className="p-5">
+                    <h3 className="font-heading text-xl font-semibold text-white mb-1">{room.name}</h3>
+                    <p className="text-[13px] mb-4" style={{ color: "rgba(255,255,255,0.55)" }}>
+                      {room.capacity} pers. · {" "}
+                      <span className="font-medium" style={{ color: "var(--color-secondary)" }}>
+                        {room.minPricePerNight !== undefined && room.minPricePerNight !== parseFloat(room.pricePerNight)
+                          ? `dès ${room.minPricePerNight.toFixed(0)} €`
+                          : `${parseFloat(room.pricePerNight).toFixed(0)} €`}
+                        /nuit
+                      </span>
+                    </p>
+                    <Link
+                      href={`/reserver/${room.id}?checkIn=${checkIn}&checkOut=${checkOut}`}
+                      className="block text-center text-[12px] font-semibold tracking-[0.12em] uppercase py-3"
+                      style={{ background: "var(--color-secondary)", color: "var(--color-primary)" }}
+                    >
+                      Réserver
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Classic
   return (
     <div className="w-full">
-      {/* Widget de recherche */}
       <div className="bg-white rounded-sm shadow-lg p-4 flex flex-col sm:flex-row gap-3 items-end">
         <div className="flex-1 min-w-0 w-full">
           <label htmlFor="search-checkin" className="block text-sm font-semibold text-warm-500 uppercase tracking-wide mb-1.5">
@@ -138,7 +259,6 @@ export default function HomeSearch({ tenantId }: { tenantId: string }) {
         )}
       </div>
 
-      {/* Résultats — aria-live pour les lecteurs d'écran */}
       <div aria-live="polite" aria-atomic="true">
         {status === "searching" && (
           <div className="mt-8 flex items-center justify-center gap-2 text-warm-300 text-sm">

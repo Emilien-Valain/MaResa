@@ -131,8 +131,16 @@ export default function BoutiqueLayout({
             </a>
           )}
         </div>
+        {config.footerTagline && (
+          <p
+            className="text-xs italic opacity-50 mt-6"
+            style={{ color: "var(--color-primary)" }}
+          >
+            {config.footerTagline}
+          </p>
+        )}
         <p className="text-xs opacity-30 mt-8" style={{ color: "var(--color-primary)" }}>
-          &copy; {new Date().getFullYear()} {tenant.name}
+          &copy; {new Date().getFullYear()} {tenant.name} · Propulsé par MaRésa
         </p>
       </footer>
     </div>

@@ -14,11 +14,13 @@ import EmailSettingsSection from "@/components/admin/EmailSettingsSection";
 import LocationSection from "@/components/admin/LocationSection";
 import IcalSourcesSection from "@/components/admin/IcalSourcesSection";
 import StripeConnectSection from "@/components/admin/StripeConnectSection";
+import ContentSection from "@/components/admin/ContentSection";
 import type { TenantConfig, TemplateName } from "@/lib/tenant-context";
 
 type TabId =
   | "general"
   | "theme"
+  | "content"
   | "location"
   | "email"
   | "ical"
@@ -27,6 +29,7 @@ type TabId =
 const TABS: { id: TabId; label: string }[] = [
   { id: "general", label: "Général" },
   { id: "theme", label: "Apparence" },
+  { id: "content", label: "Contenu" },
   { id: "location", label: "Localisation" },
   { id: "email", label: "Emails" },
   { id: "ical", label: "iCal" },
@@ -98,6 +101,7 @@ export default function SettingsPageClient({
           <GeneralTab tenant={tenant} config={config} />
         )}
         {tab === "theme" && <ThemeTab config={config} />}
+        {tab === "content" && <ContentSection config={config} />}
         {tab === "location" && (
           <LocationSection
             googleMapsUrl={config.googleMapsUrl}
