@@ -5,27 +5,13 @@ import { test, expect } from "@playwright/test";
  * Référence Obsidian : Phase 9.3 — Message personnalisé de confirmation
  *
  * Stratégie : happy path + cas limites + sécurité.
- * Prérequis : un admin connecté avec accès à /admin/parametres.
+ * Prérequis : un admin connecté avec accès à /admin/parametres
+ * (session chargée par le projet `admin` via storageState).
  */
-
-const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL ?? "admin@test.maresa";
-const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD ?? "password";
-
-async function loginAsAdmin(page: Parameters<Parameters<typeof test>[1]>[0]) {
-  await page.goto("/login");
-  await page.fill('[name="email"]', ADMIN_EMAIL);
-  await page.fill('[name="password"]', ADMIN_PASSWORD);
-  await page.click('[type="submit"]');
-  await page.waitForURL(/\/admin/);
-}
 
 // ─── Happy path ────────────────────────────────────────────────────────────────
 
 test.describe("Admin — Paramètres emails", () => {
-  test.beforeEach(async ({ page }) => {
-    await loginAsAdmin(page);
-  });
-
   test("la section Emails est visible dans /admin/parametres", async ({ page }) => {
     await page.goto("/admin/parametres?tab=email");
     await expect(page.getByRole("heading", { name: "Emails", level: 2 })).toBeVisible();

@@ -70,6 +70,14 @@ export default function MobileNav({
               Chambres
             </Link>
             <Link
+              href="/#nous-trouver"
+              onClick={() => setOpen(false)}
+              className="block py-3 text-sm tracking-wide opacity-80 hover:opacity-100 transition-opacity"
+              style={{ color: secondaryColor }}
+            >
+              Nous trouver
+            </Link>
+            <Link
               href="/chambres"
               onClick={() => setOpen(false)}
               className="block py-3 px-4 mt-1 rounded-sm text-sm font-medium text-center transition-all hover:brightness-90"

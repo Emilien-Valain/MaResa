@@ -67,7 +67,7 @@ export async function GET(
   let y = 792; // Start from top (842 - 50)
 
   // ── Header: Hotel name ──
-  page.drawText(tenant?.name ?? "MaRésa", {
+  page.drawText(tenant?.name ?? "DirectLoc", {
     x: margin,
     y,
     size: 22,

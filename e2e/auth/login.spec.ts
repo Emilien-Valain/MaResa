@@ -132,7 +132,8 @@ test.describe("Auth — Connexion admin", () => {
 
   // ─── Déconnexion ────────────────────────────────────────────────────────────
 
-  test("après déconnexion, /admin redirige vers /login", { timeout: 60000 }, async ({ page }) => {
+  test("après déconnexion, /admin redirige vers /login", async ({ page }) => {
+    test.setTimeout(60000);
     // Se connecter via l'API directement (plus fiable que via l'UI en fin de suite de tests)
     const signInResponse = await page.request.post("http://localhost:3001/api/auth/sign-in/email", {
       data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },

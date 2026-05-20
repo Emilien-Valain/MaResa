@@ -69,7 +69,7 @@ export default function StripeConnectSection({
   return (
     <SettingsSection
       title="Paiement Stripe"
-      desc="Reçois les paiements directement sur ton compte Stripe. MaRésa ne prélève aucune commission."
+      desc="Reçois les paiements directement sur ton compte Stripe. DirectLoc ne prélève aucune commission."
     >
       {stripeParam === "success" && (
         <StatusBanner variant="success">

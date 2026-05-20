@@ -90,13 +90,13 @@ export default function Sidebar({
           style={{ background: "var(--admin-sidebar-accent)" }}
         >
           <span className="text-white font-extrabold text-[15px] tracking-tight">
-            M
+            D
           </span>
         </div>
         {!isCollapsed && (
           <div className="leading-tight">
             <div className="text-white font-bold text-[15px] tracking-tight">
-              MaRésa
+              DirectLoc
             </div>
             <div className="text-white/45 text-[11px] font-medium">
               Administration
@@ -259,7 +259,7 @@ export default function Sidebar({
           className="text-[16px] font-bold"
           style={{ color: "var(--admin-text)" }}
         >
-          MaRésa
+          DirectLoc
         </span>
       </div>
 

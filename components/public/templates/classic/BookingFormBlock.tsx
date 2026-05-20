@@ -7,20 +7,29 @@ type Room = {
   slug: string;
   pricePerNight: string;
   capacity: number;
+  photos?: unknown;
 };
 
+/**
+ * Bloc « Réserver » du template Classic.
+ *
+ * Le 2-col (form + sidebar réactive) est désormais géré par `BookingForm` :
+ * ici on rend juste le fil d'Ariane, le titre, puis le composant client.
+ */
 export default function ClassicBookingFormBlock({
   room,
   tenantId,
-  minPrice,
 }: {
   room: Room;
   tenantId: string;
-  minPrice: number;
+  /** Préservé pour compatibilité avec la signature du dispatcher ; non utilisé
+   * dans cette version (le sidebar lit le minPrice via room.pricePerNight et
+   * /api/pricing). */
+  minPrice?: number;
 }) {
   return (
-    <section className="max-w-2xl mx-auto px-6 py-16">
-      <nav className="text-sm text-warm-500 mb-8 animate-fade-in">
+    <section className="max-w-4xl mx-auto px-6 py-10 sm:py-12">
+      <nav className="text-[13px] text-warm-500 mb-6 animate-fade-in">
         <Link href="/" className="hover:text-warm-900 transition-colors">
           Accueil
         </Link>
@@ -39,28 +48,32 @@ export default function ClassicBookingFormBlock({
         <span className="text-warm-900">Réserver</span>
       </nav>
 
-      <h1 className="font-heading text-3xl font-semibold text-warm-900 mb-2 animate-fade-up">
-        Réserver — {room.name}
-      </h1>
-      <p className="text-warm-500 mb-8 animate-fade-up stagger-1">
-        {room.capacity} personne{room.capacity > 1 ? "s" : ""} max ·{" "}
-        {minPrice < parseFloat(room.pricePerNight)
-          ? `à partir de ${minPrice.toFixed(0)} €/nuit`
-          : `${parseFloat(room.pricePerNight).toFixed(0)} €/nuit`}
-      </p>
-
-      <div className="border border-warm-200 rounded-sm p-6 bg-white shadow-sm animate-fade-up stagger-2">
-        <BookingForm
-          room={{
-            id: room.id,
-            name: room.name,
-            pricePerNight: room.pricePerNight,
-            capacity: room.capacity,
-          }}
-          tenantId={tenantId}
-          template="classic"
-        />
+      <div className="mb-7 sm:mb-8 animate-fade-up">
+        <div
+          className="text-[13px] font-bold tracking-[0.08em] uppercase mb-1.5"
+          style={{ color: "var(--color-amber-accent)" }}
+        >
+          {room.name}
+        </div>
+        <h1
+          className="font-heading text-3xl sm:text-[32px] font-semibold text-warm-900"
+          style={{ letterSpacing: "-0.01em" }}
+        >
+          Vos coordonnées
+        </h1>
       </div>
+
+      <BookingForm
+        room={{
+          id: room.id,
+          name: room.name,
+          pricePerNight: room.pricePerNight,
+          capacity: room.capacity,
+          photos: room.photos,
+        }}
+        tenantId={tenantId}
+        template="classic"
+      />
     </section>
   );
 }

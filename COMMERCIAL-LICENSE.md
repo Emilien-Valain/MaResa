@@ -1,8 +1,8 @@
-# Licence Commerciale - MaResa
+# Licence Commerciale - DirectLoc
 
 **Version 1.0** — Avril 2026
 
-Ce fichier décrit les conditions de la **licence commerciale** pour le projet **MaResa**.
+Ce fichier décrit les conditions de la **licence commerciale** pour le projet **DirectLoc**.
 
 Le code source de ce projet est publié sous licence **GNU Affero General Public License v3.0 (AGPLv3)** pour permettre un usage libre, open source et communautaire.
 
@@ -22,7 +22,7 @@ Toute personne peut :
 Vous devez acquérir une licence commerciale si vous souhaitez :
 
 - Utiliser le logiciel dans un produit ou service **propriétaire** (closed-source)
-- Revendre, louer ou proposer MaResa en tant que service hébergé (SaaS, white-label) sans ouvrir votre code source
+- Revendre, louer ou proposer DirectLoc en tant que service hébergé (SaaS, white-label) sans ouvrir votre code source
 - Supprimer ou contourner les obligations de copyleft de l’AGPLv3
 - Obtenir un support prioritaire, des mises à jour garanties ou des garanties légales
 - Utiliser le logiciel dans une entreprise sans avoir à publier vos modifications

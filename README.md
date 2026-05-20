@@ -1,11 +1,12 @@
-# MaResa
+# DirectLoc
 
 Plateforme de reservation directe white-label pour petits hotels et loueurs.
 Un seul deploiement, plusieurs hotels, chacun avec son domaine et son style.
+Site : https://directloc.app
 
 ```
 hotelducoin.fr  ──┐
-villarose.fr    ──┼──▶  MaResa  ──▶  PostgreSQL
+villarose.fr    ──┼──▶  DirectLoc  ──▶  PostgreSQL
 giteduvallon.fr ──┘
 ```
 
@@ -51,7 +52,7 @@ Next.js 16 / React 19 / TypeScript / Tailwind v4 / Drizzle ORM / PostgreSQL / Be
 npm install
 
 # Base de donnees
-createdb maresa
+createdb directloc
 npx drizzle-kit migrate
 
 # Premier tenant + admin

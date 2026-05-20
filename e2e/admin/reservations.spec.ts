@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 /**
  * Spécification : Tests de non-régression > Admin > Gestion des réservations
@@ -19,7 +19,7 @@ function addDays(n: number) {
 const RUN_ID = Date.now().toString(36).slice(-5);
 
 async function createReservation(
-  page: Parameters<Parameters<typeof test>[1]>[0],
+  page: Page,
   opts: {
     name: string;
     email?: string;
@@ -149,15 +149,19 @@ test.describe("Admin — Gestion des réservations", () => {
 
   test("navigation calendrier — bouton Aujourd'hui revient au mois courant", async ({ page }) => {
     const now = new Date();
+    const targetYear = now.getFullYear();
+    const targetMonth = now.getMonth();
     await page.goto(
-      `/admin/calendrier?year=${now.getFullYear()}&month=${now.getMonth() - 2}`,
+      `/admin/calendrier?year=${targetYear}&month=${targetMonth - 2}`,
     );
     await page.getByRole("link", { name: "Aujourd'hui" }).click();
-    await page.waitForLoadState("networkidle");
-
-    const url = new URL(page.url());
-    expect(url.searchParams.get("month")).toBe(String(now.getMonth()));
-    expect(url.searchParams.get("year")).toBe(String(now.getFullYear()));
+    // Attendre explicitement l'URL cible : networkidle se résout parfois avant
+    // que la soft-nav Next.js ait actualisé window.location.
+    await page.waitForURL(
+      (url) =>
+        url.searchParams.get("month") === String(targetMonth) &&
+        url.searchParams.get("year") === String(targetYear),
+    );
   });
 
   // ─── Cas limites ─────────────────────────────────────────────────────────────

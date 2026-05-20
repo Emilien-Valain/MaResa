@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { resetTenantContentSeed } from "../helpers/seed-tenant-config";
 
 /**
  * Spécification : Tests de non-régression > Admin > Paramètres contenu
@@ -22,9 +23,31 @@ async function loginAsAdmin(page: Page) {
   await page.waitForURL(/\/admin/);
 }
 
+/**
+ * Vide la section « Chiffres clés ». Le global setup en seed 4 (= MAX_STATS),
+ * ce qui masque le bouton « + Ajouter un chiffre » nécessaire à ces tests.
+ * On supprime toujours le chiffre 1 : après chaque clic, l'index 1 désigne
+ * le suivant — la boucle s'arrête quand plus aucun bouton n'existe.
+ */
+async function clearAllStats(page: Page) {
+  // Limite défensive (MAX_STATS = 4 côté UI) pour éviter une boucle infinie.
+  for (let i = 0; i < 10; i++) {
+    const btn = page.getByLabel("Supprimer le chiffre 1");
+    if (!(await btn.isVisible().catch(() => false))) break;
+    await btn.click();
+  }
+}
+
 test.describe("Admin — Paramètres contenu", () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
+  });
+
+  // Cette suite modifie textes + storyStats. On restaure l'état seedé pour ne
+  // pas casser les tests publics qui dépendent des valeurs canoniques
+  // (ex. classic-sections : #chiffres-cles attend 4 stats spécifiques).
+  test.afterAll(async () => {
+    await resetTenantContentSeed();
   });
 
   // ─── Happy path ─────────────────────────────────────────────────────────────
@@ -96,6 +119,9 @@ test.describe("Admin — Paramètres contenu", () => {
 
     // Au moins un story texte pour que la section s'affiche
     await page.locator('[name="storyTitle"]').fill(`Histoire ${RUN_ID}`);
+
+    // Le global setup seed déjà 4 stats (= max) — il faut libérer un slot
+    await clearAllStats(page);
 
     await page.getByRole("button", { name: "+ Ajouter un chiffre" }).click();
     await page.getByLabel("Valeur du chiffre 1").fill(statValue);
@@ -170,6 +196,9 @@ test.describe("Admin — Paramètres contenu", () => {
 
     // Garantir un texte d'histoire pour que la section soit rendue
     await page.locator('[name="storyTitle"]').fill(`Story ${RUN_ID}`);
+
+    // Le global setup seed déjà 4 stats (= max) — il faut libérer un slot
+    await clearAllStats(page);
 
     await page.getByRole("button", { name: "+ Ajouter un chiffre" }).click();
     await page.getByLabel("Valeur du chiffre 1").fill("7");

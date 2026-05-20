@@ -62,7 +62,7 @@ export async function GET(
   const ics = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//MaResa Booking Manager//FR",
+    "PRODID:-//DirectLoc//FR",
     `X-WR-CALNAME:${room.name}`,
     "METHOD:PUBLISH",
     "CALSCALE:GREGORIAN",

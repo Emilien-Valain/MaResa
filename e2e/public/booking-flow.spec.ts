@@ -63,8 +63,10 @@ test.describe("Public — Parcours de réservation", () => {
   test("le formulaire de réservation affiche le nom de la chambre", async ({ page }) => {
     const { apiRoomId } = loadTestContext();
     await page.goto(`/reserver/${apiRoomId}`);
-    // Le nom de la chambre doit être visible dans le titre
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("Chambre API Test");
+    // Le H1 du template Classic est « Vos coordonnées » ; le nom de la chambre
+    // est affiché en eyebrow au-dessus, dans le fil d'Ariane et dans le sidebar.
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Vos coordonnées");
+    await expect(page.getByText("Chambre API Test").first()).toBeVisible();
   });
 
   test("disponibilité indisponible pour les dates bloquées", async ({ page }) => {
@@ -118,9 +120,13 @@ test.describe("Public — Parcours de réservation", () => {
 
     // Attendre la confirmation de disponibilité
     await expect(page.getByText("Disponible")).toBeVisible({ timeout: 8000 });
-    // Le bouton doit indiquer "Procéder au paiement"
+    // Le bouton doit être activé. Le libellé est :
+    // - « Procéder au paiement » côté Boutique
+    // - « Payer XXX € et confirmer » côté Classic (avec le total dynamique)
     await expect(page.locator('[type="submit"]')).toBeEnabled({ timeout: 5000 });
-    await expect(page.locator('[type="submit"]')).toContainText("Procéder au paiement");
+    await expect(page.locator('[type="submit"]')).toContainText(
+      /Procéder au paiement|Payer.*confirmer/,
+    );
 
     // Soumettre — redirige vers Stripe Checkout
     await page.click('[type="submit"]');

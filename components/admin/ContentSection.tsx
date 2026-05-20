@@ -10,12 +10,13 @@ import {
   StatusBanner,
 } from "@/components/admin/ui";
 import HeroPhotoUploader from "@/components/admin/HeroPhotoUploader";
+import GalleryPhotosUploader from "@/components/admin/GalleryPhotosUploader";
 import type { TenantConfig, StoryStat } from "@/lib/tenant-context";
 
 const MAX_STATS = 4;
 
 function emptyStat(): StoryStat {
-  return { value: "", label: "" };
+  return { value: "", label: "", sub: "" };
 }
 
 export default function ContentSection({ config }: { config: TenantConfig }) {
@@ -54,7 +55,12 @@ export default function ContentSection({ config }: { config: TenantConfig }) {
           setError(null);
           // Filtre les stats vides avant envoi
           const cleanStats = stats
-            .map((s) => ({ value: s.value.trim(), label: s.label.trim() }))
+            .map((s) => {
+              const value = s.value.trim();
+              const label = s.label.trim();
+              const sub = (s.sub ?? "").trim();
+              return sub ? { value, label, sub } : { value, label };
+            })
             .filter((s) => s.value && s.label);
           formData.set("storyStats", JSON.stringify(cleanStats));
           try {
@@ -70,6 +76,13 @@ export default function ContentSection({ config }: { config: TenantConfig }) {
           desc="L'image visible en première page. Si absente, un fond uni colorée est utilisée."
         >
           <HeroPhotoUploader initialPhoto={config.heroPhoto} />
+        </SettingsSection>
+
+        <SettingsSection
+          title="Galerie d'illustration"
+          desc="De 0 à 6 photos affichées sur la page d'accueil. La mise en page s'adapte automatiquement au nombre de photos."
+        >
+          <GalleryPhotosUploader initialPhotos={config.galleryPhotos ?? []} />
         </SettingsSection>
 
         <SettingsSection
@@ -144,7 +157,7 @@ export default function ContentSection({ config }: { config: TenantConfig }) {
             {stats.map((stat, i) => (
               <div
                 key={i}
-                className="grid grid-cols-[1fr_2fr_auto] gap-2 items-end"
+                className="grid grid-cols-[80px_1fr_1.5fr_auto] gap-2 items-end"
               >
                 <Field label={i === 0 ? "Valeur" : ""}>
                   <AdminInput
@@ -162,6 +175,15 @@ export default function ContentSection({ config }: { config: TenantConfig }) {
                     placeholder="Chambres"
                     maxLength={60}
                     aria-label={`Libellé du chiffre ${i + 1}`}
+                  />
+                </Field>
+                <Field label={i === 0 ? "Détail (optionnel)" : ""}>
+                  <AdminInput
+                    value={stat.sub ?? ""}
+                    onChange={(e) => updateStat(i, "sub", e.target.value)}
+                    placeholder="d'exception"
+                    maxLength={80}
+                    aria-label={`Détail du chiffre ${i + 1}`}
                   />
                 </Field>
                 <button

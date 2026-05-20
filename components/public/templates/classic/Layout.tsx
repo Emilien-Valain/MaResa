@@ -1,6 +1,5 @@
-import Link from "next/link";
 import type { Tenant, TenantConfig } from "@/lib/tenant-context";
-import MobileNav from "@/components/public/MobileNav";
+import ClassicHeader from "@/components/public/templates/classic/Header";
 
 export default function ClassicLayout({
   tenant,
@@ -20,51 +19,29 @@ export default function ClassicLayout({
         {
           "--color-primary": primaryColor,
           "--color-secondary": secondaryColor,
+          // Override des polices pour le template Classic uniquement —
+          // Plus Jakarta Sans en body, Playfair Display sur les titres
+          // (les composants utilisent `font-sans` / `font-heading` via Tailwind).
+          "--font-sans": "var(--font-jakarta)",
+          "--font-heading": "var(--font-playfair)",
+          fontFamily: "var(--font-jakarta), system-ui, sans-serif",
+          // Tokens neutres alignés sur la maquette (cream / border / subtle).
+          // Les tokens Tailwind `warm-*` sont plus jaunes — on s'en éloigne
+          // ici pour rester fidèle au design (cf. mockup `DirectLoc Booking Flow`).
+          "--classic-cream": "#F8F6F3",
+          "--classic-border": "#E7E2DA",
+          "--classic-muted": "#78716C",
+          background: "#F8F6F3",
         } as React.CSSProperties
       }
       className="min-h-screen flex flex-col"
     >
-      {/* Header */}
-      <header
-        className="relative px-6 py-5"
-        style={{ backgroundColor: "var(--color-primary)", color: "var(--color-secondary)" }}
-      >
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <Link href="/" className="hover:opacity-80 transition-opacity">
-            {config.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={config.logoUrl} alt={tenant.name} className="h-10 object-contain" />
-            ) : (
-              <span className="font-heading text-2xl font-semibold tracking-tight">
-                {tenant.name}
-              </span>
-            )}
-          </Link>
-
-          {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-8 text-sm" aria-label="Navigation principale">
-            <Link
-              href="/chambres"
-              className="opacity-80 hover:opacity-100 transition-opacity tracking-wide"
-            >
-              Chambres
-            </Link>
-            <Link
-              href="/chambres"
-              className="px-5 py-2.5 rounded-sm text-sm font-medium transition-all hover:brightness-90"
-              style={{
-                backgroundColor: "var(--color-secondary)",
-                color: "var(--color-primary)",
-              }}
-            >
-              Réserver
-            </Link>
-          </nav>
-
-          {/* Mobile nav */}
-          <MobileNav primaryColor={primaryColor} secondaryColor={secondaryColor} />
-        </div>
-      </header>
+      <ClassicHeader
+        tenant={tenant}
+        config={config}
+        primaryColor={primaryColor}
+        secondaryColor={secondaryColor}
+      />
 
       {/* Main content */}
       <main className="flex-1">{children}</main>
@@ -74,7 +51,7 @@ export default function ClassicLayout({
         className="px-6 py-10 mt-auto border-t"
         style={{
           backgroundColor: "var(--color-primary)",
-          color: "var(--color-secondary)",
+          color: "#fff",
           borderColor: "rgba(255,255,255,0.08)",
         }}
       >
@@ -104,7 +81,15 @@ export default function ClassicLayout({
               <p className="text-xs opacity-60 italic">{config.footerTagline}</p>
             )}
             <p className="text-xs opacity-40">
-              &copy; {new Date().getFullYear()} {tenant.name} · Propulsé par MaRésa
+              &copy; {new Date().getFullYear()} {tenant.name} · Propulsé par{" "}
+              <a
+                href="https://directloc.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:opacity-100"
+              >
+                DirectLoc
+              </a>
             </p>
           </div>
         </div>

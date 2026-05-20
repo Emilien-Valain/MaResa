@@ -140,7 +140,15 @@ export default function BoutiqueLayout({
           </p>
         )}
         <p className="text-xs opacity-30 mt-8" style={{ color: "var(--color-primary)" }}>
-          &copy; {new Date().getFullYear()} {tenant.name} · Propulsé par MaRésa
+          &copy; {new Date().getFullYear()} {tenant.name} · Propulsé par{" "}
+          <a
+            href="https://directloc.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:opacity-100"
+          >
+            DirectLoc
+          </a>
         </p>
       </footer>
     </div>

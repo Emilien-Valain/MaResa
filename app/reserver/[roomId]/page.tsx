@@ -32,6 +32,7 @@ export default async function ReserverPage({
           slug: room.slug,
           pricePerNight: room.pricePerNight,
           capacity: room.capacity,
+          photos: room.photos,
         }}
         tenant={tenant}
         config={config}

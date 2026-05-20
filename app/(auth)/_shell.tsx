@@ -41,7 +41,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
               className="text-white font-extrabold"
               style={{ fontSize: 17, letterSpacing: "-0.5px" }}
             >
-              M
+              D
             </span>
           </div>
           <div className="leading-tight">
@@ -53,7 +53,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
                 letterSpacing: "-0.4px",
               }}
             >
-              MaRésa
+              DirectLoc
             </div>
             <div
               className="text-[11.5px] font-medium"
@@ -73,7 +73,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
             color: "var(--admin-text-subtle)",
           }}
         >
-          Plateforme MaRésa
+          Plateforme DirectLoc
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 /**
  * Spécification : Tests de non-régression > Admin > Gestion des chambres
@@ -23,7 +23,7 @@ const CRUD_NAME_EDITED = `Suite CRUD ${RUN_ID} Modifiée`;
 // ─── Helper : cibler une carte de chambre par son nom et y agir ───────────────
 // La refonte UI de la liste utilise une grille de cartes avec data-room-name.
 
-function roomRow(page: Parameters<Parameters<typeof test>[1]>[0], name: string) {
+function roomRow(page: Page, name: string) {
   return page.locator(`[data-room-name="${name}"]`).first();
 }
 

@@ -16,7 +16,7 @@ export default function ClassicHomeHero({
   return (
     <section
       className="relative px-6 py-20 sm:py-24 text-center overflow-hidden"
-      style={{ background: "var(--color-primary)", color: "var(--color-secondary)" }}
+      style={{ background: "var(--color-primary)", color: "#fff" }}
     >
       {photoUrl && (
         // eslint-disable-next-line @next/next/no-img-element

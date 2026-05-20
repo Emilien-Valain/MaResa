@@ -11,7 +11,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const fromAddress = process.env.SMTP_FROM ?? "noreply@maresa.fr";
+const fromAddress = process.env.SMTP_FROM ?? "noreply@directloc.app";
 
 function formatDate(d: Date): string {
   return d.toLocaleDateString("fr-FR", {
@@ -94,7 +94,7 @@ function renderEmailLayout(
             <td style="padding: 24px 40px; text-align: center; border-top: 1px solid #e5e5e5;">
               ${footerParts.length > 0 ? `<p style="margin: 0 0 8px 0; font-size: 13px; color: #999; line-height: 1.5;">${footerParts.join(" &middot; ")}</p>` : ""}
               <p style="margin: 0; font-size: 12px; color: #bbb;">
-                Propuls&eacute; par MaR&eacute;sa
+                Propuls&eacute; par <a href="https://directloc.app" style="color: #bbb; text-decoration: underline;">DirectLoc</a>
               </p>
             </td>
           </tr>
@@ -243,7 +243,7 @@ export async function sendAdminNotification(data: AdminNotificationData) {
     to: adminEmail,
     subject: `Nouvelle réservation — ${guestName} (${roomName})`,
     html,
-    hotelName: `MaRésa`,
+    hotelName: `DirectLoc`,
   });
 }
 
@@ -410,7 +410,7 @@ type PasswordResetEmailData = {
 
 export async function sendPasswordResetEmail(data: PasswordResetEmailData) {
   const { userName, userEmail, resetUrl, hotelName, config } = data;
-  const displayName = hotelName ?? "MaRésa";
+  const displayName = hotelName ?? "DirectLoc";
 
   const primary = config?.primaryColor ?? "#1c1917";
 

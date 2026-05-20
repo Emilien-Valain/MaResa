@@ -46,6 +46,31 @@ export default async function globalSetup() {
       .returning();
   }
 
+  // Hydrate la config du tenant avec les champs nécessaires aux tests publics :
+  // - storyStats : nourrit la section "Chiffres clés"
+  // - address/phone/email : nourrit la section "Nous trouver"
+  // - latitude/longitude : déclenche la carte interactive (Leaflet)
+  // Idempotent : exécuté à chaque setup pour garantir l'état attendu.
+  await db
+    .update(tenants)
+    .set({
+      config: {
+        ...(tenant.config ?? {}),
+        storyStats: [
+          { value: "5", label: "Chambres", sub: "d'exception" },
+          { value: "12", label: "Hectares", sub: "d'oliveraie" },
+          { value: "1820", label: "Mas d'époque", sub: "restauré en 2019" },
+          { value: "25 m", label: "Piscine", sub: "chauffée" },
+        ],
+        address: "Route des Vignes\n84480 Bonnieux",
+        phone: "+33 4 90 00 00 00",
+        email: "contact@mas-provencal.fr",
+        latitude: 43.8233,
+        longitude: 5.3076,
+      },
+    })
+    .where(eq(tenants.id, tenant.id));
+
   // ── Property de test ────────────────────────────────────────────────────────
 
   let [property] = await db.select().from(properties).where(eq(properties.tenantId, tenant.id));

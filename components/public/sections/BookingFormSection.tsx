@@ -8,6 +8,7 @@ type Room = {
   slug: string;
   pricePerNight: string;
   capacity: number;
+  photos?: unknown;
 };
 
 export default function BookingFormSection({

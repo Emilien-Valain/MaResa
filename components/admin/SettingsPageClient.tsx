@@ -7,9 +7,12 @@ import {
   AdminInput,
   Field,
   SettingsSection,
+  StatusBanner,
   Tabs,
   Toggle,
 } from "@/components/admin/ui";
+import { updateGeneral } from "@/lib/actions/general";
+import { updateTheme } from "@/lib/actions/theme";
 import EmailSettingsSection from "@/components/admin/EmailSettingsSection";
 import LocationSection from "@/components/admin/LocationSection";
 import IcalSourcesSection from "@/components/admin/IcalSourcesSection";
@@ -140,70 +143,114 @@ function GeneralTab({
   tenant: { id: string; name: string; slug: string; domain: string | null };
   config: TenantConfig;
 }) {
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   return (
     <>
-      <SettingsSection
-        title="Informations de l'hôtel"
-        desc="Visibles sur le site public et les emails."
-      >
-        <Field label="Nom de l'hôtel">
-          <AdminInput defaultValue={tenant.name} />
-        </Field>
-        <Field
-          label="Slug (sous-domaine)"
-          hint="Utilisé pour les URLs internes et l'URL de prévisualisation."
-        >
-          <AdminInput defaultValue={tenant.slug} />
-        </Field>
-        <Field
-          label="Domaine personnalisé"
-          hint="Le domaine principal pointant vers ce tenant."
-        >
-          <AdminInput defaultValue={tenant.domain ?? ""} />
-        </Field>
-        <Field label="Titre du hero">
-          <AdminInput
-            defaultValue={config.heroTitle ?? ""}
-            placeholder="Un mas au cœur du Luberon"
-          />
-        </Field>
-        <Field label="Sous-titre">
-          <AdminInput
-            defaultValue=""
-            placeholder="5 chambres d'exception. Piscine, oliveraie et table d'hôtes."
-          />
-        </Field>
-      </SettingsSection>
+      {saved && (
+        <StatusBanner variant="success">Informations mises à jour.</StatusBanner>
+      )}
+      {error && <StatusBanner variant="error">{error}</StatusBanner>}
 
-      <SettingsSection
-        title="Contact"
-        desc="Affiché en footer et sur la page de réservation."
+      <form
+        action={async (formData) => {
+          setSaved(false);
+          setError(null);
+          try {
+            await updateGeneral(formData);
+            setSaved(true);
+          } catch (e) {
+            setError(
+              e instanceof Error ? e.message : "Erreur lors de la sauvegarde",
+            );
+          }
+        }}
       >
-        <div className="grid grid-cols-2 gap-3.5">
-          <Field label="Email">
+        <SettingsSection
+          title="Informations de l'hôtel"
+          desc="Visibles sur le site public et les emails."
+        >
+          <Field label="Nom de l'hôtel">
             <AdminInput
-              defaultValue={
-                ((config as Record<string, unknown>).email as
-                  | string
-                  | undefined) ?? ""
-              }
-              type="email"
-              placeholder="contact@hotel.fr"
+              name="name"
+              defaultValue={tenant.name}
+              required
+              maxLength={120}
             />
           </Field>
-          <Field label="Téléphone">
+        </SettingsSection>
+
+        <SettingsSection
+          title="Adresses techniques"
+          desc="Gérées par l'équipe DirectLoc. Contacte-nous pour toute modification."
+        >
+          <Field
+            label="Slug (sous-domaine)"
+            hint="Utilisé pour les URLs internes et l'URL de prévisualisation."
+          >
+            <AdminInput value={tenant.slug} readOnly disabled />
+          </Field>
+          <Field
+            label="Domaine personnalisé"
+            hint="Le domaine principal pointant vers ce tenant."
+          >
+            <AdminInput value={tenant.domain ?? "—"} readOnly disabled />
+          </Field>
+        </SettingsSection>
+
+        <SettingsSection
+          title="Contact"
+          desc="Affiché en footer et sur la page de réservation."
+        >
+          <div className="grid grid-cols-2 gap-3.5">
+            <Field label="Email">
+              <AdminInput
+                name="email"
+                defaultValue={config.email ?? ""}
+                type="email"
+                placeholder="contact@hotel.fr"
+                maxLength={120}
+              />
+            </Field>
+            <Field label="Téléphone">
+              <AdminInput
+                name="phone"
+                defaultValue={config.phone ?? ""}
+                type="tel"
+                placeholder="+33 4 90 00 00 00"
+                maxLength={40}
+              />
+            </Field>
+          </div>
+          <Field label="Adresse">
             <AdminInput
-              defaultValue={
-                ((config as Record<string, unknown>).phone as
-                  | string
-                  | undefined) ?? ""
-              }
-              type="tel"
-              placeholder="+33 4 90 00 00 00"
+              name="address"
+              defaultValue={config.address ?? ""}
+              placeholder="Route des Vignes, 84400 Apt"
+              maxLength={200}
             />
           </Field>
+        </SettingsSection>
+
+        <div className="flex justify-end mt-4">
+          <button
+            type="submit"
+            style={{
+              padding: "10px 20px",
+              background: "var(--admin-primary)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Enregistrer
+          </button>
         </div>
-      </SettingsSection>
+      </form>
     </>
   );
 }
@@ -239,13 +286,33 @@ function ThemeTab({ config }: { config: TenantConfig }) {
   );
   const [primary, setPrimary] = useState(config.primaryColor ?? "#1C3A2C");
   const [accent, setAccent] = useState(config.secondaryColor ?? "#D4784A");
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <>
+      {saved && <StatusBanner variant="success">Apparence mise à jour.</StatusBanner>}
+      {error && <StatusBanner variant="error">{error}</StatusBanner>}
+
+      <form
+        action={async (formData) => {
+          setSaved(false);
+          setError(null);
+          try {
+            await updateTheme(formData);
+            setSaved(true);
+          } catch (e) {
+            setError(
+              e instanceof Error ? e.message : "Erreur lors de la sauvegarde",
+            );
+          }
+        }}
+      >
       <SettingsSection
         title="Template"
         desc="Le design utilisé pour le site public. Chaque template a sa propre identité visuelle."
       >
+        <input type="hidden" name="template" value={template} />
         <div className="grid grid-cols-2 gap-3.5">
           {TEMPLATES.map((t) => {
             const selected = template === t.id;
@@ -254,6 +321,8 @@ function ThemeTab({ config }: { config: TenantConfig }) {
                 key={t.id}
                 type="button"
                 onClick={() => setTemplate(t.id)}
+                aria-label={`Template ${t.name}`}
+                aria-pressed={selected}
                 className="text-left relative"
                 style={{
                   background: "var(--admin-surface)",
@@ -323,96 +392,86 @@ function ThemeTab({ config }: { config: TenantConfig }) {
 
       <SettingsSection
         title="Couleurs"
-        desc="Personnalise la palette du template choisi."
+        desc="Personnalise la palette du template choisi. Les changements apparaissent sur la homepage après enregistrement."
       >
         <div className="grid grid-cols-2 gap-3.5">
           <Field label="Couleur principale">
-            <ColorRow value={primary} onChange={setPrimary} />
+            <ColorRow
+              name="primaryColor"
+              value={primary}
+              onChange={setPrimary}
+            />
           </Field>
           <Field label="Couleur d'accent">
-            <ColorRow value={accent} onChange={setAccent} />
+            <ColorRow
+              name="secondaryColor"
+              value={accent}
+              onChange={setAccent}
+            />
           </Field>
         </div>
       </SettingsSection>
 
-      <SettingsSection
-        title="Logo"
-        desc="Format recommandé : SVG ou PNG transparent, hauteur 80px."
-      >
-        <div className="flex items-center gap-4">
-          <div
-            className="flex items-center justify-center"
+        <div className="flex justify-end mt-4">
+          <button
+            type="submit"
             style={{
-              width: 120,
-              height: 80,
-              background: "var(--admin-surface-2)",
-              border: "1px dashed var(--admin-border)",
+              padding: "10px 20px",
+              background: "var(--admin-primary)",
+              color: "#fff",
+              border: "none",
               borderRadius: 8,
-              color: "var(--admin-text-subtle)",
-              fontSize: 11,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
             }}
           >
-            {config.logoUrl ? "logo actuel" : "aucun logo"}
-          </div>
-          <div>
-            <button
-              type="button"
-              style={{
-                padding: "8px 16px",
-                background: "var(--admin-primary)",
-                color: "#fff",
-                border: "none",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Remplacer
-            </button>
-            <button
-              type="button"
-              className="ml-2"
-              style={{
-                padding: "8px 16px",
-                background: "transparent",
-                color: "var(--admin-text-muted)",
-                border: "1px solid var(--admin-border)",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Supprimer
-            </button>
-          </div>
+            Enregistrer
+          </button>
         </div>
-      </SettingsSection>
+      </form>
     </>
   );
 }
 
 function ColorRow({
+  name,
   value,
   onChange,
 }: {
+  name?: string;
   value: string;
   onChange: (v: string) => void;
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span
+      <label
+        className="relative shrink-0 cursor-pointer"
         style={{
           width: 38,
           height: 38,
           borderRadius: 8,
           background: value,
           border: "1px solid var(--admin-border)",
-          flexShrink: 0,
+          overflow: "hidden",
         }}
+        aria-label="Choisir la couleur"
+      >
+        <input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="absolute inset-0 opacity-0 cursor-pointer"
+          aria-hidden="true"
+        />
+      </label>
+      <AdminInput
+        name={name}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        maxLength={7}
+        pattern="^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
       />
-      <AdminInput value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
   );
 }

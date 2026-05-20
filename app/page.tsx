@@ -1,7 +1,10 @@
 import Link from "next/link";
 import PublicLayout from "@/components/public/PublicLayout";
 import HomeHero from "@/components/public/sections/HomeHero";
+import HomeGallery from "@/components/public/sections/HomeGallery";
 import HomeStory from "@/components/public/sections/HomeStory";
+import HomeStats from "@/components/public/sections/HomeStats";
+import NousTrouver from "@/components/public/sections/NousTrouver";
 import RoomPhoto from "@/components/public/RoomPhoto";
 import LocationMap from "@/components/public/LocationMap";
 import { requireTenant } from "@/lib/tenant-context";
@@ -28,12 +31,13 @@ export default async function HomePage() {
 
       <HomeStory config={config} />
 
+      <HomeStats config={config} />
+
+      <HomeGallery config={config} />
+
       {featuredRooms.length > 0 && (
         <section className="px-6 py-20 max-w-5xl mx-auto">
-          <h2
-            className="font-heading text-3xl font-semibold mb-10 animate-fade-up"
-            style={{ color: "var(--color-primary)" }}
-          >
+          <h2 className="font-heading text-3xl font-semibold mb-10 text-warm-900 animate-fade-up">
             Nos chambres
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -53,10 +57,7 @@ export default async function HomePage() {
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 />
                 <div className="p-5">
-                  <h3
-                    className="font-heading text-xl font-semibold mb-1"
-                    style={{ color: "var(--color-primary)" }}
-                  >
+                  <h3 className="font-heading text-xl font-semibold mb-1 text-warm-900">
                     {room.name}
                   </h3>
                   <p className="text-sm text-warm-500 mb-2">
@@ -94,11 +95,15 @@ export default async function HomePage() {
         </section>
       )}
 
-      <LocationMap
-        config={config}
-        primaryColor={config.primaryColor ?? "#1c1917"}
-        secondaryColor={config.secondaryColor ?? "#faf8f5"}
-      />
+      <NousTrouver tenant={tenant} config={config} />
+
+      {config.template === "boutique" && (
+        <LocationMap
+          config={config}
+          primaryColor={config.primaryColor ?? "#1c1917"}
+          secondaryColor={config.secondaryColor ?? "#faf8f5"}
+        />
+      )}
     </PublicLayout>
   );
 }

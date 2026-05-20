@@ -25,6 +25,7 @@ const contentSchema = z.object({
 const statItem = z.object({
   value: z.string().min(1).max(20),
   label: z.string().min(1).max(60),
+  sub: z.string().max(80).optional(),
 });
 
 function parseStats(raw: string | undefined): TenantConfig["storyStats"] {

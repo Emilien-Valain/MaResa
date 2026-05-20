@@ -39,7 +39,14 @@ export type HeroPhoto = {
   url: string;
 };
 
-export type StoryStat = { value: string; label: string };
+export type GalleryPhoto = {
+  id: string;
+  filename: string;
+  url: string;
+  caption?: string;
+};
+
+export type StoryStat = { value: string; label: string; sub?: string };
 
 export type TenantConfig = {
   primaryColor?: string;
@@ -48,10 +55,19 @@ export type TenantConfig = {
   heroSubtitle?: string;
   heroEyebrow?: string;
   heroPhoto?: HeroPhoto | null;
+  galleryPhotos?: GalleryPhoto[];
   storyEyebrow?: string;
   storyTitle?: string;
   storyText?: string;
   storyStats?: StoryStat[];
+  keyStatsEyebrow?: string;
+  keyStatsTitle?: string;
+  locationEyebrow?: string;
+  locationTitle?: string;
+  locationSubtitle?: string;
+  checkInTime?: string;
+  checkOutTime?: string;
+  accessLines?: string[];
   footerTagline?: string;
   address?: string;
   phone?: string;
