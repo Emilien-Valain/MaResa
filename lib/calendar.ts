@@ -11,13 +11,17 @@ export interface CalendarMonth {
   lastDay: Date;
 }
 
+// Les dates domaine sont stockées en UTC minuit (ADR-0005). On construit donc
+// la grille du mois en UTC (`Date.UTC` / `getUTCDate`) pour qu'elle s'aligne
+// sur les réservations comparées date-only, indépendamment du `TZ` serveur.
+// Voir `.scratch/timezone-dates/issues/01`.
 export function getCalendarMonth(year: number, month: number): CalendarMonth {
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
+  const firstDay = new Date(Date.UTC(year, month, 1));
+  const lastDay = new Date(Date.UTC(year, month + 1, 0));
 
   const days: Date[] = [];
-  for (let d = 1; d <= lastDay.getDate(); d++) {
-    days.push(new Date(year, month, d));
+  for (let d = 1; d <= lastDay.getUTCDate(); d++) {
+    days.push(new Date(Date.UTC(year, month, d)));
   }
 
   return { year, month, days, firstDay, lastDay };
@@ -38,9 +42,10 @@ export function isDateInBooking(date: Date, checkIn: Date, checkOut: Date) {
 }
 
 export function formatMonthLabel(year: number, month: number) {
-  return new Date(year, month, 1).toLocaleDateString("fr-FR", {
+  return new Date(Date.UTC(year, month, 1)).toLocaleDateString("fr-FR", {
     month: "long",
     year: "numeric",
+    timeZone: "UTC",
   });
 }
 

@@ -1,6 +1,6 @@
 # Dashboard & calendar use local-timezone date math against UTC-stored dates
 
-Status: ready-for-agent
+Status: resolved — toute l'arithmétique de bornes passe en UTC. Les helpers de fenêtres KPI sont extraits dans `lib/date-windows.ts` (pur, `now` injectable, `getUTC*`/`setUTC*` uniquement) et consommés par `lib/queries/dashboard.ts`. `lib/calendar.ts` construit la grille du mois via `Date.UTC` / `getUTCDate`, et le consommateur `app/admin/calendrier/page.tsx` (positions de séjours, expansion des blocages récurrents, libellés de jours, « aujourd'hui ») bascule sur les accesseurs UTC pour rester aligné. Test : `e2e/unit/date-windows.spec.ts` rejoue la même sonde sous `TZ=UTC` et `TZ=Europe/Paris` et assert des bornes identiques + le bon bucketing d'une résa du 31 jan 23:30 UTC. Plus aucun accesseur local dans `dashboard.ts` / `calendar.ts`.
 
 ## Problem
 

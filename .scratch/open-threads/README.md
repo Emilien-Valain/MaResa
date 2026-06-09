@@ -1,13 +1,11 @@
 # Open threads — backlog for the next /grill-with-docs
 
-These are domain/design questions surfaced during the 2026-06 grilling session but **not yet resolved**. Each needs a decision before it becomes a clean issue or ADR.
+Domain/design questions surfaced during the 2026-06 grilling session. **All four are now resolved** (2026-06-09) — kept here as a paper trail; see each issue file for the decision.
 
-**If you're running `/grill-with-docs`: start here.** Read each issue below, then grill the user on the open question, and on resolution update `CONTEXT.md` / write an ADR / promote the issue to `ready-for-agent` — same as the parent session.
+Resolved decisions live in `/CONTEXT.md` and `/docs/adr/0001`–`0009`. The pricing bug (`.scratch/pricing-resolution/`) is also resolved (ADR-0009). Still open: `.scratch/timezone-dates/`.
 
-Resolved decisions from that session live in `/CONTEXT.md` and `/docs/adr/0001`–`0006`. Already-filed bugs: `.scratch/timezone-dates/` and `.scratch/pricing-resolution/`.
-
-## Threads
-1. `issues/01-manual-booking-skips-availability-check.md` — admin manual booking can silently double-book. Bug or intentional override? *(needs-triage)*
-2. `issues/02-getavailablerooms-manual-block-filter-noop.md` — per-room manual-block filter is a no-op (`roomId !== null ? undefined : undefined`). *(ready-for-agent)*
-3. `issues/03-booking-rules-override-globals-entirely.md` — a room rule wipes global rules field-by-field. Intended? *(needs-triage)*
-4. `issues/04-manual-block-recurrence-semantics.md` — `startDate`/`endDate` vs `recurrenceUntil` ambiguous for weekly blocks. *(needs-triage)*
+## Threads (all resolved)
+1. `issues/01-manual-booking-skips-availability-check.md` — manual booking could silently double-book. → **ADR-0008** : seam `admitBooking`, refus par défaut + flag « Forcer ».
+2. `issues/02-getavailablerooms-manual-block-filter-noop.md` — per-room manual-block filter no-op. → **ADR-0007** : absorbé dans le seam `blockedDates` (module Hold).
+3. `issues/03-booking-rules-override-globals-entirely.md` — room rule wiped global rules. → **ADR-0009** : merge par champ via la primitive de précédence partagée.
+4. `issues/04-manual-block-recurrence-semantics.md` — `startDate`/`endDate` vs `recurrenceUntil` ambiguous. → **ADR-0007** + `Schema DB.md` : `recurrenceUntil` = fin exclusive, `endDate` inutilisé pour le récurrent.

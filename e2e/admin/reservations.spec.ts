@@ -108,16 +108,16 @@ test.describe("Admin — Gestion des réservations", () => {
     await link.click();
     await expect(page.getByText(guestName)).toBeVisible();
 
-    // Statut "confirmed" → bouton "Marquer terminée" visible
+    // Statut "confirmed" → le bouton "Marquer terminée" DOIT être présent
+    // (assertion dure, pas conditionnelle : un bouton manquant = régression à détecter).
     const completeBtn = page.getByRole("button", { name: "Marquer terminée" });
-    if (await completeBtn.isVisible()) {
-      await completeBtn.click();
-      await expect(page.getByText("Terminée")).toBeVisible();
-      // Après completed : aucun bouton d'action
-      await expect(page.getByRole("button", { name: "Confirmer" })).not.toBeVisible();
-      await expect(page.getByRole("button", { name: "Annuler" })).not.toBeVisible();
-      await expect(page.getByRole("button", { name: "Marquer terminée" })).not.toBeVisible();
-    }
+    await expect(completeBtn).toBeVisible();
+    await completeBtn.click();
+    await expect(page.getByText("Terminée")).toBeVisible();
+    // Après completed : aucun bouton d'action
+    await expect(page.getByRole("button", { name: "Confirmer" })).not.toBeVisible();
+    await expect(page.getByRole("button", { name: "Annuler" })).not.toBeVisible();
+    await expect(page.getByRole("button", { name: "Marquer terminée" })).not.toBeVisible();
   });
 
   test("annulation confirmed → cancelled — aucun bouton d'action ensuite", async ({ page }) => {
@@ -132,14 +132,14 @@ test.describe("Admin — Gestion des réservations", () => {
     const link = page.getByRole("link").filter({ hasText: guestName }).first();
     await link.click();
 
+    // confirmed → le bouton "Annuler" DOIT être présent (assertion dure).
     const cancelBtn = page.getByRole("button", { name: "Annuler" });
-    if (await cancelBtn.isVisible()) {
-      await cancelBtn.click();
-      await expect(page.getByText("Annulée")).toBeVisible();
-      await expect(page.getByRole("button", { name: "Confirmer" })).not.toBeVisible();
-      await expect(page.getByRole("button", { name: "Marquer terminée" })).not.toBeVisible();
-      await expect(page.getByRole("button", { name: "Annuler" })).not.toBeVisible();
-    }
+    await expect(cancelBtn).toBeVisible();
+    await cancelBtn.click();
+    await expect(page.getByText("Annulée")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Confirmer" })).not.toBeVisible();
+    await expect(page.getByRole("button", { name: "Marquer terminée" })).not.toBeVisible();
+    await expect(page.getByRole("button", { name: "Annuler" })).not.toBeVisible();
   });
 
   // ─── Filtres ─────────────────────────────────────────────────────────────────

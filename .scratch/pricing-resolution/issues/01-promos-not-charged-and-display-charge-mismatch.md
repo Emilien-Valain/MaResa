@@ -1,6 +1,6 @@
 # Pricing: promos can't be charged, priority is ignored, and the listing advertises prices it won't charge
 
-Status: ready-for-agent
+Status: resolved — ADR-0009 (via la primitive de précédence partagée `lib/rule-precedence.ts`). `resolveNightPrice` élit la règle gagnante par précédence (priority → spécificité → récence) et l'applique directement, clamp ≥0, sans plancher : promo et prix chambre sous base sont facturés, `priority` casse l'égalité. `getMinPricePerNight` dérive du même résolveur sur 365 j → display == charge. Tests : `e2e/admin/rule-resolution.spec.ts` (promo facturée, priority, spécificité, display==charge).
 
 ## Problem
 

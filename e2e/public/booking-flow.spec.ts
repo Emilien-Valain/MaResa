@@ -25,6 +25,9 @@ function loadTestContext() {
 const BOOKING_TEST_CHECKIN = "2026-07-20";
 const BOOKING_TEST_CHECKOUT = "2026-07-24";
 
+// IP dédiée : budget de rate-limit propre à ce fichier (cf. holds.spec).
+test.use({ extraHTTPHeaders: { "x-forwarded-for": "10.10.0.3" } });
+
 test.describe("Public — Parcours de réservation", () => {
   // Nettoyer les rules potentiellement laissées par les tests admin
   test.beforeAll(async () => {

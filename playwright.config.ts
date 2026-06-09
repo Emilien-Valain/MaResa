@@ -44,6 +44,11 @@ export default defineConfig({
       testMatch: ["**/public/**/*.spec.ts", "**/payment/**/*.spec.ts"],
       use: { ...devices["Desktop Chrome"] },
     },
+    // Tests unitaires de logique pure (pas de navigateur, pas de session)
+    {
+      name: "unit",
+      testMatch: ["**/unit/**/*.spec.ts"],
+    },
   ],
 
   webServer: {

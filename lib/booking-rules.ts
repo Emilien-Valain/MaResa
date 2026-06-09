@@ -1,8 +1,9 @@
 "use server";
 
-import { and, eq, isNull, or, lte, gte } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { bookingRules } from "@/db/schema";
+import { orderByPrecedence } from "@/lib/rule-precedence";
 
 const DAY_NAMES_FR = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
 
@@ -69,8 +70,15 @@ export async function validateBookingRules(
 }
 
 /**
- * Retourne les règles effectives pour une chambre à une date donnée.
- * Room-specific override global entièrement (pas de merge par champ).
+ * Retourne les règles effectives pour une chambre à une date d'arrivée donnée.
+ *
+ * Merge PAR CHAMP par précédence (ADR-0009) : chaque contrainte (minStay,
+ * maxStay, allowedCheckInDays, allowedCheckOutDays) prend la valeur de la règle
+ * applicable de plus haute précédence qui la définit (non-null). Une règle
+ * chambre qui ne fixe que `minStay` ne fait donc plus disparaître les
+ * `allowedCheckInDays` globaux — ils sont hérités. Précédence partagée avec le
+ * pricing : priority → spécificité (chambre > global, fenêtre étroite > année) →
+ * récence.
  */
 export async function getEffectiveRules(
   roomId: string,
@@ -92,40 +100,22 @@ export async function getEffectiveRules(
       ),
     );
 
-  // Filtrer par validité saisonnière
-  const matchingRules = allRules.filter((rule) => {
-    if (!rule.validFrom && !rule.validTo) return true; // année entière
-    if (rule.validFrom && checkIn < new Date(rule.validFrom)) return false;
-    if (rule.validTo && checkIn > new Date(rule.validTo)) return false;
-    return true;
-  });
+  // Applicables à la date d'arrivée, triées de la plus prioritaire à la moins.
+  const ordered = orderByPrecedence(allRules, checkIn);
 
-  // Séparer room-specific et global
-  const roomRules = matchingRules.filter((r) => r.roomId !== null);
-  const globalRules = matchingRules.filter((r) => r.roomId === null);
+  // Pour chaque champ : la 1re règle de la liste ordonnée qui le définit gagne.
+  const firstDefined = <V>(get: (r: (typeof ordered)[number]) => V | null | undefined): V | null => {
+    for (const rule of ordered) {
+      const v = get(rule);
+      if (v !== null && v !== undefined) return v;
+    }
+    return null;
+  };
 
-  // Si des règles room-specific existent, elles overrident complètement les globales
-  const effectiveRules = roomRules.length > 0 ? roomRules : globalRules;
-
-  if (effectiveRules.length === 0) {
-    return { minStay: null, maxStay: null, allowedCheckInDays: null, allowedCheckOutDays: null };
-  }
-
-  // Parmi les règles effectives, prendre la plus restrictive
-  // (priorité la plus haute, puis la plus spécifique saisonnièrement)
-  const sorted = effectiveRules.sort((a, b) => {
-    // Saisonnière > année entière
-    const aSpecific = a.validFrom ? 1 : 0;
-    const bSpecific = b.validFrom ? 1 : 0;
-    if (aSpecific !== bSpecific) return bSpecific - aSpecific;
-    return b.priority - a.priority;
-  });
-
-  const best = sorted[0];
   return {
-    minStay: best.minStay,
-    maxStay: best.maxStay,
-    allowedCheckInDays: best.allowedCheckInDays as number[] | null,
-    allowedCheckOutDays: best.allowedCheckOutDays as number[] | null,
+    minStay: firstDefined((r) => r.minStay),
+    maxStay: firstDefined((r) => r.maxStay),
+    allowedCheckInDays: firstDefined((r) => r.allowedCheckInDays as number[] | null),
+    allowedCheckOutDays: firstDefined((r) => r.allowedCheckOutDays as number[] | null),
   };
 }

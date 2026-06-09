@@ -19,8 +19,11 @@ import { Icon } from "@/components/admin/icons";
 const VALID_STATUSES = ["pending", "confirmed", "completed", "cancelled"] as const;
 type Status = (typeof VALID_STATUSES)[number];
 
+// Clés/jours en UTC : la grille (`lib/calendar.ts`) et les réservations sont
+// en UTC minuit (ADR-0005), donc tout le calcul de positions et de jours
+// bloqués reste en UTC pour être indépendant du `TZ` serveur.
 function dateKey(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
 }
 
 export default async function CalendrierPage({
@@ -34,11 +37,11 @@ export default async function CalendrierPage({
   const now = new Date();
   const yearParsed = parseInt(params.year ?? "");
   const monthParsed = parseInt(params.month ?? "");
-  const year = Number.isFinite(yearParsed) ? yearParsed : now.getFullYear();
+  const year = Number.isFinite(yearParsed) ? yearParsed : now.getUTCFullYear();
   const month =
     Number.isFinite(monthParsed) && monthParsed >= 0 && monthParsed <= 11
       ? monthParsed
-      : now.getMonth();
+      : now.getUTCMonth();
 
   const calendar = getCalendarMonth(year, month);
   const prev = prevMonth(year, month);
@@ -53,9 +56,11 @@ export default async function CalendrierPage({
   const activeChambres = chambres.filter((c) => c.active);
   const daysInMonth = calendar.days.length;
   const monthEndExclusive = new Date(
-    calendar.lastDay.getFullYear(),
-    calendar.lastDay.getMonth(),
-    calendar.lastDay.getDate() + 1,
+    Date.UTC(
+      calendar.lastDay.getUTCFullYear(),
+      calendar.lastDay.getUTCMonth(),
+      calendar.lastDay.getUTCDate() + 1,
+    ),
   );
 
   // ── Build booking spans (clipped to current month) ───────────────────
@@ -66,9 +71,9 @@ export default async function CalendrierPage({
     const checkOut = new Date(b.checkOut);
     if (checkOut <= calendar.firstDay || checkIn >= monthEndExclusive) continue;
     const startDay =
-      checkIn < calendar.firstDay ? 1 : checkIn.getDate();
+      checkIn < calendar.firstDay ? 1 : checkIn.getUTCDate();
     const endDay =
-      checkOut > monthEndExclusive ? daysInMonth + 1 : checkOut.getDate();
+      checkOut > monthEndExclusive ? daysInMonth + 1 : checkOut.getUTCDate();
     if (endDay <= startDay) continue;
     bookingSpans.push({
       id: b.id,
@@ -103,10 +108,10 @@ export default async function CalendrierPage({
           )
         : monthEndExclusive;
       while (cur < end) {
-        if (days.includes(cur.getDay())) {
+        if (days.includes(cur.getUTCDay())) {
           blockedSet.add(`${key}|${dateKey(cur)}`);
         }
-        cur.setDate(cur.getDate() + 1);
+        cur.setUTCDate(cur.getUTCDate() + 1);
       }
     } else {
       const start = new Date(block.startDate);
@@ -117,7 +122,7 @@ export default async function CalendrierPage({
       );
       while (cur < rangeEnd) {
         blockedSet.add(`${key}|${dateKey(cur)}`);
-        cur.setDate(cur.getDate() + 1);
+        cur.setUTCDate(cur.getUTCDate() + 1);
       }
     }
   }
@@ -154,15 +159,17 @@ export default async function CalendrierPage({
 
   // ── Header data ──────────────────────────────────────────────────────
   const weekdayLabels: string[] = calendar.days.map((d) =>
-    d.toLocaleDateString("fr-FR", { weekday: "narrow" }).toUpperCase(),
+    d
+      .toLocaleDateString("fr-FR", { weekday: "narrow", timeZone: "UTC" })
+      .toUpperCase(),
   );
   const weekendDays: boolean[] = calendar.days.map((d) => {
-    const dow = d.getDay();
+    const dow = d.getUTCDay();
     return dow === 0 || dow === 6;
   });
   const todayDay =
-    now.getFullYear() === year && now.getMonth() === month
-      ? now.getDate()
+    now.getUTCFullYear() === year && now.getUTCMonth() === month
+      ? now.getUTCDate()
       : null;
 
   const navButtonStyle = {
@@ -226,7 +233,7 @@ export default async function CalendrierPage({
             <Icon.ChevronRight size={16} />
           </Link>
           <Link
-            href={`/admin/calendrier?year=${now.getFullYear()}&month=${now.getMonth()}`}
+            href={`/admin/calendrier?year=${now.getUTCFullYear()}&month=${now.getUTCMonth()}`}
             style={{
               background: "var(--admin-primary)",
               color: "#fff",

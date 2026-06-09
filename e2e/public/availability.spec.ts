@@ -46,6 +46,9 @@ function freeParams(overrides: Partial<Record<string, string>> = {}) {
 
 // ─── Happy path ────────────────────────────────────────────────────────────────
 
+// IP dédiée : budget de rate-limit propre à ce fichier (cf. holds.spec).
+test.use({ extraHTTPHeaders: { "x-forwarded-for": "10.10.0.2" } });
+
 test.describe("API — Disponibilité", () => {
   // Nettoyer les rules potentiellement laissées par les tests admin
   test.beforeAll(async () => {

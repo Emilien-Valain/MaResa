@@ -45,6 +45,10 @@ function availableRoomsUrl(from: string, to: string) {
   return `/api/rooms/available?${q.toString()}`;
 }
 
+// IP dédiée : budget de rate-limit (60 req/min) propre à ce fichier, isolé du
+// bucket partagé que le test sécurité (burst 65 req) sature.
+test.use({ extraHTTPHeaders: { "x-forwarded-for": "10.10.0.1" } });
+
 test.describe("API — Module Hold (disponibilité unifiée)", () => {
   test.beforeAll(async () => {
     await cleanRules(ctx.tenantId);

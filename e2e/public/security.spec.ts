@@ -16,6 +16,11 @@ const testContext = JSON.parse(
   ),
 );
 
+// IP dédiée pour ce fichier : ses tests (hors burst) ont un budget de rate-limit
+// propre, isolé des autres specs. Le test de burst ci-dessous utilise encore une
+// autre IP pour ne pas épuiser celle-ci.
+test.use({ extraHTTPHeaders: { "x-forwarded-for": "10.10.0.6" } });
+
 // ─── Headers de sécurité HTTP ─────────────────────────────────────────────────
 
 test.describe("Sécurité — Headers HTTP", () => {
@@ -62,9 +67,12 @@ test.describe("Sécurité — Rate limiting", () => {
     // On envoie 65 requêtes rapides.
     const url = `/api/availability?roomId=${testContext.apiRoomId}&from=2026-09-01&to=2026-09-05`;
 
+    // IP dédiée au burst : on sature CE bucket sans toucher à celui du reste du
+    // fichier (override de l'x-forwarded-for posé au niveau du fichier).
+    const burstHeaders = { "x-forwarded-for": "10.10.9.9" };
     let got429 = false;
     for (let i = 0; i < 65; i++) {
-      const res = await request.get(url);
+      const res = await request.get(url, { headers: burstHeaders });
       if (res.status() === 429) {
         got429 = true;
         expect(res.headers()["retry-after"]).toBeTruthy();

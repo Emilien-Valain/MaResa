@@ -6,7 +6,7 @@
 import { and, eq } from "drizzle-orm";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { bookingRules, bookings } from "../../db/schema";
+import { bookingRules, bookings, pricingRules } from "../../db/schema";
 
 function getDb() {
   const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL! });
@@ -19,6 +19,11 @@ export async function insertBookingRule(input: {
   roomId?: string | null;
   minStay?: number | null;
   maxStay?: number | null;
+  allowedCheckInDays?: number[] | null;
+  allowedCheckOutDays?: number[] | null;
+  priority?: number;
+  validFrom?: Date | null;
+  validTo?: Date | null;
 }): Promise<string> {
   const { db, pool } = getDb();
   const [row] = await db
@@ -28,6 +33,11 @@ export async function insertBookingRule(input: {
       roomId: input.roomId ?? null,
       minStay: input.minStay ?? null,
       maxStay: input.maxStay ?? null,
+      allowedCheckInDays: input.allowedCheckInDays ?? null,
+      allowedCheckOutDays: input.allowedCheckOutDays ?? null,
+      priority: input.priority ?? 0,
+      validFrom: input.validFrom ?? null,
+      validTo: input.validTo ?? null,
     })
     .returning({ id: bookingRules.id });
   await pool.end();
@@ -37,6 +47,44 @@ export async function insertBookingRule(input: {
 export async function deleteBookingRule(id: string): Promise<void> {
   const { db, pool } = getDb();
   await db.delete(bookingRules).where(eq(bookingRules.id, id));
+  await pool.end();
+}
+
+/** Insère une pricing-rule (globale si roomId omis) et retourne son id. */
+export async function insertPricingRule(input: {
+  tenantId: string;
+  roomId?: string | null;
+  name?: string;
+  fixedPrice?: string | null; // decimal string, ex "150.00"
+  percentageModifier?: string | null; // decimal string, ex "-30.00"
+  priority?: number;
+  validFrom?: Date | null;
+  validTo?: Date | null;
+  daysOfWeek?: number[] | null;
+}): Promise<string> {
+  const { db, pool } = getDb();
+  const [row] = await db
+    .insert(pricingRules)
+    .values({
+      tenantId: input.tenantId,
+      roomId: input.roomId ?? null,
+      name: input.name ?? "Test rule",
+      fixedPrice: input.fixedPrice ?? null,
+      percentageModifier: input.percentageModifier ?? null,
+      priority: input.priority ?? 0,
+      validFrom: input.validFrom ?? null,
+      validTo: input.validTo ?? null,
+      daysOfWeek: input.daysOfWeek ?? null,
+      active: true,
+    })
+    .returning({ id: pricingRules.id });
+  await pool.end();
+  return row.id;
+}
+
+export async function deletePricingRule(id: string): Promise<void> {
+  const { db, pool } = getDb();
+  await db.delete(pricingRules).where(eq(pricingRules.id, id));
   await pool.end();
 }
 

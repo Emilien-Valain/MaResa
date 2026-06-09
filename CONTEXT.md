@@ -67,5 +67,5 @@ _Avoid_: nuitée (in code)
 A room's default per-night price (`rooms.pricePerNight`). The price for a night when no [[pricing-rule]] applies; not a floor — a rule may go below it.
 
 **Pricing rule**:
-A conditional override of the [[base-price|base price]] for a [[night]] (fixed price or percentage modifier), scoped to a room or global, optionally restricted by date window and days of week. May *raise* (seasonal/weekend surge) or *lower* (**promo**) the price. When several match a night, resolution is by precedence — highest `priority`, then specificity (room > global, day-restricted > all-days, narrower window > all-year), then recency (ADR-0006).
-_Avoid_: "highest price wins" (the rejected old model)
+A conditional override of the [[base-price|base price]] for a [[night]] (fixed price or percentage modifier), scoped to a room or global, optionally restricted by date window and days of week. May *raise* (seasonal/weekend surge) or *lower* (**promo**) the price. When several match a night, resolution is by precedence — highest `priority`, then specificity (room > global, day-restricted > all-days, narrower window > all-year), then recency (ADR-0006). This precedence is one shared primitive (`lib/rule-precedence.ts`): **booking rules** (minStay, allowed check-in days…) resolve by the same order, but field-by-field rather than to a single price — each constraint takes the value of the highest-precedence rule that defines it (ADR-0009).
+_Avoid_: "highest price wins" (the rejected old model), whole-record override for booking rules

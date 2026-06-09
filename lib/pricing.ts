@@ -3,6 +3,7 @@
 import { and, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { pricingRules, rooms } from "@/db/schema";
+import { orderByPrecedence } from "@/lib/rule-precedence";
 
 export interface NightPrice {
   date: string; // YYYY-MM-DD
@@ -19,18 +20,16 @@ export interface PriceBreakdown {
 }
 
 type PricingRule = typeof pricingRules.$inferSelect;
+/** Forme exploitable par la primitive de précédence (daysOfWeek typé). */
+type ResolvableRule = Omit<PricingRule, "daysOfWeek"> & { daysOfWeek: number[] | null };
+
+const HORIZON_DAYS = 365;
 
 /**
- * Calcule le prix pour chaque nuit dans [checkIn, checkOut[.
- * Le prix le plus haut gagne quand plusieurs règles s'appliquent.
- * Room-specific fixedPrice > Global percentageModifier/fixedPrice.
+ * Charge le prix de base + les règles actives (chambre + globales) d'un tenant,
+ * avec `daysOfWeek` typé pour la primitive de précédence.
  */
-export async function calculatePrice(
-  roomId: string,
-  tenantId: string,
-  checkIn: Date,
-  checkOut: Date,
-): Promise<PriceBreakdown> {
+async function loadPricingContext(roomId: string, tenantId: string) {
   const [room, allRules] = await Promise.all([
     db
       .select({ pricePerNight: rooms.pricePerNight })
@@ -50,15 +49,32 @@ export async function calculatePrice(
   ]);
 
   const basePrice = room ? parseFloat(room.pricePerNight) : 0;
-  const roomRules = allRules.filter((r) => r.roomId !== null);
-  const globalRules = allRules.filter((r) => r.roomId === null);
+  const rules: ResolvableRule[] = allRules.map((r) => ({
+    ...r,
+    daysOfWeek: r.daysOfWeek as number[] | null,
+  }));
+  return { basePrice, rules };
+}
+
+/**
+ * Calcule le prix pour chaque nuit dans [checkIn, checkOut[.
+ * Résolution par précédence (ADR-0006 / ADR-0009) : la règle gagnante est
+ * appliquée directement — une promo (prix < base) est facturée telle quelle.
+ */
+export async function calculatePrice(
+  roomId: string,
+  tenantId: string,
+  checkIn: Date,
+  checkOut: Date,
+): Promise<PriceBreakdown> {
+  const { basePrice, rules } = await loadPricingContext(roomId, tenantId);
 
   const nightPrices: NightPrice[] = [];
   const cur = new Date(checkIn);
   cur.setUTCHours(0, 0, 0, 0);
 
   while (cur < checkOut) {
-    const { price, ruleName } = resolveNightPrice(basePrice, cur, roomRules, globalRules);
+    const { price, ruleName } = resolveNightPrice(basePrice, new Date(cur), rules);
     nightPrices.push({
       date: cur.toISOString().split("T")[0],
       price,
@@ -80,117 +96,53 @@ export async function calculatePrice(
 }
 
 /**
- * Retourne le prix minimum par nuit pour une chambre (pour "à partir de X€/nuit").
- * Considère le prix de base et les éventuelles promotions (pourcentage négatif).
+ * Prix minimum par nuit pour une chambre (« à partir de X€/nuit »).
+ * Dérivé du MÊME résolveur sur un horizon forward → l'affichage ne peut pas
+ * mentir sur le prix réellement facturé (display == charge, ADR-0006).
  */
 export async function getMinPricePerNight(
   roomId: string,
   tenantId: string,
 ): Promise<number> {
-  const [room, allRules] = await Promise.all([
-    db
-      .select({ pricePerNight: rooms.pricePerNight })
-      .from(rooms)
-      .where(eq(rooms.id, roomId))
-      .then((r) => r[0]),
-    db
-      .select()
-      .from(pricingRules)
-      .where(
-        and(
-          eq(pricingRules.tenantId, tenantId),
-          eq(pricingRules.active, true),
-          or(eq(pricingRules.roomId, roomId), isNull(pricingRules.roomId)),
-        ),
-      ),
-  ]);
+  const { basePrice, rules } = await loadPricingContext(roomId, tenantId);
+  if (rules.length === 0) return basePrice;
 
-  const basePrice = room ? parseFloat(room.pricePerNight) : 0;
+  const start = new Date();
+  start.setUTCHours(0, 0, 0, 0);
 
-  if (allRules.length === 0) return basePrice;
-
-  // Le min est soit le base price, soit un prix réduit par une promo
-  let minPrice = basePrice;
-
-  for (const rule of allRules) {
-    if (rule.roomId !== null && rule.fixedPrice) {
-      const fp = parseFloat(rule.fixedPrice);
-      if (fp < minPrice) minPrice = fp;
-    } else if (rule.percentageModifier) {
-      const mod = parseFloat(rule.percentageModifier);
-      const adjusted = basePrice * (1 + mod / 100);
-      if (adjusted < minPrice) minPrice = adjusted;
-    } else if (rule.fixedPrice) {
-      const fp = parseFloat(rule.fixedPrice);
-      if (fp < minPrice) minPrice = fp;
-    }
+  let min = Infinity;
+  const cur = new Date(start);
+  for (let i = 0; i < HORIZON_DAYS; i++) {
+    const { price } = resolveNightPrice(basePrice, new Date(cur), rules);
+    if (price < min) min = price;
+    cur.setUTCDate(cur.getUTCDate() + 1);
   }
 
-  return Math.max(0, Math.round(minPrice * 100) / 100);
+  return Math.max(0, Math.round(min * 100) / 100);
 }
 
 /**
- * Résout le prix d'une nuit donnée.
- * 1. Filtre les rules par validFrom/validTo et daysOfWeek
- * 2. Room-specific fixedPrice → candidat
- * 3. Global percentageModifier → basePrice * (1 + mod/100)
- * 4. Le prix le plus haut gagne
+ * Résout le prix d'une nuit : élit la règle gagnante par précédence et applique
+ * sa valeur directement (`fixedPrice`, ou `base × (1 + modificateur/100)`),
+ * bornée à 0. Pas de plancher au prix de base — une promo peut descendre dessous.
  */
 function resolveNightPrice(
   basePrice: number,
   date: Date,
-  roomRules: PricingRule[],
-  globalRules: PricingRule[],
+  rules: ResolvableRule[],
 ): { price: number; ruleName: string | null } {
-  const dayOfWeek = date.getUTCDay();
+  const winner = orderByPrecedence(rules, date)[0];
+  if (!winner) return { price: Math.round(basePrice * 100) / 100, ruleName: null };
 
-  const matchesRule = (rule: PricingRule): boolean => {
-    // Vérifier la plage de dates
-    if (rule.validFrom && date < new Date(rule.validFrom)) return false;
-    if (rule.validTo && date > new Date(rule.validTo)) return false;
-    // Vérifier le jour de la semaine
-    if (rule.daysOfWeek) {
-      const days = rule.daysOfWeek as number[];
-      if (!days.includes(dayOfWeek)) return false;
-    }
-    return true;
-  };
-
-  let bestPrice = basePrice;
-  let bestRuleName: string | null = null;
-
-  // Room-specific rules avec fixedPrice
-  for (const rule of roomRules) {
-    if (!matchesRule(rule)) continue;
-    if (rule.fixedPrice) {
-      const fp = parseFloat(rule.fixedPrice);
-      if (fp > bestPrice) {
-        bestPrice = fp;
-        bestRuleName = rule.name;
-      }
-    }
-  }
-
-  // Global rules
-  for (const rule of globalRules) {
-    if (!matchesRule(rule)) continue;
-    let candidatePrice = basePrice;
-
-    if (rule.fixedPrice) {
-      candidatePrice = parseFloat(rule.fixedPrice);
-    } else if (rule.percentageModifier) {
-      const mod = parseFloat(rule.percentageModifier);
-      candidatePrice = basePrice * (1 + mod / 100);
-    }
-
-    if (candidatePrice > bestPrice) {
-      bestPrice = candidatePrice;
-      bestRuleName = rule.name;
-    }
+  let price = basePrice;
+  if (winner.fixedPrice !== null) {
+    price = parseFloat(winner.fixedPrice);
+  } else if (winner.percentageModifier !== null) {
+    price = basePrice * (1 + parseFloat(winner.percentageModifier) / 100);
   }
 
   return {
-    price: Math.round(bestPrice * 100) / 100,
-    ruleName: bestRuleName,
+    price: Math.max(0, Math.round(price * 100) / 100),
+    ruleName: winner.name,
   };
 }

@@ -88,8 +88,9 @@ test.describe("Admin — Gestion des chambres", () => {
 
     page.on("dialog", (d) => d.accept());
     await roomRow(page, deleteName).getByRole("button", { name: "Supprimer" }).click();
-    await page.waitForLoadState("networkidle");
-    await expect(page.getByText(deleteName)).not.toBeVisible();
+    // Cibler la LIGNE (data-room-name), pas getByText : un toast de succès contient
+    // le nom de la chambre et matcherait getByText → flake. toHaveCount(0) auto-retry.
+    await expect(page.locator(`[data-room-name="${deleteName}"]`)).toHaveCount(0);
   });
 
   // ─── Régression : property manquante ─────────────────────────────────────────

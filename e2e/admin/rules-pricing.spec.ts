@@ -7,6 +7,9 @@ const ctx = JSON.parse(
   fs.readFileSync(path.join(process.cwd(), "e2e", ".auth", "test-context.json"), "utf-8"),
 ) as { tenantId: string; apiRoomId: string };
 
+// IP dédiée : budget de rate-limit propre à ce fichier (cf. holds.spec).
+test.use({ extraHTTPHeaders: { "x-forwarded-for": "10.10.0.5" } });
+
 test.describe("Admin — Tarification dynamique", () => {
   // ─── Happy path ────────────────────────────────────────────────────────────
 

@@ -1,34 +1,17 @@
 import { and, eq, gte, lte, or, sql, count, sum, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { bookings, rooms } from "@/db/schema";
+import {
+  todayStart,
+  tomorrowStart,
+  startOfWeek,
+  startOfMonth,
+  endOfMonth,
+} from "@/lib/date-windows";
 
-// ─── Dates utilitaires ──────────────────────────────────────────────────────
-
-function todayStart(): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function startOfWeek(): Date {
-  const d = todayStart();
-  const day = d.getDay(); // 0=dim, 1=lun
-  d.setDate(d.getDate() - ((day + 6) % 7)); // lundi
-  return d;
-}
-
-function startOfMonth(): Date {
-  const d = todayStart();
-  d.setDate(1);
-  return d;
-}
-
-function endOfMonth(): Date {
-  const d = todayStart();
-  d.setMonth(d.getMonth() + 1, 0); // dernier jour du mois
-  d.setHours(23, 59, 59, 999);
-  return d;
-}
+// Bornes de dates (jour/semaine/mois) — toute l'arithmétique est en UTC pour
+// rester alignée sur le stockage UTC-minuit des dates domaine (ADR-0005) et
+// donc indépendante du `TZ` serveur. Voir `lib/date-windows.ts`.
 
 // ─── Prochaines arrivées / départs ──────────────────────────────────────────
 
@@ -95,8 +78,7 @@ export async function getBookingsByChannel(tenantId: string) {
 
 export async function getOccupancyRate(tenantId: string) {
   const today = todayStart();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrow = tomorrowStart();
 
   // Nombre total de chambres actives
   const [totalResult] = await db
@@ -150,8 +132,7 @@ async function getRevenueForPeriod(tenantId: string, from: Date, to: Date) {
 
 export async function getRevenue(tenantId: string) {
   const today = todayStart();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrow = tomorrowStart();
 
   const [day, week, month] = await Promise.all([
     getRevenueForPeriod(tenantId, today, tomorrow),

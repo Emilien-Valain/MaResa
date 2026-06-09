@@ -1,6 +1,6 @@
 # Booking rules: a room rule overrides global rules entirely (no field merge)
 
-Status: needs-triage
+Status: resolved — ADR-0009. Décision : **merge par champ** par précédence partagée avec le pricing (`lib/rule-precedence.ts`). `getEffectiveRules` fold désormais champ par champ : chaque contrainte prend la valeur de la règle de plus haute précédence qui la définit. Plus d'override de bloc ; résolution priority-first (alignée ADR-0006), plus saisonnière-first. Tests : `e2e/admin/rule-resolution.spec.ts`. Doc : Architecture.md + CONTEXT.md (Pricing rule).
 
 ## Open question
 
