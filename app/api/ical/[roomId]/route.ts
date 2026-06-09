@@ -1,14 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq, or } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { rooms, bookings } from "@/db/schema";
+import { rooms } from "@/db/schema";
+import { blockedDates, coalesce } from "@/lib/holds";
 
 /**
  * GET /api/ical/[roomId]
  *
  * Export iCal public (pas d'auth) — l'URL est le secret.
  * Airbnb/Booking pollent cette URL pour bloquer les dates occupées.
+ *
+ * Mirror exact de la disponibilité (ADR-0004) : ré-exporte TOUT ce qui rend la
+ * chambre indisponible — bookings pending/confirmed + iCal blocks importés +
+ * manual blocks — via le seam `blockedDates` (ADR-0007), recollé en intervalles.
  */
+
+/** Horizon forward exporté, en jours (~24 mois). */
+const HORIZON_DAYS = 730;
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ roomId: string }> },
@@ -25,34 +34,27 @@ export async function GET(
     return new NextResponse("Not Found", { status: 404 });
   }
 
-  // Récupérer les réservations pending + confirmed
-  const activeBookings = await db
-    .select({
-      id: bookings.id,
-      checkIn: bookings.checkIn,
-      checkOut: bookings.checkOut,
-    })
-    .from(bookings)
-    .where(
-      and(
-        eq(bookings.roomId, roomId),
-        eq(bookings.tenantId, room.tenantId),
-        or(eq(bookings.status, "pending"), eq(bookings.status, "confirmed")),
-      ),
-    );
+  // Fenêtre forward [aujourd'hui, +HORIZON_DAYS[ en dates UTC
+  const start = new Date();
+  start.setUTCHours(0, 0, 0, 0);
+  const end = new Date(start.getTime() + HORIZON_DAYS * 86_400_000);
+
+  const held = await blockedDates(roomId, room.tenantId, { start, end });
+  const intervals = coalesce(held);
 
   const now = new Date();
   const stamp = formatIcalDate(now);
 
-  const events = activeBookings
-    .map((b) => {
+  const events = intervals
+    .map((iv) => {
+      const uid = `hold-${formatIcalDateOnly(iv.start)}-${formatIcalDateOnly(iv.end)}@directloc`;
       return [
         "BEGIN:VEVENT",
-        `UID:booking-${b.id}@marisa`,
+        `UID:${uid}`,
         `DTSTAMP:${stamp}`,
-        `DTSTART;VALUE=DATE:${formatIcalDateOnly(b.checkIn)}`,
-        `DTEND;VALUE=DATE:${formatIcalDateOnly(b.checkOut)}`,
-        `SUMMARY:Réservé`,
+        `DTSTART;VALUE=DATE:${formatIcalDateOnly(iv.start)}`,
+        `DTEND;VALUE=DATE:${formatIcalDateOnly(iv.end)}`,
+        `SUMMARY:Indisponible`,
         `STATUS:CONFIRMED`,
         "END:VEVENT",
       ].join("\r\n");
@@ -68,7 +70,9 @@ export async function GET(
     "CALSCALE:GREGORIAN",
     events,
     "END:VCALENDAR",
-  ].join("\r\n");
+  ]
+    .filter((line) => line !== "")
+    .join("\r\n");
 
   return new NextResponse(ics, {
     headers: {

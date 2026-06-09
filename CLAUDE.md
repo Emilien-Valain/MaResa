@@ -88,3 +88,17 @@ Utilise la variable `TEST_DATABASE_URL` dans `.env.test` pour pointer vers une b
 ## Rappel
 
 Interprète créativement, fais des choix inattendus qui semblent véritablement conçus pour le contexte hôtelier. Varie entre thèmes clairs et sombres, différentes fonts, différentes esthétiques selon le template.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as local markdown files under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Five canonical triage roles, using default label strings (no overrides). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.

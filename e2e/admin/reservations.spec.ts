@@ -1,4 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
+import fs from "fs";
+import path from "path";
+import { deleteBookingsByEmail } from "../helpers/intake";
 
 /**
  * Spécification : Tests de non-régression > Admin > Gestion des réservations
@@ -7,8 +10,10 @@ import { test, expect, type Page } from "@playwright/test";
  * Stratégie : happy path → cycles d'état → cas limites → sécurité.
  * Prérequis : au moins une chambre active en DB (créée par les tests chambres).
  *
- * Règle de nettoyage : les réservations s'accumulent mais ne bloquent pas les tests.
- * On utilise des noms suffisamment uniques pour ne pas avoir de faux positifs.
+ * Depuis ADR-0008, l'intake manuel contrôle la disponibilité : ces tests de cycle
+ * de vie ne testent pas l'overlap, ils cochent donc « Forcer » pour créer une
+ * réservation-fixture quelles que soient les dates déjà occupées. Le nettoyage par
+ * email en afterAll garantit l'absence de résidu (les emails sont stables par test).
  */
 
 function addDays(n: number) {
@@ -17,6 +22,23 @@ function addDays(n: number) {
 
 // Nom unique par run pour éviter les collisions entre exécutions
 const RUN_ID = Date.now().toString(36).slice(-5);
+
+const ctx = JSON.parse(
+  fs.readFileSync(path.join(process.cwd(), "e2e", ".auth", "test-context.json"), "utf-8"),
+) as { tenantId: string };
+
+// Emails utilisés par ce fichier — nettoyés en afterAll (et en début de suite pour
+// purger les résidus des runs antérieurs à l'introduction du contrôle de dispo).
+const USED_EMAILS = [
+  "test@example.com", "jean@example.com", "marie@example.com", "pierre@example.com",
+  "zero@example.com", "passe@example.com", "xss@example.com", "pdf@example.com", "pdfdl@example.com",
+];
+
+async function cleanupBookings() {
+  for (const email of USED_EMAILS) {
+    await deleteBookingsByEmail(ctx.tenantId, email);
+  }
+}
 
 async function createReservation(
   page: Page,
@@ -39,6 +61,8 @@ async function createReservation(
   await page.fill('[name="guestCount"]', opts.guests ?? "1");
   if (opts.checkIn) await page.locator('[name="checkIn"]').fill(opts.checkIn);
   if (opts.checkOut) await page.locator('[name="checkOut"]').fill(opts.checkOut);
+  // Fixture de cycle de vie : on force pour ne pas dépendre de la disponibilité.
+  await page.locator('input[name="force"]').check();
   await page.click('[type="submit"]');
   await expect(page).toHaveURL("/admin/reservations");
 }
@@ -46,6 +70,9 @@ async function createReservation(
 // ─── Happy path ────────────────────────────────────────────────────────────────
 
 test.describe("Admin — Gestion des réservations", () => {
+  test.beforeAll(cleanupBookings);
+  test.afterAll(cleanupBookings);
+
   test("liste des réservations est accessible", async ({ page }) => {
     await page.goto("/admin/reservations");
     await expect(page.getByRole("heading", { name: /réservations/i })).toBeVisible();
@@ -195,6 +222,7 @@ test.describe("Admin — Gestion des réservations", () => {
     await page.fill('[name="guestCount"]', "1");
     await page.locator('[name="checkIn"]').fill("2020-01-10");
     await page.locator('[name="checkOut"]').fill("2020-01-12");
+    await page.locator('input[name="force"]').check();
     await page.click('[type="submit"]');
 
     const title = await page.title();
@@ -280,6 +308,7 @@ test.describe("Admin — Gestion des réservations", () => {
     await page.fill('[name="guestCount"]', "1");
     await page.locator('[name="checkIn"]').fill(addDays(30));
     await page.locator('[name="checkOut"]').fill(addDays(32));
+    await page.locator('input[name="force"]').check();
     await page.click('[type="submit"]');
 
     await expect(page).toHaveURL("/admin/reservations");

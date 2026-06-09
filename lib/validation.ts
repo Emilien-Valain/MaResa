@@ -87,6 +87,12 @@ export const bookingManualSchema = z
     checkIn: dateString,
     checkOut: dateString,
     notes: safeText.optional().or(z.literal("")),
+    // Case « Forcer » : autorise l'admission par-dessus un Hold (override admin).
+    // Checkbox absente si décochée → false ; "on" si cochée → true.
+    force: z
+      .string()
+      .optional()
+      .transform((v) => v === "on"),
   })
   .refine(
     (d) => new Date(d.checkOut + "T00:00:00Z") > new Date(d.checkIn + "T00:00:00Z"),

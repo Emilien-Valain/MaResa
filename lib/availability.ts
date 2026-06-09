@@ -1,18 +1,20 @@
 "use server";
 
-import { and, asc, eq, gt, isNull, lt, or } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { bookings, icalBlocks, manualBlocks, rooms } from "@/db/schema";
-import { hasManualBlockOverlap, getManualBlockedDates } from "@/lib/manual-blocks";
+import { rooms } from "@/db/schema";
+import { blockedDates } from "@/lib/holds";
+
+/**
+ * Disponibilité = complément des Holds (voir lib/holds.ts, ADR-0007).
+ * Ces fonctions dérivent toutes du seam `blockedDates` ; le prédicat d'overlap
+ * et l'expansion de récurrence vivent dans le module Hold, pas ici.
+ */
 
 /**
  * Retourne true si la chambre est disponible pour la période [checkIn, checkOut[.
- *
- * Tient compte :
- * - Des réservations en statut `pending` et `confirmed`
- * - Des blocages iCal importés depuis Airbnb/Booking
- *
- * Condition d'overlap : existing.checkIn < checkOut ET existing.checkOut > checkIn
+ * Tient compte des bookings pending/confirmed, des iCal blocks et des manual
+ * blocks (récurrents inclus).
  */
 export async function isRoomAvailable(
   roomId: string,
@@ -20,139 +22,36 @@ export async function isRoomAvailable(
   checkIn: Date,
   checkOut: Date,
 ): Promise<boolean> {
-  // Vérifier les réservations actives
-  const [overlappingBooking] = await db
-    .select({ id: bookings.id })
-    .from(bookings)
-    .where(
-      and(
-        eq(bookings.roomId, roomId),
-        eq(bookings.tenantId, tenantId),
-        or(eq(bookings.status, "pending"), eq(bookings.status, "confirmed")),
-        lt(bookings.checkIn, checkOut),
-        gt(bookings.checkOut, checkIn),
-      ),
-    )
-    .limit(1);
-
-  if (overlappingBooking) return false;
-
-  // Vérifier les blocages iCal
-  const [overlappingBlock] = await db
-    .select({ id: icalBlocks.id })
-    .from(icalBlocks)
-    .where(
-      and(
-        eq(icalBlocks.roomId, roomId),
-        eq(icalBlocks.tenantId, tenantId),
-        lt(icalBlocks.start, checkOut),
-        gt(icalBlocks.end, checkIn),
-      ),
-    )
-    .limit(1);
-
-  if (overlappingBlock) return false;
-
-  // Vérifier les blocages manuels (par chambre + globaux)
-  const hasManualBlock = await hasManualBlockOverlap(roomId, tenantId, checkIn, checkOut);
-  return !hasManualBlock;
+  const held = await blockedDates(roomId, tenantId, { start: checkIn, end: checkOut });
+  return held.size === 0;
 }
 
 /**
- * Retourne toutes les chambres actives d'un tenant disponibles pour la période [checkIn, checkOut[.
- * Exclut les chambres ayant une réservation pending/confirmed ou un blocage iCal qui chevauche.
+ * Retourne toutes les chambres actives d'un tenant disponibles pour la période
+ * [checkIn, checkOut[. Chaque chambre est testée contre le même seam que
+ * isRoomAvailable — plus de divergence entre liste et check unitaire (ADR-0007).
  */
 export async function getAvailableRooms(tenantId: string, checkIn: Date, checkOut: Date) {
-  const [bookedRoomIds, blockedRoomIds, manualBlockedRoomIds, globalManualBlocks, allRooms] = await Promise.all([
-    db
-      .selectDistinct({ roomId: bookings.roomId })
-      .from(bookings)
-      .where(
-        and(
-          eq(bookings.tenantId, tenantId),
-          or(eq(bookings.status, "pending"), eq(bookings.status, "confirmed")),
-          lt(bookings.checkIn, checkOut),
-          gt(bookings.checkOut, checkIn),
-        ),
-      ),
-    db
-      .selectDistinct({ roomId: icalBlocks.roomId })
-      .from(icalBlocks)
-      .where(
-        and(
-          eq(icalBlocks.tenantId, tenantId),
-          lt(icalBlocks.start, checkOut),
-          gt(icalBlocks.end, checkIn),
-        ),
-      ),
-    // Blocages manuels par chambre (ponctuels)
-    db
-      .selectDistinct({ roomId: manualBlocks.roomId })
-      .from(manualBlocks)
-      .where(
-        and(
-          eq(manualBlocks.tenantId, tenantId),
-          manualBlocks.roomId !== null ? undefined : undefined,
-          eq(manualBlocks.recurring, false),
-          lt(manualBlocks.startDate, checkOut),
-          gt(manualBlocks.endDate, checkIn),
-        ),
-      ),
-    // Blocages manuels globaux (roomId IS NULL)
-    db
-      .select({ id: manualBlocks.id })
-      .from(manualBlocks)
-      .where(
-        and(
-          eq(manualBlocks.tenantId, tenantId),
-          isNull(manualBlocks.roomId),
-          or(
-            // Ponctuel global qui chevauche
-            and(eq(manualBlocks.recurring, false), lt(manualBlocks.startDate, checkOut), gt(manualBlocks.endDate, checkIn)),
-            // Récurrent global (vérification fine impossible ici, on les inclut)
-            eq(manualBlocks.recurring, true),
-          ),
-        ),
-      )
-      .limit(1),
-    db
-      .select()
-      .from(rooms)
-      .where(and(eq(rooms.tenantId, tenantId), eq(rooms.active, true)))
-      .orderBy(asc(rooms.createdAt)),
-  ]);
+  const allRooms = await db
+    .select()
+    .from(rooms)
+    .where(and(eq(rooms.tenantId, tenantId), eq(rooms.active, true)))
+    .orderBy(asc(rooms.createdAt));
 
-  // Si un blocage global existe, toutes les chambres sont potentiellement bloquées
-  // Pour les récurrents globaux, on doit vérifier chambre par chambre
-  const hasGlobalBlock = globalManualBlocks.length > 0;
-
-  const unavailableIds = new Set([
-    ...bookedRoomIds.map((r) => r.roomId),
-    ...blockedRoomIds.map((r) => r.roomId),
-    ...manualBlockedRoomIds.filter((r) => r.roomId !== null).map((r) => r.roomId!),
-  ]);
-
-  const candidateRooms = allRooms.filter((r) => !unavailableIds.has(r.id));
-
-  // Si pas de blocage global, pas besoin de vérifier plus
-  if (!hasGlobalBlock) return candidateRooms;
-
-  // Sinon, vérifier chaque chambre restante contre les blocages globaux
+  const window = { start: checkIn, end: checkOut };
   const results = await Promise.all(
-    candidateRooms.map(async (room) => {
-      const blocked = await hasManualBlockOverlap(room.id, tenantId, checkIn, checkOut);
-      return blocked ? null : room;
+    allRooms.map(async (room) => {
+      const held = await blockedDates(room.id, tenantId, window);
+      return held.size === 0 ? room : null;
     }),
   );
 
-  return results.filter((r) => r !== null);
+  return results.filter((r): r is (typeof allRooms)[number] => r !== null);
 }
 
 /**
  * Retourne la liste des dates bloquées dans la période [from, to[.
- *
  * Utilisé par le date picker pour griser les jours indisponibles.
- * Tient compte des réservations pending/confirmed et des blocages iCal.
  */
 export async function getBlockedDates(
   roomId: string,
@@ -160,65 +59,8 @@ export async function getBlockedDates(
   from: Date,
   to: Date,
 ): Promise<Date[]> {
-  const [overlappingBookings, overlappingBlocks] = await Promise.all([
-    db
-      .select({ checkIn: bookings.checkIn, checkOut: bookings.checkOut })
-      .from(bookings)
-      .where(
-        and(
-          eq(bookings.roomId, roomId),
-          eq(bookings.tenantId, tenantId),
-          or(eq(bookings.status, "pending"), eq(bookings.status, "confirmed")),
-          lt(bookings.checkIn, to),
-          gt(bookings.checkOut, from),
-        ),
-      ),
-
-    db
-      .select({ start: icalBlocks.start, end: icalBlocks.end })
-      .from(icalBlocks)
-      .where(
-        and(
-          eq(icalBlocks.roomId, roomId),
-          eq(icalBlocks.tenantId, tenantId),
-          lt(icalBlocks.start, to),
-          gt(icalBlocks.end, from),
-        ),
-      ),
-  ]);
-
-  // Dates bloquées manuellement (par chambre + globaux, y compris récurrents)
-  const manualDates = await getManualBlockedDates(roomId, tenantId, from, to);
-
-  const intervals = [
-    ...overlappingBookings.map((b) => ({
-      start: new Date(b.checkIn),
-      end: new Date(b.checkOut),
-    })),
-    ...overlappingBlocks.map((b) => ({
-      start: new Date(b.start),
-      end: new Date(b.end),
-    })),
-  ];
-
-  // Générer l'ensemble des jours bloqués (intersection avec [from, to[)
-  const blocked = new Set<string>();
-
-  // Ajouter les dates manuelles
-  for (const d of manualDates) {
-    blocked.add(d.toISOString().split("T")[0]);
-  }
-
-  for (const { start, end } of intervals) {
-    const cur = new Date(Math.max(start.getTime(), from.getTime()));
-    const rangeEnd = new Date(Math.min(end.getTime(), to.getTime()));
-    while (cur < rangeEnd) {
-      blocked.add(cur.toISOString().split("T")[0]);
-      cur.setUTCDate(cur.getUTCDate() + 1);
-    }
-  }
-
-  return [...blocked]
+  const held = await blockedDates(roomId, tenantId, { start: from, end: to });
+  return [...held]
     .sort()
     .map((d) => new Date(d + "T00:00:00.000Z"));
 }

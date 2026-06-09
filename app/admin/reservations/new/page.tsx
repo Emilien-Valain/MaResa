@@ -103,6 +103,26 @@ export default async function NewReservationPage() {
           <AdminTextarea name="notes" rows={2} />
         </Field>
 
+        <label
+          className="flex items-start gap-2.5 pt-1 pb-1 cursor-pointer"
+          style={{ color: "var(--admin-text-muted)" }}
+        >
+          <input
+            type="checkbox"
+            name="force"
+            className="mt-0.5"
+            style={{ accentColor: "var(--admin-primary)" }}
+          />
+          <span className="text-[12.5px] leading-snug">
+            Forcer malgré un conflit de disponibilité
+            <span className="block text-[11.5px] opacity-70">
+              À cocher uniquement pour reporter une réservation déjà honorée hors plateforme. Sans
+              cela, l’enregistrement est refusé si les dates chevauchent une autre réservation ou un
+              blocage.
+            </span>
+          </span>
+        </label>
+
         <div className="flex gap-3 pt-2">
           <button
             type="submit"

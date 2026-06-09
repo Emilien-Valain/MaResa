@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { bookings, rooms, tenants } from "@/db/schema";
-import { calculatePrice } from "@/lib/pricing";
+import { admitBooking } from "@/lib/booking-intake";
 import { bookingManualSchema, parseFormData } from "@/lib/validation";
 import { sendBookingCancellation } from "@/lib/email";
 import type { TenantConfig } from "@/lib/tenant-context";
@@ -91,8 +91,12 @@ export async function createBookingManual(formData: FormData) {
   const checkOut = new Date(data.checkOut + "T00:00:00.000Z");
   const notes = data.notes || null;
 
-  // Calcul du prix dynamique
-  const breakdown = await calculatePrice(roomId, tenantId, checkIn, checkOut);
+  // Admission : résout+autorise la chambre et calcule le prix. Les booking-rules
+  // ne s'appliquent pas au manuel ; la dispo est contrôlée sauf override (« Forcer »).
+  const { breakdown } = await admitBooking(
+    { roomId, tenantId, checkIn, checkOut },
+    { allowOverlap: data.force },
+  );
   const totalPrice = breakdown.totalPrice.toFixed(2);
 
   await db.insert(bookings).values({

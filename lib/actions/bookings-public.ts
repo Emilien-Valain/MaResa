@@ -2,12 +2,10 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { bookings, payments, rooms, tenants } from "@/db/schema";
-import { isRoomAvailable } from "@/lib/availability";
-import { validateBookingRules } from "@/lib/booking-rules";
-import { calculatePrice } from "@/lib/pricing";
+import { bookings, payments, tenants } from "@/db/schema";
+import { admitBooking } from "@/lib/booking-intake";
 import { stripe } from "@/lib/stripe";
 import { bookingPublicSchema, parseFormData } from "@/lib/validation";
 import type Stripe from "stripe";
@@ -32,31 +30,11 @@ export async function createBookingPublic(formData: FormData) {
   const checkIn = new Date(data.checkIn + "T00:00:00.000Z");
   const checkOut = new Date(data.checkOut + "T00:00:00.000Z");
 
-  // Vérifier que la chambre appartient au tenant
-  const [room] = await db
-    .select()
-    .from(rooms)
-    .where(and(eq(rooms.id, roomId), eq(rooms.tenantId, tenantId), eq(rooms.active, true)))
-    .limit(1);
-
-  if (!room) {
-    throw new Error("Chambre introuvable");
-  }
-
-  // Double-check disponibilité
-  const available = await isRoomAvailable(roomId, tenantId, checkIn, checkOut);
-  if (!available) {
-    throw new Error("Chambre non disponible pour ces dates");
-  }
-
-  // Vérifier les règles de réservation
-  const violations = await validateBookingRules(roomId, tenantId, checkIn, checkOut);
-  if (violations.length > 0) {
-    throw new Error(violations.map((v) => v.message).join(", "));
-  }
-
-  // Calcul du prix dynamique
-  const breakdown = await calculatePrice(roomId, tenantId, checkIn, checkOut);
+  // Admission : résout+autorise la chambre, contrôle dispo + règles, calcule le prix.
+  const { room, breakdown } = await admitBooking(
+    { roomId, tenantId, checkIn, checkOut },
+    { enforceRules: true },
+  );
   const nights = breakdown.nights.length;
   const totalPrice = breakdown.totalPrice.toFixed(2);
 
