@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import Stripe from "stripe";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { bookings, payments, rooms, tenants, users, userTenants } from "@/db/schema";
 import { stripe } from "@/lib/stripe";
@@ -36,6 +36,19 @@ export async function POST(request: NextRequest) {
 
       if (!bookingId || !tenantId) break;
 
+      // Transition légale + idempotence : ne confirmer QUE depuis `pending`.
+      // Stripe livre chaque événement au moins une fois (retries) ; une livraison
+      // dupliquée, ou un événement tardif sur un booking déjà confirmé/annulé,
+      // n'affecte aucune ligne — on n'envoie alors pas d'email en double et on ne
+      // « ressuscite » pas un booking annulé.
+      const confirmed = await db
+        .update(bookings)
+        .set({ status: "confirmed", updatedAt: new Date() })
+        .where(and(eq(bookings.id, bookingId), eq(bookings.status, "pending")))
+        .returning({ id: bookings.id });
+
+      if (confirmed.length === 0) break;
+
       // Mettre à jour le payment
       await db
         .update(payments)
@@ -44,12 +57,6 @@ export async function POST(request: NextRequest) {
           stripePaymentId: session.payment_intent as string,
         })
         .where(eq(payments.stripeSessionId, session.id));
-
-      // Mettre à jour le booking → confirmed
-      await db
-        .update(bookings)
-        .set({ status: "confirmed", updatedAt: new Date() })
-        .where(eq(bookings.id, bookingId));
 
       // Envoyer les emails (best-effort, ne pas bloquer le webhook)
       try {
@@ -134,17 +141,23 @@ export async function POST(request: NextRequest) {
 
       if (!bookingId) break;
 
+      // Transition légale + idempotence : n'annuler QUE depuis `pending`.
+      // Un booking déjà confirmé (paiement abouti) ne doit pas être annulé par un
+      // événement `expired` tardif/dupliqué, et on n'envoie pas un second email
+      // d'annulation sur une re-livraison.
+      const cancelled = await db
+        .update(bookings)
+        .set({ status: "cancelled", updatedAt: new Date() })
+        .where(and(eq(bookings.id, bookingId), eq(bookings.status, "pending")))
+        .returning({ id: bookings.id });
+
+      if (cancelled.length === 0) break;
+
       // Mettre à jour le payment
       await db
         .update(payments)
         .set({ status: "expired" })
         .where(eq(payments.stripeSessionId, session.id));
-
-      // Annuler le booking
-      await db
-        .update(bookings)
-        .set({ status: "cancelled", updatedAt: new Date() })
-        .where(eq(bookings.id, bookingId));
 
       // Envoyer l'email d'annulation au client (best-effort)
       if (tenantId) {

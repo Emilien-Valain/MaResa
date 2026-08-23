@@ -191,6 +191,120 @@ test.describe("Paiement — Webhook Stripe", () => {
     }
   });
 
+  // ─── Idempotence & transitions ───────────────────────────────────────────
+
+  test("checkout.session.completed dupliqué est idempotent (pas de re-transition ni d'email en double)", async ({
+    request,
+  }) => {
+    const { tenantId, apiRoomId } = loadTestContext();
+    const sessionId = `cs_test_dup_${Date.now()}`;
+    const bookingId = await createTestBookingWithPayment(
+      pool,
+      tenantId,
+      apiRoomId,
+      sessionId,
+    );
+
+    const send = () => {
+      const payload = JSON.stringify({
+        id: `evt_test_${Date.now()}_${Math.random()}`,
+        type: "checkout.session.completed",
+        data: {
+          object: {
+            id: sessionId,
+            payment_intent: `pi_test_${Date.now()}`,
+            metadata: { bookingId, tenantId },
+          },
+        },
+      });
+      return request.post(`${BASE_URL}/api/webhooks/stripe`, {
+        data: payload,
+        headers: {
+          "content-type": "application/json",
+          "stripe-signature": generateStripeSignature(payload, WEBHOOK_SECRET),
+        },
+      });
+    };
+
+    try {
+      const first = await send();
+      expect(first.status()).toBe(200);
+
+      const afterFirst = await pool.query(
+        "SELECT status, updated_at FROM bookings WHERE id = $1",
+        [bookingId],
+      );
+      expect(afterFirst.rows[0].status).toBe("confirmed");
+      const firstUpdatedAt = new Date(afterFirst.rows[0].updated_at).getTime();
+
+      // Stripe réessaie : seconde livraison du même événement.
+      const second = await send();
+      expect(second.status()).toBe(200);
+
+      const afterSecond = await pool.query(
+        "SELECT status, updated_at FROM bookings WHERE id = $1",
+        [bookingId],
+      );
+      expect(afterSecond.rows[0].status).toBe("confirmed");
+      // updated_at inchangé ⇒ aucune ligne re-transitionnée ⇒ aucun email en double.
+      expect(new Date(afterSecond.rows[0].updated_at).getTime()).toBe(
+        firstUpdatedAt,
+      );
+    } finally {
+      await pool.query("DELETE FROM payments WHERE booking_id = $1", [bookingId]);
+      await pool.query("DELETE FROM bookings WHERE id = $1", [bookingId]);
+    }
+  });
+
+  test("checkout.session.completed ne ressuscite pas un booking annulé (transition illégale refusée)", async ({
+    request,
+  }) => {
+    const { tenantId, apiRoomId } = loadTestContext();
+    const sessionId = `cs_test_resurrect_${Date.now()}`;
+    const bookingId = await createTestBookingWithPayment(
+      pool,
+      tenantId,
+      apiRoomId,
+      sessionId,
+    );
+    // Le booking a été annulé entre-temps (expiration ou annulation admin).
+    await pool.query("UPDATE bookings SET status = 'cancelled' WHERE id = $1", [
+      bookingId,
+    ]);
+
+    try {
+      const payload = JSON.stringify({
+        id: `evt_test_${Date.now()}`,
+        type: "checkout.session.completed",
+        data: {
+          object: {
+            id: sessionId,
+            payment_intent: `pi_test_${Date.now()}`,
+            metadata: { bookingId, tenantId },
+          },
+        },
+      });
+      const response = await request.post(`${BASE_URL}/api/webhooks/stripe`, {
+        data: payload,
+        headers: {
+          "content-type": "application/json",
+          "stripe-signature": generateStripeSignature(payload, WEBHOOK_SECRET),
+        },
+      });
+      expect(response.status()).toBe(200);
+
+      const result = await pool.query(
+        "SELECT status FROM bookings WHERE id = $1",
+        [bookingId],
+      );
+      // cancelled → confirmed est illégale : le booking reste cancelled.
+      expect(result.rows[0].status).toBe("cancelled");
+    } finally {
+      await pool.query("DELETE FROM payments WHERE booking_id = $1", [bookingId]);
+      await pool.query("DELETE FROM bookings WHERE id = $1", [bookingId]);
+    }
+  });
+
   // ─── Cas d'erreur ──────────────────────────────────────────────────────────
 
   test("signature Stripe invalide retourne 400", async ({ request }) => {

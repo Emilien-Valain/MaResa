@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/session";
@@ -17,25 +17,54 @@ async function requireTenantId() {
   return tenantId;
 }
 
-async function updateStatus(id: string, tenantId: string, status: BookingStatus) {
-  await db
+// Transitions légales (cf. CONTEXT.md > Booking status) :
+//   pending   → confirmed | cancelled
+//   confirmed → completed | cancelled
+//   completed, cancelled = terminaux
+// La mise à jour est conditionnée à l'état de départ autorisé : un saut illégal
+// (ou un double-clic / page périmée) n'affecte aucune ligne. Retourne `true` si
+// une transition a réellement eu lieu.
+async function updateStatus(
+  id: string,
+  tenantId: string,
+  status: BookingStatus,
+  allowedFrom: BookingStatus[],
+): Promise<boolean> {
+  const transitioned = await db
     .update(bookings)
     .set({ status, updatedAt: new Date() })
-    .where(and(eq(bookings.id, id), eq(bookings.tenantId, tenantId)));
+    .where(
+      and(
+        eq(bookings.id, id),
+        eq(bookings.tenantId, tenantId),
+        inArray(bookings.status, allowedFrom),
+      ),
+    )
+    .returning({ id: bookings.id });
+
+  if (transitioned.length === 0) return false;
 
   revalidatePath("/admin/reservations");
   revalidatePath("/admin/calendrier");
   revalidatePath(`/admin/reservations/${id}`);
+  return true;
 }
 
 export async function confirmBooking(id: string) {
   const tenantId = await requireTenantId();
-  await updateStatus(id, tenantId, "confirmed");
+  await updateStatus(id, tenantId, "confirmed", ["pending"]);
 }
 
 export async function cancelBooking(id: string) {
   const tenantId = await requireTenantId();
-  await updateStatus(id, tenantId, "cancelled");
+  const transitioned = await updateStatus(id, tenantId, "cancelled", [
+    "pending",
+    "confirmed",
+  ]);
+
+  // N'envoyer l'email d'annulation que si l'annulation a réellement eu lieu
+  // (évite un second email si le booking était déjà annulé ou terminé).
+  if (!transitioned) return;
 
   // Envoyer l'email d'annulation au client (best-effort)
   try {
@@ -78,7 +107,7 @@ export async function cancelBooking(id: string) {
 
 export async function completeBooking(id: string) {
   const tenantId = await requireTenantId();
-  await updateStatus(id, tenantId, "completed");
+  await updateStatus(id, tenantId, "completed", ["confirmed"]);
 }
 
 export async function createBookingManual(formData: FormData) {
