@@ -8,6 +8,7 @@ import {
   insertBookingRule,
   deleteBookingRule,
 } from "../helpers/intake";
+import { fd } from "../helpers/dates";
 
 /**
  * Spécification : Tests de non-régression > Résolution des règles (ADR-0009)
@@ -34,7 +35,7 @@ async function nightPrice(page: Page, from: string, to: string): Promise<number>
   return body.nights[0].price as number;
 }
 
-async function effectiveRules(page: Page, checkIn = "2027-05-03") {
+async function effectiveRules(page: Page, checkIn = fd("2027-05-03")) {
   const res = await page.request.get("/api/rules", {
     params: { roomId: ctx.apiRoomId, tenantId: ctx.tenantId, checkIn },
   });
@@ -63,7 +64,7 @@ test.describe("Résolution des règles — précédence partagée (ADR-0009)", (
       percentageModifier: "-30.00",
     });
     try {
-      expect(await nightPrice(page, "2027-05-01", "2027-05-02")).toBe(70);
+      expect(await nightPrice(page, fd("2027-05-01"), fd("2027-05-02"))).toBe(70);
     } finally {
       await deletePricingRule(ruleId);
     }
@@ -79,7 +80,7 @@ test.describe("Résolution des règles — précédence partagée (ADR-0009)", (
       tenantId: ctx.tenantId, name: "Haute mais non prioritaire", fixedPrice: "200.00", priority: 0,
     });
     try {
-      expect(await nightPrice(page, "2027-05-01", "2027-05-02")).toBe(80);
+      expect(await nightPrice(page, fd("2027-05-01"), fd("2027-05-02"))).toBe(80);
     } finally {
       await deletePricingRule(high);
       await deletePricingRule(low);
@@ -94,7 +95,7 @@ test.describe("Résolution des règles — précédence partagée (ADR-0009)", (
       tenantId: ctx.tenantId, roomId: ctx.apiRoomId, name: "Chambre", fixedPrice: "90.00", priority: 0,
     });
     try {
-      expect(await nightPrice(page, "2027-05-01", "2027-05-02")).toBe(90);
+      expect(await nightPrice(page, fd("2027-05-01"), fd("2027-05-02"))).toBe(90);
     } finally {
       await deletePricingRule(global);
       await deletePricingRule(room);
@@ -108,7 +109,7 @@ test.describe("Résolution des règles — précédence partagée (ADR-0009)", (
     try {
       // Affiché : minPricePerNight via /api/rooms/available (dérivé du résolveur).
       const res = await page.request.get("/api/rooms/available", {
-        params: { tenantId: ctx.tenantId, from: "2027-05-01", to: "2027-05-02" },
+        params: { tenantId: ctx.tenantId, from: fd("2027-05-01"), to: fd("2027-05-02") },
       });
       const body = await res.json();
       const room = body.rooms.find((r: { id: string }) => r.id === ctx.apiRoomId);
@@ -116,7 +117,7 @@ test.describe("Résolution des règles — précédence partagée (ADR-0009)", (
       const display = room.minPricePerNight as number;
 
       // Facturé : prix de la nuit via /api/pricing.
-      const charge = await nightPrice(page, "2027-05-01", "2027-05-02");
+      const charge = await nightPrice(page, fd("2027-05-01"), fd("2027-05-02"));
 
       // L'ancien code affichait 70 mais facturait 100 (le bug). Les deux doivent
       // être égaux ET valoir la promo.
@@ -157,8 +158,8 @@ test.describe("Résolution des règles — précédence partagée (ADR-0009)", (
       tenantId: ctx.tenantId,
       minStay: 2,
       priority: 0,
-      validFrom: new Date("2027-05-01T00:00:00.000Z"),
-      validTo: new Date("2027-05-31T00:00:00.000Z"),
+      validFrom: new Date(fd("2027-05-01") + "T00:00:00.000Z"),
+      validTo: new Date(fd("2027-05-31") + "T00:00:00.000Z"),
     });
     const allYearHighPrio = await insertBookingRule({
       tenantId: ctx.tenantId, minStay: 9, priority: 5,

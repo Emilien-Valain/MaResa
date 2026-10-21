@@ -3,6 +3,7 @@ import path from "path";
 import { Pool } from "pg";
 import { test, expect } from "@playwright/test";
 import { cleanRules } from "../helpers/clean-rules";
+import { fd } from "../helpers/dates";
 
 /**
  * Spécification : Tests de non-régression > Public > Parcours de réservation
@@ -22,8 +23,8 @@ function loadTestContext() {
 }
 
 // Dates réservées pour le test de soumission du formulaire
-const BOOKING_TEST_CHECKIN = "2026-07-20";
-const BOOKING_TEST_CHECKOUT = "2026-07-24";
+const BOOKING_TEST_CHECKIN = fd("2026-07-20");
+const BOOKING_TEST_CHECKOUT = fd("2026-07-24");
 
 // IP dédiée : budget de rate-limit propre à ce fichier (cf. holds.spec).
 test.use({ extraHTTPHeaders: { "x-forwarded-for": "10.10.0.3" } });
@@ -86,8 +87,8 @@ test.describe("Public — Parcours de réservation", () => {
     const { apiRoomId } = loadTestContext();
     await page.goto(`/reserver/${apiRoomId}`);
 
-    await page.fill('[name="checkIn"]', "2026-07-01");
-    await page.fill('[name="checkOut"]', "2026-07-05");
+    await page.fill('[name="checkIn"]', fd("2026-07-01"));
+    await page.fill('[name="checkOut"]', fd("2026-07-05"));
 
     await expect(page.getByText("Disponible")).toBeVisible({ timeout: 5000 });
   });
@@ -160,8 +161,8 @@ test.describe("Public — Parcours de réservation", () => {
     const res = await page.request.get("/api/availability", {
       params: {
         roomId: ctx.rivalRoomId,
-        from: "2026-06-10",
-        to: "2026-06-15",
+        from: fd("2026-06-10"),
+        to: fd("2026-06-15"),
         tenantId: ctx.tenantId,
       },
     });

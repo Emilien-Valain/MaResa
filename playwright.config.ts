@@ -53,7 +53,9 @@ export default defineConfig({
 
   webServer: {
     command: "next dev -p 3001",
-    url: "http://localhost:3001",
+    // /login ne dépend pas du tenant : "/" renvoie 404 tant que global-setup
+    // n'a pas seedé test-tenant (le webServer démarre avant global-setup).
+    url: "http://localhost:3001/login",
     reuseExistingServer: false,
     env: {
       DATABASE_URL: process.env.TEST_DATABASE_URL!,

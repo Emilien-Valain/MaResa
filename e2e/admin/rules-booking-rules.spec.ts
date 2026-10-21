@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import fs from "fs";
 import path from "path";
+import { fd } from "../helpers/dates";
 
 // Charger le contexte de test seedé par globalSetup
 const ctx = JSON.parse(
@@ -63,8 +64,8 @@ test.describe("Admin — Règles de séjour", () => {
 
     await page.getByRole("button", { name: "Ajouter" }).click();
 
-    await page.locator("input[name='validFrom']").fill("2026-07-01");
-    await page.locator("input[name='validTo']").fill("2026-08-31");
+    await page.locator("input[name='validFrom']").fill(fd("2026-07-01"));
+    await page.locator("input[name='validTo']").fill(fd("2026-08-31"));
     await page.locator("input[name='minStay']").fill("7");
 
     await page.getByRole("button", { name: "Créer la règle" }).click();
@@ -92,8 +93,8 @@ test.describe("Admin — Règles de séjour", () => {
     const response = await page.request.get("/api/availability", {
       params: {
         roomId: ctx.apiRoomId,
-        from: "2026-09-01",
-        to: "2026-09-02", // 1 nuit
+        from: fd("2026-09-01"),
+        to: fd("2026-09-02"), // 1 nuit
         tenantId: ctx.tenantId,
       },
     });

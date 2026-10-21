@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { insertManualBlock, deleteManualBlock } from "../helpers/manual-blocks";
 import { insertBookingRule, deleteBookingRule, deleteBookingsByEmail } from "../helpers/intake";
+import { fd } from "../helpers/dates";
 
 /**
  * Spécification : Tests de non-régression > Admin > Admission des réservations
@@ -49,8 +50,8 @@ test.describe("Admin — Admission des réservations (admitBooking)", () => {
     const blockId = await insertManualBlock({
       tenantId: ctx.tenantId,
       roomId: ctx.apiRoomId,
-      startDate: new Date("2027-03-01T00:00:00.000Z"),
-      endDate: new Date("2027-03-05T00:00:00.000Z"),
+      startDate: new Date(fd("2027-03-01") + "T00:00:00.000Z"),
+      endDate: new Date(fd("2027-03-05") + "T00:00:00.000Z"),
       recurring: false,
     });
 
@@ -58,8 +59,8 @@ test.describe("Admin — Admission des réservations (admitBooking)", () => {
       await submitManualBooking(page, {
         name: `Sans Force ${RUN_ID}`,
         email,
-        checkIn: "2027-03-02",
-        checkOut: "2027-03-04", // chevauche le blocage
+        checkIn: fd("2027-03-02"),
+        checkOut: fd("2027-03-04"), // chevauche le blocage
       });
 
       // Rejet : pas de redirection vers la liste, et la résa n'est pas créée
@@ -77,8 +78,8 @@ test.describe("Admin — Admission des réservations (admitBooking)", () => {
     const blockId = await insertManualBlock({
       tenantId: ctx.tenantId,
       roomId: ctx.apiRoomId,
-      startDate: new Date("2027-03-01T00:00:00.000Z"),
-      endDate: new Date("2027-03-05T00:00:00.000Z"),
+      startDate: new Date(fd("2027-03-01") + "T00:00:00.000Z"),
+      endDate: new Date(fd("2027-03-05") + "T00:00:00.000Z"),
       recurring: false,
     });
 
@@ -86,8 +87,8 @@ test.describe("Admin — Admission des réservations (admitBooking)", () => {
       await submitManualBooking(page, {
         name: guestName,
         email,
-        checkIn: "2027-03-02",
-        checkOut: "2027-03-04",
+        checkIn: fd("2027-03-02"),
+        checkOut: fd("2027-03-04"),
         force: true,
       });
 
@@ -113,8 +114,8 @@ test.describe("Admin — Admission des réservations (admitBooking)", () => {
       await submitManualBooking(page, {
         name: guestName,
         email,
-        checkIn: "2027-04-01",
-        checkOut: "2027-04-02",
+        checkIn: fd("2027-04-01"),
+        checkOut: fd("2027-04-02"),
       });
 
       await expect(page).toHaveURL("/admin/reservations");

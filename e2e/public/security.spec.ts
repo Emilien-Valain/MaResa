@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import fs from "fs";
 import path from "path";
+import { fd } from "../helpers/dates";
 
 /**
  * Tests de sécurité — headers HTTP, rate limiting, validation, isolation tenant.
@@ -53,7 +54,7 @@ test.describe("Sécurité — Headers HTTP", () => {
     request,
   }) => {
     const res = await request.get(
-      `/api/availability?roomId=${testContext.apiRoomId}&from=2026-09-01&to=2026-09-05`,
+      `/api/availability?roomId=${testContext.apiRoomId}&from=${fd("2026-09-01")}&to=${fd("2026-09-05")}`,
     );
     expect(res.headers()["x-content-type-options"]).toBe("nosniff");
   });
@@ -65,7 +66,7 @@ test.describe("Sécurité — Rate limiting", () => {
   test("les requêtes API excessives retournent 429", async ({ request }) => {
     // La limite est 60 req/min pour les API publiques.
     // On envoie 65 requêtes rapides.
-    const url = `/api/availability?roomId=${testContext.apiRoomId}&from=2026-09-01&to=2026-09-05`;
+    const url = `/api/availability?roomId=${testContext.apiRoomId}&from=${fd("2026-09-01")}&to=${fd("2026-09-05")}`;
 
     // IP dédiée au burst : on sature CE bucket sans toucher à celui du reste du
     // fichier (override de l'x-forwarded-for posé au niveau du fichier).
@@ -108,7 +109,7 @@ test.describe("Sécurité — Validation des entrées", () => {
 
   test("API availability rejette checkout <= checkin", async ({ request }) => {
     const res = await request.get(
-      `/api/availability?roomId=${testContext.apiRoomId}&from=2026-09-10&to=2026-09-05`,
+      `/api/availability?roomId=${testContext.apiRoomId}&from=${fd("2026-09-10")}&to=${fd("2026-09-05")}`,
     );
     expect(res.status()).toBeGreaterThanOrEqual(400);
     expect(res.status()).toBeLessThan(500);

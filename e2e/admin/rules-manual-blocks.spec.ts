@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { fd, fdCalendarQuery, fdFr } from "../helpers/dates";
 
 const RUN_ID = Date.now().toString(36).slice(-6);
 
@@ -26,15 +27,15 @@ test.describe("Admin — Blocages manuels", () => {
     await page.getByRole("button", { name: "Ajouter" }).first().click();
 
     // Remplir le formulaire
-    await page.locator("input[name='startDate']").fill("2026-08-01");
-    await page.locator("input[name='endDate']").fill("2026-08-15");
+    await page.locator("input[name='startDate']").fill(fd("2026-08-01"));
+    await page.locator("input[name='endDate']").fill(fd("2026-08-15"));
 
     // Soumettre
     await page.getByRole("button", { name: "Créer le blocage" }).click();
 
     // Vérifier que le blocage apparaît
-    await expect(page.getByText("01/08/2026")).toBeVisible();
-    await expect(page.getByText("15/08/2026")).toBeVisible();
+    await expect(page.getByText(fdFr("2026-08-01"))).toBeVisible();
+    await expect(page.getByText(fdFr("2026-08-15"))).toBeVisible();
 
     // Supprimer
     page.on("dialog", (dialog) => dialog.accept());
@@ -51,8 +52,8 @@ test.describe("Admin — Blocages manuels", () => {
     await page.getByRole("button", { name: "Ajouter" }).first().click();
 
     // Laisser "Toutes les chambres" sélectionné (option par défaut)
-    await page.locator("input[name='startDate']").fill("2026-12-24");
-    await page.locator("input[name='endDate']").fill("2026-12-26");
+    await page.locator("input[name='startDate']").fill(fd("2026-12-24"));
+    await page.locator("input[name='endDate']").fill(fd("2026-12-26"));
 
     await page.getByRole("button", { name: "Créer le blocage" }).click();
 
@@ -69,8 +70,8 @@ test.describe("Admin — Blocages manuels", () => {
 
     await page.getByRole("button", { name: "Ajouter" }).first().click();
 
-    await page.locator("input[name='startDate']").fill("2026-06-01");
-    await page.locator("input[name='endDate']").fill("2026-06-01");
+    await page.locator("input[name='startDate']").fill(fd("2026-06-01"));
+    await page.locator("input[name='endDate']").fill(fd("2026-06-01"));
 
     // Activer la récurrence
     await page.locator("#recurring").check();
@@ -96,13 +97,13 @@ test.describe("Admin — Blocages manuels", () => {
     await page.goto("/admin/regles");
     await page.getByRole("button", { name: "Blocages manuels" }).click();
     await page.getByRole("button", { name: "Ajouter" }).first().click();
-    await page.locator("input[name='startDate']").fill("2026-07-01");
-    await page.locator("input[name='endDate']").fill("2026-07-03");
+    await page.locator("input[name='startDate']").fill(fd("2026-07-01"));
+    await page.locator("input[name='endDate']").fill(fd("2026-07-03"));
     await page.getByRole("button", { name: "Créer le blocage" }).click();
-    await expect(page.getByText("01/07/2026")).toBeVisible();
+    await expect(page.getByText(fdFr("2026-07-01"))).toBeVisible();
 
-    // Aller au calendrier en juillet 2026
-    await page.goto("/admin/calendrier?year=2026&month=6");
+    // Aller au calendrier du mois du blocage (juillet 2026 décalé)
+    await page.goto(`/admin/calendrier?${fdCalendarQuery("2026-07-01")}`);
     await page.waitForLoadState("networkidle");
 
     // La légende doit afficher "Bloqué"

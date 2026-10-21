@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { cleanRules } from "../helpers/clean-rules";
 import { insertManualBlock, deleteManualBlock } from "../helpers/manual-blocks";
+import { fd } from "../helpers/dates";
 
 /**
  * Spécification : Tests de non-régression > API > Disponibilité (module Hold)
@@ -58,8 +59,8 @@ test.describe("API — Module Hold (disponibilité unifiée)", () => {
 
   test("un blocage récurrent scopé chambre exclut la chambre de /api/rooms/available", async ({ page }) => {
     // Lundi 3 août 2026, une nuit, hors des dates seedées (juin)
-    const from = "2026-08-03";
-    const to = "2026-08-04";
+    const from = fd("2026-08-03");
+    const to = fd("2026-08-04");
 
     // Contrôle positif : sans blocage, la chambre API est disponible
     const before = await (await page.request.get(availableRoomsUrl(from, to))).json();
@@ -70,8 +71,8 @@ test.describe("API — Module Hold (disponibilité unifiée)", () => {
     const blockId = await insertManualBlock({
       tenantId: ctx.tenantId,
       roomId: ctx.apiRoomId,
-      startDate: new Date("2026-01-01T00:00:00.000Z"),
-      endDate: new Date("2026-01-01T00:00:00.000Z"), // ignoré (recurring)
+      startDate: new Date(fd("2026-01-01") + "T00:00:00.000Z"),
+      endDate: new Date(fd("2026-01-01") + "T00:00:00.000Z"), // ignoré (recurring)
       recurring: true,
       recurrenceType: "weekly",
       recurrenceDays: [weekday(from)],
@@ -96,15 +97,15 @@ test.describe("API — Module Hold (disponibilité unifiée)", () => {
   });
 
   test("un blocage récurrent sur un AUTRE jour n'exclut pas la chambre", async ({ page }) => {
-    const from = "2026-08-03"; // lundi
-    const to = "2026-08-04";
+    const from = fd("2026-08-03"); // lundi
+    const to = fd("2026-08-04");
     const otherDay = (weekday(from) + 3) % 7; // un jour différent
 
     const blockId = await insertManualBlock({
       tenantId: ctx.tenantId,
       roomId: ctx.apiRoomId,
-      startDate: new Date("2026-01-01T00:00:00.000Z"),
-      endDate: new Date("2026-01-01T00:00:00.000Z"),
+      startDate: new Date(fd("2026-01-01") + "T00:00:00.000Z"),
+      endDate: new Date(fd("2026-01-01") + "T00:00:00.000Z"),
       recurring: true,
       recurrenceType: "weekly",
       recurrenceDays: [otherDay],
@@ -123,14 +124,14 @@ test.describe("API — Module Hold (disponibilité unifiée)", () => {
 
   test("recurrenceUntil est exclusif : la date == recurrenceUntil n'est pas bloquée", async ({ page }) => {
     // D et D-7 tombent le même jour de semaine ; recurrenceUntil = D
-    const until = "2026-09-07"; // lundi
-    const prevMatch = "2026-08-31"; // lundi précédent, < until
+    const until = fd("2026-09-07"); // lundi
+    const prevMatch = fd("2026-08-31"); // lundi précédent, < until
 
     const blockId = await insertManualBlock({
       tenantId: ctx.tenantId,
       roomId: ctx.apiRoomId,
-      startDate: new Date("2026-08-01T00:00:00.000Z"),
-      endDate: new Date("2026-08-01T00:00:00.000Z"),
+      startDate: new Date(fd("2026-08-01") + "T00:00:00.000Z"),
+      endDate: new Date(fd("2026-08-01") + "T00:00:00.000Z"),
       recurring: true,
       recurrenceType: "weekly",
       recurrenceDays: [weekday(until)],
@@ -139,12 +140,12 @@ test.describe("API — Module Hold (disponibilité unifiée)", () => {
 
     try {
       // La date == recurrenceUntil doit être LIBRE (borne exclusive)
-      const atUntil = await (await page.request.get(availabilityUrl(until, "2026-09-08"))).json();
+      const atUntil = await (await page.request.get(availabilityUrl(until, fd("2026-09-08")))).json();
       expect(atUntil.available).toBe(true);
       expect(atUntil.blockedDates).toEqual([]);
 
       // L'occurrence précédente (< until) doit être bloquée
-      const before = await (await page.request.get(availabilityUrl(prevMatch, "2026-09-01"))).json();
+      const before = await (await page.request.get(availabilityUrl(prevMatch, fd("2026-09-01")))).json();
       expect(before.available).toBe(false);
       expect(before.blockedDates).toContain(prevMatch);
     } finally {
@@ -155,12 +156,12 @@ test.describe("API — Module Hold (disponibilité unifiée)", () => {
   // ─── Point C : l'export iCal ré-exporte les manual blocks (ADR-0004) ──────────
 
   test("GET /api/ical/[roomId] ré-exporte les blocages manuels, pas seulement les bookings", async ({ page }) => {
-    // Bloc ponctuel placé dans l'horizon forward (now+60j) pour être déterministe
+    // Bloc ponctuel placé dans l'horizon forward (now+120j) pour être déterministe
     // quelle que soit la date d'exécution, et hors des dates seedées.
     const now = new Date();
     now.setUTCHours(0, 0, 0, 0);
-    const startIso = addDaysIso(now, 60);
-    const endIso = addDaysIso(now, 63); // 3 nuits
+    const startIso = addDaysIso(now, 120);
+    const endIso = addDaysIso(now, 123); // 3 nuits
 
     const blockId = await insertManualBlock({
       tenantId: ctx.tenantId,

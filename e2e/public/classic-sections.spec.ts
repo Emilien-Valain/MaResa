@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { test, expect } from "@playwright/test";
+import { fd, fdLongRe } from "../helpers/dates";
 
 /**
  * Spécification : Tests de non-régression > Public > Sections Classic
@@ -110,12 +111,12 @@ test.describe("Public — Booking summary sidebar (Classic)", () => {
   });
 
   test("changement de checkIn met à jour la date Arrivée dans la sidebar", async ({ page }) => {
-    await page.fill('[name="checkIn"]', "2026-07-15");
-    await page.fill('[name="checkOut"]', "2026-07-18");
+    await page.fill('[name="checkIn"]', fd("2026-07-15"));
+    await page.fill('[name="checkOut"]', fd("2026-07-18"));
 
     // La sidebar reflète la date saisie (format FR : « 15 juillet »)
-    await expect(page.getByTestId("booking-summary-checkin")).toHaveText(/15\s+juillet/);
-    await expect(page.getByTestId("booking-summary-checkout")).toHaveText(/18\s+juillet/);
+    await expect(page.getByTestId("booking-summary-checkin")).toHaveText(fdLongRe("2026-07-15"));
+    await expect(page.getByTestId("booking-summary-checkout")).toHaveText(fdLongRe("2026-07-18"));
     await expect(page.getByTestId("booking-summary-nights")).toHaveText(/3\s+nuits/);
   });
 
@@ -129,8 +130,8 @@ test.describe("Public — Booking summary sidebar (Classic)", () => {
 
   test("total apparaît dans la sidebar quand la disponibilité est confirmée", async ({ page }) => {
     // Dates libres (loin de la réservation de 2026-06-10..15)
-    await page.fill('[name="checkIn"]', "2026-08-04");
-    await page.fill('[name="checkOut"]', "2026-08-07");
+    await page.fill('[name="checkIn"]', fd("2026-08-04"));
+    await page.fill('[name="checkOut"]', fd("2026-08-07"));
 
     // Attend la validation de dispo (debounce 500ms + 2 API calls)
     await expect(page.getByText("Disponible")).toBeVisible({ timeout: 8000 });
@@ -143,14 +144,14 @@ test.describe("Public — Booking summary sidebar (Classic)", () => {
 
   test("total revient à — quand les dates deviennent indisponibles", async ({ page }) => {
     // Première sélection : dates valides
-    await page.fill('[name="checkIn"]', "2026-08-10");
-    await page.fill('[name="checkOut"]', "2026-08-12");
+    await page.fill('[name="checkIn"]', fd("2026-08-10"));
+    await page.fill('[name="checkOut"]', fd("2026-08-12"));
     await expect(page.getByText("Disponible")).toBeVisible({ timeout: 8000 });
     await expect(page.getByTestId("booking-summary-total")).toContainText("200", { timeout: 5000 });
 
     // Bascule sur des dates bloquées par la réservation existante (2026-06-10..15)
-    await page.fill('[name="checkIn"]', "2026-06-11");
-    await page.fill('[name="checkOut"]', "2026-06-13");
+    await page.fill('[name="checkIn"]', fd("2026-06-11"));
+    await page.fill('[name="checkOut"]', fd("2026-06-13"));
 
     await expect(page.getByText("Non disponible pour ces dates")).toBeVisible({ timeout: 8000 });
     // La sidebar ne doit plus afficher un total chiffré
@@ -158,8 +159,8 @@ test.describe("Public — Booking summary sidebar (Classic)", () => {
   });
 
   test("bouton submit affiche le montant total quand disponible", async ({ page }) => {
-    await page.fill('[name="checkIn"]', "2026-09-01");
-    await page.fill('[name="checkOut"]', "2026-09-03");
+    await page.fill('[name="checkIn"]', fd("2026-09-01"));
+    await page.fill('[name="checkOut"]', fd("2026-09-03"));
     await expect(page.getByText("Disponible")).toBeVisible({ timeout: 8000 });
 
     const submit = page.getByTestId("booking-submit");

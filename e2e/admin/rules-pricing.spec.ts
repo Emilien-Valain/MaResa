@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import fs from "fs";
 import path from "path";
+import { fd } from "../helpers/dates";
 
 // Charger le contexte de test seedé par globalSetup
 const ctx = JSON.parse(
@@ -27,8 +28,8 @@ test.describe("Admin — Tarification dynamique", () => {
     await page.getByRole("button", { name: "Ajouter" }).click();
 
     await page.locator("input[name='name']").fill("Haute saison test");
-    await page.locator("input[name='validFrom']").fill("2026-06-01");
-    await page.locator("input[name='validTo']").fill("2026-08-31");
+    await page.locator("input[name='validFrom']").fill(fd("2026-06-01"));
+    await page.locator("input[name='validTo']").fill(fd("2026-08-31"));
     await page.locator("input[name='fixedPrice']").fill("150");
 
     await page.getByRole("button", { name: "Créer la règle" }).click();
@@ -121,8 +122,8 @@ test.describe("Admin — Tarification dynamique", () => {
     const response = await page.request.get("/api/pricing", {
       params: {
         roomId: ctx.apiRoomId,
-        from: "2026-07-01",
-        to: "2026-07-03",
+        from: fd("2026-07-01"),
+        to: fd("2026-07-03"),
         tenantId: ctx.tenantId,
       },
     });
@@ -173,8 +174,8 @@ test.describe("Admin — Tarification dynamique", () => {
     const response = await page.request.get("/api/pricing", {
       params: {
         roomId: ctx.apiRoomId,
-        from: "2026-07-05",
-        to: "2026-07-01",
+        from: fd("2026-07-05"),
+        to: fd("2026-07-01"),
         tenantId: ctx.tenantId,
       },
     });

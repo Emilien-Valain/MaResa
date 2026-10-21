@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 import { cleanRules } from "../helpers/clean-rules";
+import { fd } from "../helpers/dates";
 
 /**
  * Spécification : Tests de non-régression > API > Disponibilité
@@ -20,10 +21,10 @@ const ctx = JSON.parse(
 ) as {
   tenantId: string;
   apiRoomId: string;
-  bookedCheckIn: string;  // "2026-06-10"
-  bookedCheckOut: string; // "2026-06-15"
-  icalBlockStart: string; // "2026-06-20"
-  icalBlockEnd: string;   // "2026-06-23"
+  bookedCheckIn: string;  // fd("2026-06-10") décalé par fd()
+  bookedCheckOut: string; // fd("2026-06-15") décalé par fd()
+  icalBlockStart: string; // fd("2026-06-20") décalé par fd()
+  icalBlockEnd: string;   // fd("2026-06-23") décalé par fd()
   rivalTenantId: string;
   rivalRoomId: string;
 };
@@ -38,8 +39,8 @@ function freeParams(overrides: Partial<Record<string, string>> = {}) {
   return {
     roomId: ctx.apiRoomId,
     tenantId: ctx.tenantId,
-    from: "2026-05-01",
-    to: "2026-05-05",
+    from: fd("2026-05-01"),
+    to: fd("2026-05-05"),
     ...overrides,
   };
 }
@@ -71,8 +72,8 @@ test.describe("API — Disponibilité", () => {
     expect(body.available).toBe(false);
     // La réservation couvre les nuits 10→14 juin (5 nuits, checkout le 15 exclu)
     expect(body.blockedDates).toHaveLength(5);
-    expect(body.blockedDates).toContain("2026-06-10");
-    expect(body.blockedDates).toContain("2026-06-14");
+    expect(body.blockedDates).toContain(fd("2026-06-10"));
+    expect(body.blockedDates).toContain(fd("2026-06-14"));
   });
 
   // ─── Chevauchements partiels ─────────────────────────────────────────────────
@@ -80,45 +81,45 @@ test.describe("API — Disponibilité", () => {
   test("chevauchement partiel au début — arrivée avant le checkout", async ({ page }) => {
     // [2026-06-13, 2026-06-17[ chevauche [2026-06-10, 2026-06-15[
     const res = await page.request.get(
-      apiUrl(freeParams({ from: "2026-06-13", to: "2026-06-17" })),
+      apiUrl(freeParams({ from: fd("2026-06-13"), to: fd("2026-06-17") })),
     );
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.available).toBe(false);
-    expect(body.blockedDates).toContain("2026-06-13");
-    expect(body.blockedDates).toContain("2026-06-14");
-    expect(body.blockedDates).not.toContain("2026-06-15"); // checkout exclu
-    expect(body.blockedDates).not.toContain("2026-06-16"); // après la réservation
+    expect(body.blockedDates).toContain(fd("2026-06-13"));
+    expect(body.blockedDates).toContain(fd("2026-06-14"));
+    expect(body.blockedDates).not.toContain(fd("2026-06-15")); // checkout exclu
+    expect(body.blockedDates).not.toContain(fd("2026-06-16")); // après la réservation
   });
 
   test("chevauchement partiel à la fin — départ après le checkin", async ({ page }) => {
     // [2026-06-08, 2026-06-12[ chevauche [2026-06-10, 2026-06-15[
     const res = await page.request.get(
-      apiUrl(freeParams({ from: "2026-06-08", to: "2026-06-12" })),
+      apiUrl(freeParams({ from: fd("2026-06-08"), to: fd("2026-06-12") })),
     );
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.available).toBe(false);
-    expect(body.blockedDates).toContain("2026-06-10");
-    expect(body.blockedDates).toContain("2026-06-11");
-    expect(body.blockedDates).not.toContain("2026-06-08"); // avant la réservation
-    expect(body.blockedDates).not.toContain("2026-06-09");
+    expect(body.blockedDates).toContain(fd("2026-06-10"));
+    expect(body.blockedDates).toContain(fd("2026-06-11"));
+    expect(body.blockedDates).not.toContain(fd("2026-06-08")); // avant la réservation
+    expect(body.blockedDates).not.toContain(fd("2026-06-09"));
   });
 
   test("période englobant entièrement la réservation — disponible hors réservation", async ({ page }) => {
     // [2026-06-05, 2026-06-20[ contient [2026-06-10, 2026-06-15[
     const res = await page.request.get(
-      apiUrl(freeParams({ from: "2026-06-05", to: "2026-06-20" })),
+      apiUrl(freeParams({ from: fd("2026-06-05"), to: fd("2026-06-20") })),
     );
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.available).toBe(false);
-    expect(body.blockedDates).toContain("2026-06-10");
-    expect(body.blockedDates).toContain("2026-06-14");
+    expect(body.blockedDates).toContain(fd("2026-06-10"));
+    expect(body.blockedDates).toContain(fd("2026-06-14"));
     // Les jours hors réservation ne sont pas dans blockedDates
-    expect(body.blockedDates).not.toContain("2026-06-05");
-    expect(body.blockedDates).not.toContain("2026-06-15");
-    expect(body.blockedDates).not.toContain("2026-06-19");
+    expect(body.blockedDates).not.toContain(fd("2026-06-05"));
+    expect(body.blockedDates).not.toContain(fd("2026-06-15"));
+    expect(body.blockedDates).not.toContain(fd("2026-06-19"));
   });
 
   // ─── Dates adjacentes (boundary) ─────────────────────────────────────────────
@@ -126,7 +127,7 @@ test.describe("API — Disponibilité", () => {
   test("arriver le jour du checkout de la réservation précédente — disponible", async ({ page }) => {
     // La réservation finit le 2026-06-15 → arriver le 15 est possible (exclusion stricte)
     const res = await page.request.get(
-      apiUrl(freeParams({ from: "2026-06-15", to: "2026-06-18" })),
+      apiUrl(freeParams({ from: fd("2026-06-15"), to: fd("2026-06-18") })),
     );
     expect(res.status()).toBe(200);
     const body = await res.json();
@@ -137,7 +138,7 @@ test.describe("API — Disponibilité", () => {
   test("partir le jour du checkin de la réservation suivante — disponible", async ({ page }) => {
     // La réservation commence le 2026-06-10 → partir le 10 est possible
     const res = await page.request.get(
-      apiUrl(freeParams({ from: "2026-06-07", to: "2026-06-10" })),
+      apiUrl(freeParams({ from: fd("2026-06-07"), to: fd("2026-06-10") })),
     );
     expect(res.status()).toBe(200);
     const body = await res.json();
@@ -149,42 +150,42 @@ test.describe("API — Disponibilité", () => {
 
   test("retourne 400 si roomId manquant", async ({ page }) => {
     const res = await page.request.get(
-      apiUrl({ tenantId: ctx.tenantId, from: "2026-05-01", to: "2026-05-05" }),
+      apiUrl({ tenantId: ctx.tenantId, from: fd("2026-05-01"), to: fd("2026-05-05") }),
     );
     expect(res.status()).toBe(400);
   });
 
   test("retourne 400 si tenantId manquant", async ({ page }) => {
     const res = await page.request.get(
-      apiUrl({ roomId: ctx.apiRoomId, from: "2026-05-01", to: "2026-05-05" }),
+      apiUrl({ roomId: ctx.apiRoomId, from: fd("2026-05-01"), to: fd("2026-05-05") }),
     );
     expect(res.status()).toBe(400);
   });
 
   test("retourne 400 si from manquant", async ({ page }) => {
     const res = await page.request.get(
-      apiUrl({ roomId: ctx.apiRoomId, tenantId: ctx.tenantId, to: "2026-05-05" }),
+      apiUrl({ roomId: ctx.apiRoomId, tenantId: ctx.tenantId, to: fd("2026-05-05") }),
     );
     expect(res.status()).toBe(400);
   });
 
   test("retourne 400 si dates invalides (format non-date)", async ({ page }) => {
     const res = await page.request.get(
-      apiUrl(freeParams({ from: "not-a-date", to: "2026-05-05" })),
+      apiUrl(freeParams({ from: "not-a-date", to: fd("2026-05-05") })),
     );
     expect(res.status()).toBe(400);
   });
 
   test("retourne 400 si checkOut = checkIn (0 nuit)", async ({ page }) => {
     const res = await page.request.get(
-      apiUrl(freeParams({ from: "2026-05-05", to: "2026-05-05" })),
+      apiUrl(freeParams({ from: fd("2026-05-05"), to: fd("2026-05-05") })),
     );
     expect(res.status()).toBe(400);
   });
 
   test("retourne 400 si checkOut < checkIn (dates inversées)", async ({ page }) => {
     const res = await page.request.get(
-      apiUrl(freeParams({ from: "2026-05-10", to: "2026-05-01" })),
+      apiUrl(freeParams({ from: fd("2026-05-10"), to: fd("2026-05-01") })),
     );
     expect(res.status()).toBe(400);
   });
@@ -233,6 +234,6 @@ test.describe("API — Disponibilité", () => {
     const body = await res.json();
     expect(body.available).toBe(false);
     expect(body.blockedDates.length).toBeGreaterThan(0);
-    expect(body.blockedDates).toContain("2026-06-20");
+    expect(body.blockedDates).toContain(fd("2026-06-20"));
   });
 });

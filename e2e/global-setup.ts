@@ -1,13 +1,14 @@
 import fs from "fs";
 import path from "path";
 import { chromium } from "@playwright/test";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { scryptAsync } from "@noble/hashes/scrypt.js";
 import { hex } from "@better-auth/utils/hex";
 import { randomBytes } from "crypto";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { tenants, users, accounts, properties, rooms, bookings, userTenants, manualBlocks, bookingRules, pricingRules, icalSources, icalBlocks } from "../db/schema";
+import { computeDateShiftDays, fd } from "./helpers/dates";
 
 async function hashPassword(password: string): Promise<string> {
   const salt = hex.encode(randomBytes(16));
@@ -28,6 +29,9 @@ function generateId(): string {
 export default async function globalSetup() {
   const { config } = await import("dotenv");
   config({ path: ".env.test" });
+
+  // Décalage des dates de fixtures figé pour tout le run (hérité par les workers)
+  process.env.E2E_DATE_SHIFT_DAYS ??= String(computeDateShiftDays());
 
   const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL! });
   const db = drizzle(pool);
@@ -137,41 +141,34 @@ export default async function globalSetup() {
   }
 
   // ── Réservation de test pour l'API de disponibilité ─────────────────────────
-  // Dates fixes en juin 2026 — loin des tests admin (qui utilisent addDays(5..30))
+  // Juin 2026 décalé par fd() — loin des tests admin (qui utilisent addDays(5..30))
   // Statut : confirmed (bloque la chambre)
 
-  const bookingCheckIn = new Date("2026-06-10T00:00:00.000Z");
-  const bookingCheckOut = new Date("2026-06-15T00:00:00.000Z");
+  const bookingCheckIn = new Date(fd("2026-06-10") + "T00:00:00.000Z");
+  const bookingCheckOut = new Date(fd("2026-06-15") + "T00:00:00.000Z");
 
-  const existingBookings = await db
-    .select()
-    .from(bookings)
-    .where(eq(bookings.roomId, apiRoom.id));
+  // Recréée à chaque setup : ses dates glissent avec fd(), l'ancienne
+  // occurrence (passée) doit disparaître.
+  await db
+    .delete(bookings)
+    .where(and(eq(bookings.roomId, apiRoom.id), eq(bookings.guestEmail, "api-test@example.com")));
 
-  const hasTestBooking = existingBookings.some(
-    (b) =>
-      new Date(b.checkIn).toISOString() === bookingCheckIn.toISOString() &&
-      new Date(b.checkOut).toISOString() === bookingCheckOut.toISOString(),
-  );
-
-  if (!hasTestBooking) {
-    await db.insert(bookings).values({
-      tenantId: tenant.id,
-      roomId: apiRoom.id,
-      checkIn: bookingCheckIn,
-      checkOut: bookingCheckOut,
-      totalPrice: "500.00",
-      status: "confirmed",
-      guestName: "Test API Réservation",
-      guestEmail: "api-test@example.com",
-      guestCount: 2,
-      source: "manual",
-    });
-  }
+  await db.insert(bookings).values({
+    tenantId: tenant.id,
+    roomId: apiRoom.id,
+    checkIn: bookingCheckIn,
+    checkOut: bookingCheckOut,
+    totalPrice: "500.00",
+    status: "confirmed",
+    guestName: "Test API Réservation",
+    guestEmail: "api-test@example.com",
+    guestCount: 2,
+    source: "manual",
+  });
 
   // ── Blocage iCal de test ─────────────────────────────────────────────────────
   // Source iCal fictive + un ical_block pour tester l'indisponibilité iCal
-  // Dates : 2026-06-20 → 2026-06-23 sur la chambre API Test
+  // Dates : 2026-06-20 → 2026-06-23 (décalées par fd()) sur la chambre API Test
 
   await db.delete(icalBlocks).where(eq(icalBlocks.roomId, apiRoom.id));
   await db.delete(icalSources).where(eq(icalSources.roomId, apiRoom.id));
@@ -193,8 +190,8 @@ export default async function globalSetup() {
     sourceId: icalSource.id,
     uid: "ical-test-block-001",
     summary: "Réservation Airbnb Test",
-    start: new Date("2026-06-20T00:00:00.000Z"),
-    end: new Date("2026-06-23T00:00:00.000Z"),
+    start: new Date(fd("2026-06-20") + "T00:00:00.000Z"),
+    end: new Date(fd("2026-06-23") + "T00:00:00.000Z"),
   });
 
   // ── 2e tenant (pour les tests d'isolation multi-tenant) ────────────────────
@@ -234,28 +231,25 @@ export default async function globalSetup() {
   }
 
   // Réservation du tenant rival (ne doit jamais fuiter vers le tenant principal)
-  const rivalBookingCheckIn = new Date("2026-06-10T00:00:00.000Z");
-  const rivalBookingCheckOut = new Date("2026-06-15T00:00:00.000Z");
+  const rivalBookingCheckIn = new Date(fd("2026-06-10") + "T00:00:00.000Z");
+  const rivalBookingCheckOut = new Date(fd("2026-06-15") + "T00:00:00.000Z");
 
-  const existingRivalBookings = await db
-    .select()
-    .from(bookings)
-    .where(eq(bookings.roomId, rivalRoom.id));
+  await db
+    .delete(bookings)
+    .where(and(eq(bookings.roomId, rivalRoom.id), eq(bookings.guestEmail, "rival-secret@example.com")));
 
-  if (existingRivalBookings.length === 0) {
-    await db.insert(bookings).values({
-      tenantId: rivalTenant.id,
-      roomId: rivalRoom.id,
-      checkIn: rivalBookingCheckIn,
-      checkOut: rivalBookingCheckOut,
-      totalPrice: "1000.00",
-      status: "confirmed",
-      guestName: "Client Rival Secret",
-      guestEmail: "rival-secret@example.com",
-      guestCount: 2,
-      source: "manual",
-    });
-  }
+  await db.insert(bookings).values({
+    tenantId: rivalTenant.id,
+    roomId: rivalRoom.id,
+    checkIn: rivalBookingCheckIn,
+    checkOut: rivalBookingCheckOut,
+    totalPrice: "1000.00",
+    status: "confirmed",
+    guestName: "Client Rival Secret",
+    guestEmail: "rival-secret@example.com",
+    guestCount: 2,
+    source: "manual",
+  });
 
   // ── Écrire le contexte de test (tenantId, roomId, rival, iCal) ──────────────
 
@@ -266,10 +260,10 @@ export default async function globalSetup() {
     JSON.stringify({
       tenantId: tenant.id,
       apiRoomId: apiRoom.id,
-      bookedCheckIn: "2026-06-10",
-      bookedCheckOut: "2026-06-15",
-      icalBlockStart: "2026-06-20",
-      icalBlockEnd: "2026-06-23",
+      bookedCheckIn: fd("2026-06-10"),
+      bookedCheckOut: fd("2026-06-15"),
+      icalBlockStart: fd("2026-06-20"),
+      icalBlockEnd: fd("2026-06-23"),
       rivalTenantId: rivalTenant.id,
       rivalRoomId: rivalRoom.id,
     }),
