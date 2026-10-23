@@ -1,18 +1,11 @@
+import { formatEuros } from "@/lib/utils";
+import { Icon } from "@/components/admin/icons";
 import Link from "next/link";
 import Image from "next/image";
 import { requireSession } from "@/lib/session";
 import { getRoomsByTenant } from "@/lib/queries/rooms";
 import DeleteRoomButton from "@/components/admin/DeleteRoomButton";
-import { Card, PageHeader, PrimaryButton } from "@/components/admin/ui";
-
-function fmtCurrency(n: number) {
-  return n.toLocaleString("fr-FR", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
-}
+import { Card, EmptyState, PageHeader, PrimaryButton } from "@/components/admin/ui";
 
 export default async function ChambresPage() {
   const { tenantId } = await requireSession();
@@ -20,9 +13,6 @@ export default async function ChambresPage() {
 
   const activeCount = chambres.filter((c) => c.active).length;
   const inactiveCount = chambres.length - activeCount;
-  const potentialRevenue = chambres
-    .filter((c) => c.active)
-    .reduce((s, c) => s + Number(c.pricePerNight), 0);
 
   return (
     <div className="space-y-6">
@@ -52,11 +42,6 @@ export default async function ChambresPage() {
         <div className="flex gap-3.5 flex-wrap">
           <StatTile label="Chambres totales" value={String(chambres.length)} />
           <StatTile
-            label="Revenu potentiel/nuit"
-            value={fmtCurrency(potentialRevenue)}
-            accent
-          />
-          <StatTile
             label="Capacité totale"
             value={`${chambres
               .filter((c) => c.active)
@@ -66,20 +51,17 @@ export default async function ChambresPage() {
       )}
 
       {chambres.length === 0 ? (
-        <Card style={{ padding: "60px 24px", textAlign: "center" }}>
-          <p
-            className="text-[14px]"
-            style={{ color: "var(--admin-text-muted)" }}
+        <Card>
+          <EmptyState
+            title="Aucune chambre pour l’instant"
+            example="« Chambre Tilleul » · 85 € la nuit · 2 personnes"
+            action={
+              <PrimaryButton href="/admin/chambres/new">Créer ma première chambre</PrimaryButton>
+            }
           >
-            Aucune chambre pour l&apos;instant.
-          </p>
-          <Link
-            href="/admin/chambres/new"
-            className="text-[13px] font-semibold underline mt-3 inline-block"
-            style={{ color: "var(--admin-primary)" }}
-          >
-            Créer la première
-          </Link>
+            Chaque chambre a un nom, un prix par nuit et une capacité. Dès qu’elle est active,
+            elle apparaît sur votre site et peut être réservée.
+          </EmptyState>
         </Card>
       ) : (
         <div className="grid gap-[18px] grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
@@ -98,7 +80,6 @@ export default async function ChambresPage() {
                   background: "var(--admin-surface)",
                   border: "1.5px solid var(--admin-border)",
                   borderRadius: "var(--admin-radius)",
-                  opacity: isActive ? 1 : 0.7,
                   boxShadow: "var(--admin-shadow-sm)",
                 }}
               >
@@ -116,25 +97,27 @@ export default async function ChambresPage() {
                       src={thumb.url}
                       alt={chambre.name}
                       fill
-                      className="object-cover"
+                      // Inactive : seule la photo s'estompe, les textes gardent leur contraste.
+                      className={`object-cover ${isActive ? "" : "grayscale opacity-60"}`}
                       sizes="(max-width: 768px) 100vw, 320px"
                     />
                   ) : (
-                    <div className="flex flex-col items-center justify-center h-full">
-                      <div className="text-4xl opacity-25">🛏</div>
-                      <div
-                        className="text-[11px] mt-1.5 font-mono"
-                        style={{ color: "var(--admin-text-subtle)" }}
-                      >
-                        photo · {chambre.name}
-                      </div>
-                    </div>
+                    <Link
+                      href={`/admin/chambres/${chambre.id}/edit#photos`}
+                      className="flex flex-col items-center justify-center h-full gap-1.5 transition-colors hover:bg-[var(--admin-surface-2)]"
+                      style={{ color: "var(--admin-text-muted)" }}
+                    >
+                      <Icon.Rooms size={28} />
+                      <span className="text-[13px] font-semibold underline underline-offset-2">
+                        Ajouter une photo
+                      </span>
+                    </Link>
                   )}
                   <div
-                    className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-[3px] rounded-full text-[11.5px] font-bold"
+                    className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-[3px] rounded-full text-[12px] font-bold"
                     style={{
                       background: isActive ? "#DCFCE7" : "#F1F5F9",
-                      color: isActive ? "#15803D" : "#64748B",
+                      color: isActive ? "#15803D" : "#475569",
                     }}
                   >
                     <span
@@ -145,8 +128,8 @@ export default async function ChambresPage() {
                   </div>
                   <div className="absolute bottom-3 left-3 rounded-lg px-2.5 py-1 backdrop-blur-sm bg-black/55">
                     <span className="text-white text-[13px] font-bold">
-                      {fmtCurrency(Number(chambre.pricePerNight))}
-                      <span className="font-normal text-[11px] opacity-80">
+                      {formatEuros(chambre.pricePerNight)}
+                      <span className="font-normal text-[12px] opacity-80">
                         /nuit
                       </span>
                     </span>
@@ -193,13 +176,13 @@ export default async function ChambresPage() {
 
                   <div className="flex items-center justify-between">
                     <Link
-                      href={`/admin/chambres/${chambre.id}`}
-                      className="text-[12.5px] font-semibold"
+                      href={`/admin/reservations?roomId=${chambre.id}`}
+                      className="text-[12.5px] font-semibold inline-flex items-center min-h-11 md:min-h-0"
                       style={{ color: "var(--admin-primary)" }}
                     >
-                      Détails →
+                      Réservations →
                     </Link>
-                    <DeleteRoomButton id={chambre.id} />
+                    <DeleteRoomButton id={chambre.id} name={chambre.name} />
                   </div>
                 </div>
               </div>
@@ -231,13 +214,13 @@ function StatTile({
       }}
     >
       <div
-        className="text-[11.5px] font-semibold uppercase tracking-[0.06em] mb-1"
+        className="text-[12px] font-semibold uppercase tracking-[0.06em] mb-1"
         style={{ color: "var(--admin-text-muted)" }}
       >
         {label}
       </div>
       <div
-        className="text-[20px] font-extrabold"
+        className="text-[24px] font-extrabold leading-tight"
         style={{
           color: accent ? "var(--admin-primary)" : "var(--admin-text)",
           letterSpacing: "-0.5px",

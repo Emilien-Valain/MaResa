@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getEffectiveRules } from "@/lib/booking-rules";
+import { isUuid } from "@/lib/validation";
 
 /**
  * GET /api/rules?roomId=...&checkIn=YYYY-MM-DD
@@ -20,6 +21,11 @@ export async function GET(request: NextRequest) {
       { error: "Paramètres manquants : roomId requis" },
       { status: 400 },
     );
+  }
+
+  // Un id non-UUID ferait planter Postgres (« invalid input syntax for type uuid ») → 500
+  if (!isUuid(roomId) || !isUuid(tenantId)) {
+    return NextResponse.json({ error: "Identifiant invalide" }, { status: 400 });
   }
 
   const checkIn = checkInStr

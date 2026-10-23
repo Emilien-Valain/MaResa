@@ -13,6 +13,7 @@ import {
   tenantPhotoPublicUrl,
   ensureDir,
 } from "@/lib/uploads";
+import { mergeTenantConfig } from "@/lib/tenant-config";
 import type { TenantConfig, HeroPhoto } from "@/lib/tenant-context";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -28,8 +29,11 @@ async function readConfig(tenantId: string): Promise<TenantConfig> {
   return (t.config ?? {}) as TenantConfig;
 }
 
-async function writeConfig(tenantId: string, config: TenantConfig) {
-  await db.update(tenants).set({ config }).where(eq(tenants.id, tenantId));
+async function writeConfig(tenantId: string, patch: Partial<TenantConfig>) {
+  await db
+    .update(tenants)
+    .set({ config: mergeTenantConfig(patch) })
+    .where(eq(tenants.id, tenantId));
   revalidatePath("/admin/parametres");
   revalidatePath("/");
 }
@@ -88,7 +92,7 @@ export async function POST(request: NextRequest) {
     url: tenantPhotoPublicUrl(tenantId, filename),
   };
 
-  await writeConfig(tenantId, { ...config, heroPhoto: hero });
+  await writeConfig(tenantId, { heroPhoto: hero });
 
   return NextResponse.json({ heroPhoto: hero });
 }
@@ -107,7 +111,7 @@ export async function DELETE() {
     }
   }
 
-  await writeConfig(tenantId, { ...config, heroPhoto: null });
+  await writeConfig(tenantId, { heroPhoto: null });
 
   return NextResponse.json({ heroPhoto: null });
 }

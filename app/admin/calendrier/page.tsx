@@ -1,7 +1,8 @@
+import { todayStart } from "@/lib/date-windows";
 import Link from "next/link";
 import { requireSession } from "@/lib/session";
 import { getRoomsByTenant } from "@/lib/queries/rooms";
-import { getActiveBookingsForCalendar } from "@/lib/queries/bookings";
+import { getActiveBookingsForCalendar, completeFinishedStays } from "@/lib/queries/bookings";
 import { getManualBlocksForCalendar } from "@/lib/queries/rules";
 import IcalSyncButton from "@/components/admin/IcalSyncButton";
 import CalendarTimeline, {
@@ -15,6 +16,7 @@ import {
   formatMonthLabel,
 } from "@/lib/calendar";
 import { Icon } from "@/components/admin/icons";
+import { EmptyState, PrimaryButton } from "@/components/admin/ui";
 
 const VALID_STATUSES = ["pending", "confirmed", "completed", "cancelled"] as const;
 type Status = (typeof VALID_STATUSES)[number];
@@ -32,9 +34,10 @@ export default async function CalendrierPage({
   searchParams: Promise<{ year?: string; month?: string }>;
 }) {
   const { tenantId } = await requireSession();
+  await completeFinishedStays(tenantId);
   const params = await searchParams;
 
-  const now = new Date();
+  const now = todayStart(); // date du jour à Paris, en UTC minuit
   const yearParsed = parseInt(params.year ?? "");
   const monthParsed = parseInt(params.month ?? "");
   const year = Number.isFinite(yearParsed) ? yearParsed : now.getUTCFullYear();
@@ -172,6 +175,36 @@ export default async function CalendrierPage({
       ? now.getUTCDate()
       : null;
 
+  const dateKeys = calendar.days.map(dateKey);
+  const todayKey = dateKey(now);
+  const shortDay = (day: number) =>
+    new Date(Date.UTC(year, month, day)).toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "short",
+      timeZone: "UTC",
+    });
+
+  const isoPlusDays = (iso: string, n: number) =>
+    new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+
+  /** Nuits libres à venir d'une chambre ce mois-ci, en plages [start, end) de jours. */
+  function freeRuns(roomId: string) {
+    const busy = new Set<number>();
+    for (const sp of [...bookingSpans, ...blockSpans])
+      if (sp.roomId === roomId) for (let d = sp.startDay; d < sp.endDay; d++) busy.add(d);
+    const runs: { start: number; end: number }[] = [];
+    let start: number | null = null;
+    for (let d = 1; d <= daysInMonth + 1; d++) {
+      const free = d <= daysInMonth && dateKeys[d - 1] >= todayKey && !busy.has(d);
+      if (free && start === null) start = d;
+      else if (!free && start !== null) {
+        runs.push({ start, end: d });
+        start = null;
+      }
+    }
+    return runs;
+  }
+
   const navButtonStyle = {
     background: "var(--admin-surface)",
     border: "1px solid var(--admin-border)",
@@ -190,20 +223,22 @@ export default async function CalendrierPage({
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1
-            className="text-[22px] font-extrabold"
-            style={{ color: "var(--admin-text)", letterSpacing: "-0.5px" }}
+            className="text-[24px] font-extrabold leading-tight"
+            style={{ color: "var(--admin-text)", letterSpacing: "-0.6px" }}
           >
             Calendrier
           </h1>
           <p
-            className="text-[13.5px] mt-0.5 capitalize"
+            className="text-[14px] mt-1"
             style={{ color: "var(--admin-text-muted)" }}
           >
-            Disponibilités et séjours — {formatMonthLabel(year, month)}
+            Disponibilités et séjours
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <IcalSyncButton />
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+          <div className="order-last sm:order-none">
+            <IcalSyncButton />
+          </div>
           <Link
             href={`/admin/calendrier?year=${prev.year}&month=${prev.month}`}
             aria-label="Mois précédent"
@@ -212,6 +247,7 @@ export default async function CalendrierPage({
             <Icon.ChevronLeft size={16} />
           </Link>
           <div
+            className="flex-1 sm:flex-none text-center"
             style={{
               background: "var(--admin-surface)",
               border: "1px solid var(--admin-border)",
@@ -279,19 +315,22 @@ export default async function CalendrierPage({
       {activeChambres.length === 0 ? (
         <div
           style={{
-            padding: "60px 24px",
-            textAlign: "center",
             background: "var(--admin-surface)",
             border: "1px solid var(--admin-border)",
             borderRadius: "var(--admin-radius)",
           }}
         >
-          <p
-            className="text-[14px]"
-            style={{ color: "var(--admin-text-muted)" }}
+          <EmptyState
+            title="Aucune chambre active"
+            action={
+              <PrimaryButton href="/admin/chambres" icon={null}>
+                Voir les chambres
+              </PrimaryButton>
+            }
           >
-            Aucune chambre active.
-          </p>
+            Le planning affiche une ligne par chambre active. Ajoutez une chambre, ou réactivez-en
+            une depuis sa fiche.
+          </EmptyState>
         </div>
       ) : (
         <>
@@ -304,6 +343,7 @@ export default async function CalendrierPage({
               const uniqueBookings = roomBookings.filter(
                 (b, i, arr) => arr.findIndex((x) => x.id === b.id) === i,
               );
+              const free = freeRuns(chambre.id);
               return (
                 <div
                   key={chambre.id}
@@ -326,6 +366,31 @@ export default async function CalendrierPage({
                     >
                       {chambre.name}
                     </h2>
+                    {free.length > 0 ? (
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        <span className="text-[12px] font-semibold" style={{ color: "var(--admin-text-muted)" }}>
+                          Libre :
+                        </span>
+                        {free.map((r) => (
+                          <Link
+                            key={r.start}
+                            // La pastille montre une plage : elle la pré-remplit en entier (fin = 1er jour occupé).
+                            href={`/admin/reservations/new?roomId=${chambre.id}&checkIn=${dateKeys[r.start - 1]}&checkOut=${isoPlusDays(dateKeys[r.start - 1], r.end - r.start)}`}
+                            aria-label={`Réserver ${chambre.name} du ${shortDay(r.start)} au ${shortDay(r.end)}`}
+                            className="inline-flex items-center min-h-[44px] text-[13px] font-semibold rounded-lg px-3 tabular-nums"
+                            style={{ background: "var(--admin-primary-light)", color: "var(--admin-primary)" }}
+                          >
+                            {shortDay(r.start)} → {shortDay(r.end)}
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      dateKeys[daysInMonth - 1] >= todayKey && (
+                        <p className="text-[12px] mt-1" style={{ color: "var(--admin-text-muted)" }}>
+                          Complet ce mois-ci
+                        </p>
+                      )
+                    )}
                   </div>
                   {uniqueBookings.length === 0 ? (
                     <p
@@ -340,7 +405,7 @@ export default async function CalendrierPage({
                         <Link
                           key={b.id}
                           href={`/admin/reservations/${b.id}`}
-                          className="flex items-center gap-3 px-4 py-3 hover:opacity-80 transition-opacity"
+                          className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--admin-surface-2)]"
                           style={{
                             borderBottom:
                               "1px solid var(--admin-border-light)",
@@ -352,7 +417,9 @@ export default async function CalendrierPage({
                               background:
                                 b.status === "confirmed"
                                   ? "#16A34A"
-                                  : "#D97706",
+                                  : b.status === "completed"
+                                    ? "#94A3B8"
+                                    : "#D97706",
                             }}
                           />
                           <div className="min-w-0 flex-1">
@@ -400,6 +467,8 @@ export default async function CalendrierPage({
               weekdayLabels={weekdayLabels}
               weekendDays={weekendDays}
               todayDay={todayDay}
+              dateKeys={dateKeys}
+              todayKey={todayKey}
             />
           </div>
         </>

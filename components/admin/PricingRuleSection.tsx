@@ -1,6 +1,10 @@
 "use client";
 
+import { formatEuros } from "@/lib/utils";
+
+import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { useState } from "react";
+import { useFormAction } from "@/components/admin/useFormAction";
 import {
   createPricingRule,
   deletePricingRule,
@@ -9,12 +13,17 @@ import {
 import {
   AdminInput,
   AdminSelect,
+  DateInput,
+  EmptyState,
   Field,
   SettingsSection,
+  StatusBanner,
 } from "@/components/admin/ui";
 import type { PricingRuleRow } from "./RulesPageClient";
 
 const DAY_NAMES = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
+// Indices JS (0 = dimanche), affichés dans l'ordre de la semaine française.
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const DAY_NAMES_FR = [
   "dimanche",
   "lundi",
@@ -35,6 +44,17 @@ export default function PricingRuleSection({ rooms, rules }: Props) {
   const [priceType, setPriceType] = useState<"fixed" | "percentage">("fixed");
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
 
+  const form = useFormAction(createPricingRule, {
+    prepare: (fd) => {
+      if (selectedDays.length > 0) fd.set("daysOfWeek", selectedDays.join(","));
+    },
+    onSuccess: () => {
+      setShowForm(false);
+      setSelectedDays([]);
+      setPriceType("fixed");
+    },
+  });
+
   const toggleDay = (day: number) => {
     setSelectedDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
@@ -44,7 +64,7 @@ export default function PricingRuleSection({ rooms, rules }: Props) {
   return (
     <SettingsSection
       title="Tarification dynamique"
-      desc="Prix saisonniers, majorations week-end, promotions. Les règles à plus haute priorité gagnent en cas de conflit."
+      desc="Prix saisonniers, majorations week-end, promotions. Si deux règles visent la même nuit, la plus précise l'emporte : une chambre plutôt que toutes, des jours choisis plutôt que tous, une période courte plutôt que longue."
       action={
         <button
           type="button"
@@ -64,17 +84,12 @@ export default function PricingRuleSection({ rooms, rules }: Props) {
         </button>
       }
     >
+      {form.saved && !showForm && (
+        <StatusBanner variant="success">Règle tarifaire ajoutée.</StatusBanner>
+      )}
       {showForm && (
         <form
-          action={async (formData) => {
-            if (selectedDays.length > 0) {
-              formData.set("daysOfWeek", selectedDays.join(","));
-            }
-            await createPricingRule(formData);
-            setShowForm(false);
-            setSelectedDays([]);
-            setPriceType("fixed");
-          }}
+          onSubmit={form.onSubmit}
           className="mb-5"
           style={{
             padding: 14,
@@ -83,8 +98,9 @@ export default function PricingRuleSection({ rooms, rules }: Props) {
             border: "1px dashed var(--admin-border)",
           }}
         >
+          {form.error && <StatusBanner variant="error">{form.error}</StatusBanner>}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Nom de la règle">
+            <Field label="Nom de la règle" error={form.fieldError("name")}>
               <AdminInput
                 type="text"
                 name="name"
@@ -94,7 +110,7 @@ export default function PricingRuleSection({ rooms, rules }: Props) {
             </Field>
             <Field label="Chambre">
               <AdminSelect name="roomId">
-                <option value="">Toutes les chambres (global)</option>
+                <option value="">Toutes les chambres</option>
                 {rooms.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.name}
@@ -106,10 +122,10 @@ export default function PricingRuleSection({ rooms, rules }: Props) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Période — début (optionnel)">
-              <AdminInput type="date" name="validFrom" />
+              <DateInput name="validFrom" />
             </Field>
-            <Field label="Période — fin (optionnel)">
-              <AdminInput type="date" name="validTo" />
+            <Field label="Période — fin (optionnel)" error={form.fieldError("validTo")}>
+              <DateInput name="validTo" />
             </Field>
           </div>
 
@@ -118,12 +134,14 @@ export default function PricingRuleSection({ rooms, rules }: Props) {
             hint="Aucun sélectionné = tous les jours"
           >
             <div className="flex gap-2">
-              {DAY_NAMES.map((name, i) => {
+              {WEEK_ORDER.map((i) => {
+                const name = DAY_NAMES[i];
                 const active = selectedDays.includes(i);
                 return (
                   <button
                     key={i}
                     type="button"
+                    aria-pressed={active}
                     onClick={() => toggleDay(i)}
                     style={{
                       width: 40,
@@ -177,10 +195,12 @@ export default function PricingRuleSection({ rooms, rules }: Props) {
 
           {priceType === "fixed" ? (
             <div className="max-w-xs">
-              <Field label="Prix fixe (€/nuit)">
+              <Field label="Prix fixe (€/nuit)" error={form.fieldError("fixedPrice")}>
                 <AdminInput
                   type="text"
                   name="fixedPrice"
+                  required
+                  inputMode="decimal"
                   placeholder="ex: 150"
                 />
               </Field>
@@ -190,10 +210,12 @@ export default function PricingRuleSection({ rooms, rules }: Props) {
               <Field
                 label="Modificateur (%)"
                 hint="Positif = majoration, négatif = promotion"
+                error={form.fieldError("percentageModifier")}
               >
                 <AdminInput
                   type="text"
                   name="percentageModifier"
+                  required
                   placeholder="ex: 30 ou -15"
                 />
               </Field>
@@ -203,6 +225,7 @@ export default function PricingRuleSection({ rooms, rules }: Props) {
           <div className="flex justify-end">
             <button
               type="submit"
+              disabled={form.pending}
               style={{
                 padding: "9px 18px",
                 background: "var(--admin-primary)",
@@ -211,22 +234,24 @@ export default function PricingRuleSection({ rooms, rules }: Props) {
                 borderRadius: 8,
                 fontSize: 13,
                 fontWeight: 600,
-                cursor: "pointer",
+                cursor: form.pending ? "wait" : "pointer",
+                opacity: form.pending ? 0.7 : 1,
               }}
             >
-              Créer la règle
+              {form.pending ? "Création…" : "Créer la règle"}
             </button>
           </div>
         </form>
       )}
 
-      {rules.length === 0 ? (
-        <p
-          className="text-center py-6 text-[13px]"
-          style={{ color: "var(--admin-text-muted)" }}
+      {rules.length === 0 && !showForm ? (
+        <EmptyState
+          compact
+          title="Aucune règle tarifaire configurée"
+          example="« Haute saison » à 120 € la nuit du 1er juillet au 31 août, ou −15 % en semaine de novembre à mars."
         >
-          Aucune règle tarifaire configurée
-        </p>
+          Toutes les nuits sont facturées au prix de base de chaque chambre.
+        </EmptyState>
       ) : (
         <div>
           {rules.map((rule, i) => {
@@ -261,7 +286,7 @@ export default function PricingRuleSection({ rooms, rules }: Props) {
                     </span>
                     {!rule.active && (
                       <span
-                        className="ml-2 text-[11px] font-bold"
+                        className="ml-2 text-[12px] font-bold"
                         style={{
                           padding: "2px 8px",
                           borderRadius: 12,
@@ -273,23 +298,23 @@ export default function PricingRuleSection({ rooms, rules }: Props) {
                       </span>
                     )}
                     <span
-                      className="ml-2 text-[11.5px]"
+                      className="ml-2 text-[12px]"
                       style={{ color: "var(--admin-text-muted)" }}
                     >
                       {rule.roomName ?? "Global"}
                     </span>
                   </p>
                   <p
-                    className="text-[11.5px] space-x-2"
+                    className="text-[12px] space-x-2"
                     style={{ color: "var(--admin-text-muted)" }}
                   >
                     {rule.fixedPrice && (
                       <span>
-                        {parseFloat(rule.fixedPrice).toFixed(0)} €/nuit
+                        {formatEuros(rule.fixedPrice)}/nuit
                       </span>
                     )}
                     {rule.percentageModifier && (
-                      <span style={{ color: isAdjPositive ? "#16A34A" : "#DC2626" }}>
+                      <span style={{ color: isAdjPositive ? "#15803D" : "var(--admin-danger)" }}>
                         {isAdjPositive ? "+" : ""}
                         {parseFloat(rule.percentageModifier).toFixed(0)}%
                       </span>
@@ -303,9 +328,9 @@ export default function PricingRuleSection({ rooms, rules }: Props) {
                     )}
                     {rule.validFrom && (
                       <span>
-                        {new Date(rule.validFrom).toLocaleDateString("fr-FR")} →{" "}
+                        {new Date(rule.validFrom).toLocaleDateString("fr-FR", { timeZone: "UTC" })} →{" "}
                         {rule.validTo
-                          ? new Date(rule.validTo).toLocaleDateString("fr-FR")
+                          ? new Date(rule.validTo).toLocaleDateString("fr-FR", { timeZone: "UTC" })
                           : "…"}
                       </span>
                     )}
@@ -327,22 +352,21 @@ export default function PricingRuleSection({ rooms, rules }: Props) {
                   >
                     {rule.active ? "Désactiver" : "Activer"}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (confirm("Supprimer cette règle ?"))
-                        deletePricingRule(rule.id);
-                    }}
+                  <ConfirmButton
+                    title={"Supprimer cette règle de tarification ?"}
+                    message="Les prochaines réservations seront calculées sans elle. Les réservations existantes gardent leur prix."
+                    confirmLabel="Supprimer la règle"
+                    onConfirm={() => deletePricingRule(rule.id)}
                     className="text-[12px] font-semibold"
                     style={{
-                      color: "#DC2626",
+                      color: "var(--admin-danger)",
                       background: "none",
                       border: "none",
                       cursor: "pointer",
                     }}
                   >
                     Supprimer
-                  </button>
+                  </ConfirmButton>
                 </div>
               </div>
             );

@@ -49,7 +49,7 @@ Where a booking originated: `direct` (guest booked on the tenant's own site) or 
 **Booking status** — the *lifecycle & inventory* axis (`bookings.status`). Orthogonal to [[payment-status]]; says nothing about money. (See ADR-0003.)
 - `pending` — created, room held, not yet committed (a direct booking awaiting payment).
 - `confirmed` — **committed: the room is held and the reservation will be honored.** Not a statement about payment. A direct booking becomes confirmed *because* its payment succeeded; a manual booking is created confirmed and may be paid later (on arrival).
-- `completed` — the stay is over (`checkOut` has passed). Terminal.
+- `completed` — the stay is over (`checkOut` has passed). Set automatically, never by hand: `completeFinishedStays` moves `confirmed` bookings whose `checkOut` is before today (run by the `booking-emails` cron and when admin booking pages load). Terminal.
 - `cancelled` — released; the room is freed. Terminal (a guest who wants to return makes a new booking).
 
 Legal transitions (enforced): `pending → confirmed | cancelled`, `confirmed → completed | cancelled`. `completed` and `cancelled` are terminal. Any other jump is rejected.

@@ -1,3 +1,4 @@
+import { formatEuros } from "@/lib/utils";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/session";
@@ -33,14 +34,16 @@ export default async function EditChambrePage({
   return (
     <div className="space-y-6 max-w-xl admin-fade-in">
       <h1
-        className="text-[22px] font-extrabold"
-        style={{ color: "var(--admin-text)", letterSpacing: "-0.5px" }}
+        className="text-[24px] font-extrabold leading-tight"
+        style={{ color: "var(--admin-text)", letterSpacing: "-0.6px" }}
       >
         Modifier — {chambre.name}
       </h1>
       <RoomForm action={updateRoom.bind(null, id)} defaultValues={chambre} />
 
       <div
+        id="photos"
+        className="scroll-mt-6"
         style={{
           background: "var(--admin-surface)",
           border: "1px solid var(--admin-border)",
@@ -129,7 +132,7 @@ export default async function EditChambrePage({
                 <span>
                   {rule.name} —{" "}
                   {rule.fixedPrice
-                    ? `${parseFloat(rule.fixedPrice).toFixed(0)} €/nuit`
+                    ? `${formatEuros(rule.fixedPrice)}/nuit`
                     : rule.percentageModifier
                       ? `${parseFloat(rule.percentageModifier) > 0 ? "+" : ""}${parseFloat(rule.percentageModifier).toFixed(0)}%`
                       : ""}

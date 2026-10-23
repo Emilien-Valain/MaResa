@@ -1,7 +1,6 @@
-"use server";
-
 import { and, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/lib/db";
+import type { Tx } from "@/lib/booking-intake";
 import { pricingRules, rooms } from "@/db/schema";
 import { orderByPrecedence } from "@/lib/rule-precedence";
 
@@ -29,14 +28,14 @@ const HORIZON_DAYS = 365;
  * Charge le prix de base + les règles actives (chambre + globales) d'un tenant,
  * avec `daysOfWeek` typé pour la primitive de précédence.
  */
-async function loadPricingContext(roomId: string, tenantId: string) {
+async function loadPricingContext(roomId: string, tenantId: string, conn: Tx | typeof db = db) {
   const [room, allRules] = await Promise.all([
-    db
+    conn
       .select({ pricePerNight: rooms.pricePerNight })
       .from(rooms)
       .where(eq(rooms.id, roomId))
       .then((r) => r[0]),
-    db
+    conn
       .select()
       .from(pricingRules)
       .where(
@@ -66,8 +65,9 @@ export async function calculatePrice(
   tenantId: string,
   checkIn: Date,
   checkOut: Date,
+  conn: Tx | typeof db = db,
 ): Promise<PriceBreakdown> {
-  const { basePrice, rules } = await loadPricingContext(roomId, tenantId);
+  const { basePrice, rules } = await loadPricingContext(roomId, tenantId, conn);
 
   const nightPrices: NightPrice[] = [];
   const cur = new Date(checkIn);

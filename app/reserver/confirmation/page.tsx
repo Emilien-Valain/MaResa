@@ -11,9 +11,9 @@ import type { TenantConfig } from "@/lib/tenant-context";
 export default async function ConfirmationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ bookingId?: string; session_id?: string }>;
+  searchParams: Promise<{ session_id?: string }>;
 }) {
-  const { bookingId, session_id } = await searchParams;
+  const { session_id } = await searchParams;
 
   const headersList = await headers();
   const tenantId = headersList.get("x-tenant-id");
@@ -44,12 +44,6 @@ export default async function ConfirmationPage({
       .select()
       .from(bookings)
       .where(and(eq(bookings.id, payment.bookingId), eq(bookings.tenantId, tenantId)))
-      .limit(1);
-  } else if (bookingId) {
-    [booking] = await db
-      .select()
-      .from(bookings)
-      .where(and(eq(bookings.id, bookingId), eq(bookings.tenantId, tenantId)))
       .limit(1);
   }
 

@@ -141,7 +141,7 @@ export default function ForgotPasswordPage() {
             Si cette adresse est associée à un compte, vous recevrez un email
             avec un lien de réinitialisation à{" "}
             <strong style={{ color: "var(--admin-text)" }}>{email}</strong>.
-            Vérifie ta boîte de réception (et tes spams).
+            Vérifiez votre boîte de réception (et vos spams).
           </p>
           <button
             type="button"

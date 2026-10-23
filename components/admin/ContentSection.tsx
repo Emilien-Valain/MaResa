@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useFormAction } from "@/components/admin/useFormAction";
 import { updateContent } from "@/lib/actions/content";
 import {
   AdminInput,
@@ -20,8 +21,20 @@ function emptyStat(): StoryStat {
 }
 
 export default function ContentSection({ config }: { config: TenantConfig }) {
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const form = useFormAction(updateContent, {
+    prepare: (fd) => {
+      // Filtre les stats vides avant envoi
+      const cleanStats = stats
+        .map((s) => {
+          const value = s.value.trim();
+          const label = s.label.trim();
+          const sub = (s.sub ?? "").trim();
+          return sub ? { value, label, sub } : { value, label };
+        })
+        .filter((s) => s.value && s.label);
+      fd.set("storyStats", JSON.stringify(cleanStats));
+    },
+  });
 
   const initialStats: StoryStat[] =
     config.storyStats && config.storyStats.length > 0
@@ -44,36 +57,17 @@ export default function ContentSection({ config }: { config: TenantConfig }) {
 
   return (
     <>
-      {saved && (
+      {form.saved && (
         <StatusBanner variant="success">Contenu mis à jour avec succès.</StatusBanner>
       )}
-      {error && <StatusBanner variant="error">{error}</StatusBanner>}
+      {form.error && <StatusBanner variant="error">{form.error}</StatusBanner>}
 
       <form
-        action={async (formData) => {
-          setSaved(false);
-          setError(null);
-          // Filtre les stats vides avant envoi
-          const cleanStats = stats
-            .map((s) => {
-              const value = s.value.trim();
-              const label = s.label.trim();
-              const sub = (s.sub ?? "").trim();
-              return sub ? { value, label, sub } : { value, label };
-            })
-            .filter((s) => s.value && s.label);
-          formData.set("storyStats", JSON.stringify(cleanStats));
-          try {
-            await updateContent(formData);
-            setSaved(true);
-          } catch (e) {
-            setError(e instanceof Error ? e.message : "Erreur lors de la sauvegarde");
-          }
-        }}
+        onSubmit={form.onSubmit}
       >
         <SettingsSection
           title="Hero — Image de fond"
-          desc="L'image visible en première page. Si absente, un fond uni colorée est utilisée."
+          desc="L'image visible en première page. Sans image, un fond de couleur unie est utilisé."
         >
           <HeroPhotoUploader initialPhoto={config.heroPhoto} />
         </SettingsSection>
@@ -120,7 +114,7 @@ export default function ContentSection({ config }: { config: TenantConfig }) {
 
         <SettingsSection
           title="Notre histoire"
-          desc="Bloc affiché sous le hero. Laisse vide pour ne pas l'afficher."
+          desc="Bloc affiché sous la grande image d'accueil. Laissez vide pour ne pas l'afficher."
         >
           <Field label="Eyebrow">
             <AdminInput
@@ -244,6 +238,7 @@ export default function ContentSection({ config }: { config: TenantConfig }) {
         <div className="flex justify-end mt-4">
           <button
             type="submit"
+            disabled={form.pending}
             style={{
               padding: "10px 20px",
               background: "var(--admin-primary)",
@@ -252,10 +247,11 @@ export default function ContentSection({ config }: { config: TenantConfig }) {
               borderRadius: 8,
               fontSize: 13,
               fontWeight: 600,
-              cursor: "pointer",
+              cursor: form.pending ? "wait" : "pointer",
+              opacity: form.pending ? 0.7 : 1,
             }}
           >
-            Enregistrer
+            {form.pending ? "Enregistrement…" : "Enregistrer"}
           </button>
         </div>
       </form>

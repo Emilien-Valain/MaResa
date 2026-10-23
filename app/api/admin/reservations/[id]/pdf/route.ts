@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { db } from "@/lib/db";
 import { bookings, rooms, tenants } from "@/db/schema";
+import { isUuid } from "@/lib/validation";
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "En attente",
@@ -22,6 +23,11 @@ export async function GET(
   const tenantId = headersList.get("x-tenant-id");
   if (!tenantId) {
     return new Response("Unauthorized", { status: 401 });
+  }
+
+  // Un id non-UUID ferait planter Postgres → 404 comme une réservation inconnue
+  if (!isUuid(id)) {
+    return new Response("Not found", { status: 404 });
   }
 
   // Load booking
@@ -238,7 +244,7 @@ export async function GET(
 
   drawRow(
     "Source",
-    booking.source === "manual" ? "Saisie manuelle" : "Site web",
+    booking.source === "manual" ? "Saisie manuelle" : "Site direct",
   );
 
   // ── Notes ──

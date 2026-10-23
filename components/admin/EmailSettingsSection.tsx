@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useFormAction } from "@/components/admin/useFormAction";
 import { updateEmailSettings } from "@/lib/actions/email-settings";
 import {
   AdminInput,
@@ -21,34 +21,22 @@ export default function EmailSettingsSection({
   postStayMessage,
   reviewUrl,
 }: EmailSettingsSectionProps) {
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const form = useFormAction(updateEmailSettings);
 
   return (
     <SettingsSection
       title="Emails"
-      desc="Personnalise les messages envoyés aux clients par email."
+      desc="Personnalisez les messages envoyés aux clients par email."
     >
-      {saved && (
+      {form.saved && (
         <StatusBanner variant="success">
           Paramètres email mis à jour avec succès.
         </StatusBanner>
       )}
-      {error && <StatusBanner variant="error">{error}</StatusBanner>}
+      {form.error && <StatusBanner variant="error">{form.error}</StatusBanner>}
 
       <form
-        action={async (formData) => {
-          setSaved(false);
-          setError(null);
-          try {
-            await updateEmailSettings(formData);
-            setSaved(true);
-          } catch (e) {
-            setError(
-              e instanceof Error ? e.message : "Erreur lors de la sauvegarde",
-            );
-          }
-        }}
+        onSubmit={form.onSubmit}
       >
         <Field
           label="Message de confirmation de réservation"
@@ -92,6 +80,7 @@ export default function EmailSettingsSection({
         <div className="flex justify-end mt-4">
           <button
             type="submit"
+            disabled={form.pending}
             style={{
               padding: "9px 18px",
               background: "var(--admin-primary)",
@@ -100,10 +89,11 @@ export default function EmailSettingsSection({
               borderRadius: 8,
               fontSize: 13,
               fontWeight: 600,
-              cursor: "pointer",
+              cursor: form.pending ? "wait" : "pointer",
+              opacity: form.pending ? 0.7 : 1,
             }}
           >
-            Enregistrer
+            {form.pending ? "Enregistrement…" : "Enregistrer"}
           </button>
         </div>
       </form>

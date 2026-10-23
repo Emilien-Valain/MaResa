@@ -62,7 +62,7 @@ function LoginForm() {
         className="text-[13.5px] mb-7"
         style={{ color: "var(--admin-text-muted)" }}
       >
-        Accède au back-office de ton hôtel.
+        Accédez à l&apos;administration de votre établissement.
       </p>
 
       {resetSuccess && (
@@ -74,7 +74,7 @@ function LoginForm() {
             color: "#15803D",
           }}
         >
-          Mot de passe réinitialisé. Connecte-toi avec ton nouveau mot de passe.
+          Mot de passe réinitialisé. Connectez-vous avec votre nouveau mot de passe.
         </div>
       )}
 

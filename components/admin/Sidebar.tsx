@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "@/lib/auth-client";
@@ -28,7 +28,9 @@ export default function Sidebar({
   userName,
   currentTenantName,
   accessibleTenants,
+  initialCollapsed,
 }: {
+  initialCollapsed: boolean;
   userEmail: string;
   userName?: string;
   currentTenantName: string;
@@ -36,17 +38,46 @@ export default function Sidebar({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("admin-sidebar-collapsed") === "1";
-  });
+  // Lu côté serveur depuis le cookie (layout) : même rendu serveur et client, pas d'erreur d'hydratation.
+  const [collapsed, setCollapsed] = useState(initialCollapsed);
   const [hotelMenuOpen, setHotelMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const wasOpen = useRef(false);
+
+  useEffect(() => {
+    // Ouverture : le focus entre dans le tiroir. Fermeture : il revient au bouton menu.
+    if (mobileOpen) drawerRef.current?.querySelector<HTMLElement>("nav a")?.focus();
+    else if (wasOpen.current) menuButtonRef.current?.focus();
+    wasOpen.current = mobileOpen;
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") return setMobileOpen(false);
+      if (e.key !== "Tab" || !drawerRef.current) return;
+      // Tiroir modal : Tab boucle dans le tiroir au lieu de passer sous l'overlay.
+      const items = [...drawerRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )].filter((el) => el.offsetParent !== null);
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!first) return;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileOpen]);
 
   function toggleCollapsed() {
     setCollapsed((c) => {
       const next = !c;
-      localStorage.setItem("admin-sidebar-collapsed", next ? "1" : "0");
+      document.cookie = `admin-sidebar-collapsed=${next ? "1" : "0"}; path=/admin; max-age=31536000; samesite=lax`;
       return next;
     });
   }
@@ -71,8 +102,10 @@ export default function Sidebar({
     return pathname === href || pathname.startsWith(href + "/");
   }
 
-  const aside = (
+  // The mobile drawer always renders expanded; the collapsed rail is desktop-only.
+  const renderAside = (isCollapsed: boolean) => (
     <aside
+      data-admin-sidebar
       style={{
         width: isCollapsed ? 64 : 240,
         background: "var(--admin-sidebar-bg)",
@@ -98,7 +131,7 @@ export default function Sidebar({
             <div className="text-white font-bold text-[15px] tracking-tight">
               DirectLoc
             </div>
-            <div className="text-white/45 text-[11px] font-medium">
+            <div className="text-white/60 text-[12px] font-medium">
               Administration
             </div>
           </div>
@@ -108,34 +141,33 @@ export default function Sidebar({
       {/* Hotel switcher */}
       {!isCollapsed && (
         <div className="px-3 py-2.5 border-b border-white/[0.07] relative">
-          <button
-            onClick={() =>
-              otherTenants.length > 0 && setHotelMenuOpen((o) => !o)
-            }
-            className={`w-full bg-white/[0.07] border border-white/10 rounded-lg px-2.5 py-1.5 flex items-center gap-2 transition-colors ${
-              otherTenants.length > 0
-                ? "hover:bg-white/[0.11] cursor-pointer"
-                : "cursor-default"
-            }`}
-          >
-            <Icon.Hotel
-              size={15}
-              style={{ color: "var(--admin-sidebar-accent)" }}
-            />
-            <span className="flex-1 text-left text-[12.5px] font-semibold text-white truncate">
-              {currentTenantName || "—"}
-            </span>
-            {otherTenants.length > 0 && (
+          {otherTenants.length > 0 ? (
+            <button
+              onClick={() => setHotelMenuOpen((o) => !o)}
+              aria-expanded={hotelMenuOpen}
+              className="w-full bg-white/[0.07] border border-white/10 rounded-lg px-2.5 py-1.5 flex items-center gap-2 transition-colors hover:bg-white/[0.11] cursor-pointer"
+            >
+              <Icon.Hotel size={15} style={{ color: "var(--admin-sidebar-accent)" }} />
+              <span className="flex-1 text-left text-[12.5px] font-semibold text-white truncate">
+                {currentTenantName || "—"}
+              </span>
               <Icon.ChevronDown
                 size={13}
-                className="text-white/40"
+                className="text-white/60"
                 style={{
                   transform: hotelMenuOpen ? "rotate(180deg)" : "none",
                   transition: "transform 0.15s",
                 }}
               />
-            )}
-          </button>
+            </button>
+          ) : (
+            <div className="w-full bg-white/[0.07] border border-white/10 rounded-lg px-2.5 py-1.5 flex items-center gap-2">
+              <Icon.Hotel size={15} style={{ color: "var(--admin-sidebar-accent)" }} />
+              <span className="flex-1 text-[12.5px] font-semibold text-white truncate">
+                {currentTenantName || "—"}
+              </span>
+            </div>
+          )}
 
           {hotelMenuOpen && otherTenants.length > 0 && (
             <div className="mt-1 bg-black/20 rounded-lg border border-white/[0.08] overflow-hidden">
@@ -158,7 +190,7 @@ export default function Sidebar({
                 ) : (
                   <span
                     key={t.id}
-                    className="block px-3 py-2 text-[12px] text-white/30"
+                    className="block px-3 py-2 text-[12px] text-white/60 italic"
                   >
                     {t.name} (pas de domaine)
                   </span>
@@ -221,14 +253,14 @@ export default function Sidebar({
               <div className="text-white text-[12.5px] font-semibold truncate">
                 {userName || userEmail.split("@")[0]}
               </div>
-              <div className="text-white/40 text-[11px] truncate">
+              <div className="text-white/60 text-[12px] truncate">
                 {userEmail}
               </div>
             </div>
             <button
               onClick={handleSignOut}
               aria-label="Déconnexion"
-              className="text-white/40 hover:text-white/85 p-1 rounded-md transition-colors flex-shrink-0"
+              className="text-white/60 hover:text-white/85 p-2 -m-1 rounded-md transition-colors flex-shrink-0"
             >
               <Icon.LogOut size={16} />
             </button>
@@ -242,24 +274,27 @@ export default function Sidebar({
     <>
       {/* Mobile top bar */}
       <div
-        className="lg:hidden flex items-center gap-3 px-4 py-3 border-b sticky top-0 z-20"
+        className="lg:hidden flex items-center gap-2 px-4 py-1.5 border-b flex-shrink-0 z-20"
         style={{
           background: "var(--admin-surface)",
           borderColor: "var(--admin-border)",
         }}
       >
         <button
+          ref={menuButtonRef}
           onClick={() => setMobileOpen(true)}
           aria-label="Ouvrir le menu"
-          className="flex p-1"
+          aria-expanded={mobileOpen}
+          aria-controls="admin-drawer"
+          className="flex items-center justify-center w-11 h-11 -ml-2 rounded-lg"
         >
           <Icon.Menu size={22} style={{ color: "var(--admin-text)" }} />
         </button>
         <span
-          className="text-[16px] font-bold"
+          className="text-[15px] font-bold truncate"
           style={{ color: "var(--admin-text)" }}
         >
-          DirectLoc
+          {currentTenantName || "DirectLoc"}
         </span>
       </div>
 
@@ -271,16 +306,22 @@ export default function Sidebar({
         />
       )}
       <div
+        ref={drawerRef}
+        id="admin-drawer"
+        role={mobileOpen ? "dialog" : undefined}
+        aria-modal={mobileOpen ? true : undefined}
+        aria-label={mobileOpen ? "Navigation" : undefined}
+        inert={!mobileOpen}
         className={`lg:hidden fixed top-0 bottom-0 left-0 z-50 transition-transform duration-200 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {aside}
+        {renderAside(false)}
       </div>
 
       {/* Desktop */}
       <div className="hidden lg:flex relative">
-        {aside}
+        {renderAside(isCollapsed)}
         <button
           onClick={toggleCollapsed}
           aria-label={

@@ -30,6 +30,10 @@ const result = {
   endOfMonth: monthEnd.toISOString(),
   bookingInMonth:
     bookingNearMidnight >= monthStart && bookingNearMidnight <= monthEnd,
+  // « Aujourd'hui » = date à Paris : 23:30 UTC en hiver (UTC+1) et 22:30 UTC en été (UTC+2) = lendemain 00:30.
+  todayParisWinterNight: todayStart(new Date("2026-01-15T23:30:00.000Z")).toISOString(),
+  todayParisSummerNight: todayStart(new Date("2026-07-15T22:30:00.000Z")).toISOString(),
+  todayParisSummerEvening: todayStart(new Date("2026-07-15T21:30:00.000Z")).toISOString(),
 };
 
 process.stdout.write(JSON.stringify(result));

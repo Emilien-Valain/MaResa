@@ -1,20 +1,35 @@
+import { parisToday, tomorrowStart } from "@/lib/date-windows";
 import { requireSession } from "@/lib/session";
 import { getRoomsByTenant } from "@/lib/queries/rooms";
-import { createBookingManual } from "@/lib/actions/bookings";
 import Link from "next/link";
-import {
-  AdminInput,
-  AdminSelect,
-  AdminTextarea,
-  Field,
-} from "@/components/admin/ui";
+import ManualBookingForm from "@/components/admin/ManualBookingForm";
 
-export default async function NewReservationPage() {
+export default async function NewReservationPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ roomId?: string; checkIn?: string; checkOut?: string }>;
+}) {
   const { tenantId } = await requireSession();
-  const chambres = await getRoomsByTenant(tenantId);
+  const [chambres, params] = await Promise.all([getRoomsByTenant(tenantId), searchParams]);
 
-  const today = new Date().toISOString().split("T")[0];
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+  // Pré-remplissage depuis le calendrier (?roomId=…&checkIn=AAAA-MM-JJ[&checkOut=…]) ;
+  // valeur invalide → défaut, départ absent ou incohérent → une nuit.
+  const parse = (v?: string) => {
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(v ?? "") ? new Date(`${v}T00:00:00Z`) : null;
+    return d && !Number.isNaN(d.getTime()) ? d : null;
+  };
+  const validPrefill = parse(params.checkIn);
+  const prefillOut = parse(params.checkOut);
+  const today = validPrefill ? validPrefill.toISOString().slice(0, 10) : parisToday();
+  const tomorrow = validPrefill
+    ? (prefillOut && prefillOut > validPrefill
+        ? prefillOut
+        : new Date(validPrefill.getTime() + 86400000)
+      ).toISOString().slice(0, 10)
+    : tomorrowStart().toISOString().slice(0, 10);
+  const defaultRoomId = chambres.some((c) => c.active && c.id === params.roomId)
+    ? params.roomId
+    : undefined;
 
   return (
     <div className="space-y-6 max-w-xl admin-fade-in">
@@ -29,130 +44,20 @@ export default async function NewReservationPage() {
       </div>
 
       <h1
-        className="text-[22px] font-extrabold"
-        style={{ color: "var(--admin-text)", letterSpacing: "-0.5px" }}
+        className="text-[24px] font-extrabold leading-tight"
+        style={{ color: "var(--admin-text)", letterSpacing: "-0.6px" }}
       >
         Nouvelle réservation
       </h1>
 
-      <form
-        action={createBookingManual}
-        style={{
-          background: "var(--admin-surface)",
-          border: "1px solid var(--admin-border)",
-          borderRadius: "var(--admin-radius)",
-          padding: 24,
-        }}
-      >
-        <Field label="Chambre *">
-          <AdminSelect name="roomId" required>
-            <option value="">Sélectionner…</option>
-            {chambres
-              .filter((c) => c.active)
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} — {c.pricePerNight} €/nuit
-                </option>
-              ))}
-          </AdminSelect>
-        </Field>
-
-        <div className="grid grid-cols-2 gap-3.5">
-          <Field label="Arrivée *">
-            <AdminInput
-              name="checkIn"
-              type="date"
-              required
-              defaultValue={today}
-            />
-          </Field>
-          <Field label="Départ *">
-            <AdminInput
-              name="checkOut"
-              type="date"
-              required
-              defaultValue={tomorrow}
-            />
-          </Field>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3.5">
-          <Field label="Nom client *">
-            <AdminInput name="guestName" type="text" required />
-          </Field>
-          <Field label="Voyageurs *">
-            <AdminInput
-              name="guestCount"
-              type="number"
-              min="1"
-              required
-              defaultValue={1}
-            />
-          </Field>
-        </div>
-
-        <Field label="Email client *">
-          <AdminInput name="guestEmail" type="email" required />
-        </Field>
-
-        <Field label="Téléphone">
-          <AdminInput name="guestPhone" type="tel" />
-        </Field>
-
-        <Field label="Notes internes">
-          <AdminTextarea name="notes" rows={2} />
-        </Field>
-
-        <label
-          className="flex items-start gap-2.5 pt-1 pb-1 cursor-pointer"
-          style={{ color: "var(--admin-text-muted)" }}
-        >
-          <input
-            type="checkbox"
-            name="force"
-            className="mt-0.5"
-            style={{ accentColor: "var(--admin-primary)" }}
-          />
-          <span className="text-[12.5px] leading-snug">
-            Forcer malgré un conflit de disponibilité
-            <span className="block text-[11.5px] opacity-70">
-              À cocher uniquement pour reporter une réservation déjà honorée hors plateforme. Sans
-              cela, l’enregistrement est refusé si les dates chevauchent une autre réservation ou un
-              blocage.
-            </span>
-          </span>
-        </label>
-
-        <div className="flex gap-3 pt-2">
-          <button
-            type="submit"
-            style={{
-              padding: "9px 18px",
-              background: "var(--admin-primary)",
-              color: "#fff",
-              border: "none",
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            Enregistrer
-          </button>
-          <Link
-            href="/admin/reservations"
-            style={{
-              padding: "9px 18px",
-              color: "var(--admin-text-muted)",
-              fontSize: 13,
-              fontWeight: 500,
-              textDecoration: "none",
-            }}
-          >
-            Annuler
-          </Link>
-        </div>
-      </form>
+      <ManualBookingForm
+        rooms={chambres
+          .filter((c) => c.active)
+          .map((c) => ({ id: c.id, name: c.name, pricePerNight: String(c.pricePerNight) }))}
+        today={today}
+        tomorrow={tomorrow}
+        defaultRoomId={defaultRoomId}
+      />
     </div>
   );
 }

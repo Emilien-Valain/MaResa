@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useFormAction } from "@/components/admin/useFormAction";
 import { updateLocation } from "@/lib/actions/location";
 import {
   AdminInput,
@@ -30,8 +31,12 @@ export default function LocationSection({
   latitude,
   longitude,
 }: LocationSectionProps) {
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const form = useFormAction(updateLocation, {
+    prepare: (fd) => {
+      fd.set("latitude", lat);
+      fd.set("longitude", lng);
+    },
+  });
   const [lat, setLat] = useState(latitude?.toString() ?? "");
   const [lng, setLng] = useState(longitude?.toString() ?? "");
   const coordsRef = useRef<HTMLInputElement>(null);
@@ -53,31 +58,19 @@ export default function LocationSection({
       title="Adresse et carte"
       desc="L'adresse apparaît dans les confirmations et sur la page contact. La carte est affichée sur le site public."
     >
-      {saved && (
+      {form.saved && (
         <StatusBanner variant="success">
           Localisation mise à jour avec succès.
         </StatusBanner>
       )}
-      {error && <StatusBanner variant="error">{error}</StatusBanner>}
+      {form.error && <StatusBanner variant="error">{form.error}</StatusBanner>}
 
       <form
-        action={async (formData) => {
-          formData.set("latitude", lat);
-          formData.set("longitude", lng);
-          setSaved(false);
-          setError(null);
-          try {
-            await updateLocation(formData);
-            setSaved(true);
-          } catch (e) {
-            setError(
-              e instanceof Error ? e.message : "Erreur lors de la sauvegarde",
-            );
-          }
-        }}
+        onSubmit={form.onSubmit}
       >
         <Field
           label="Lien Google Maps"
+          error={form.fieldError("googleMapsUrl")}
           hint="Lien de partage de votre établissement depuis Google Maps. Vos clients pourront y laisser un avis."
         >
           <AdminInput
@@ -91,13 +84,13 @@ export default function LocationSection({
 
         <Field
           label="Coordonnées GPS"
-          hint="Clic droit sur Google Maps → copier les coordonnées, puis colle-les ici."
+          hint="Clic droit sur Google Maps → copier les coordonnées, puis collez-les ici."
         >
           <input
             ref={coordsRef}
             id="loc-coords"
             type="text"
-            placeholder="Colle les coordonnées : 48.8566, 2.3522"
+            placeholder="Collez les coordonnées : 48.8566, 2.3522"
             onChange={(e) => handleCoordsPaste(e.target.value)}
             onPaste={(e) => {
               const input = e.currentTarget;
@@ -127,7 +120,7 @@ export default function LocationSection({
         </Field>
 
         <div className="grid grid-cols-2 gap-3.5">
-          <Field label="Latitude">
+          <Field label="Latitude" error={form.fieldError("latitude")}>
             <AdminInput
               id="loc-latitude"
               type="text"
@@ -137,7 +130,7 @@ export default function LocationSection({
               placeholder="48.8566"
             />
           </Field>
-          <Field label="Longitude">
+          <Field label="Longitude" error={form.fieldError("longitude")}>
             <AdminInput
               id="loc-longitude"
               type="text"
@@ -168,6 +161,7 @@ export default function LocationSection({
         <div className="flex justify-end mt-4">
           <button
             type="submit"
+            disabled={form.pending}
             style={{
               padding: "9px 18px",
               background: "var(--admin-primary)",
@@ -176,10 +170,11 @@ export default function LocationSection({
               borderRadius: 8,
               fontSize: 13,
               fontWeight: 600,
-              cursor: "pointer",
+              cursor: form.pending ? "wait" : "pointer",
+              opacity: form.pending ? 0.7 : 1,
             }}
           >
-            Enregistrer
+            {form.pending ? "Enregistrement…" : "Enregistrer"}
           </button>
         </div>
       </form>

@@ -1,5 +1,6 @@
-import type { CSSProperties, ReactNode } from "react";
+import { cloneElement, isValidElement, useId, type CSSProperties, type ReactElement, type ReactNode } from "react";
 import { Icon } from "@/components/admin/icons";
+import { AdminInput, AdminSelect, AdminTextarea, DateInput } from "@/components/admin/ui-inputs";
 
 // Re-export client primitives so consumers can import everything from ui.tsx.
 // The "use client" boundary lives in ui-inputs.tsx — keeping ui.tsx server-friendly
@@ -9,6 +10,7 @@ export {
   AdminInput,
   AdminTextarea,
   AdminSelect,
+  DateInput,
   Toggle,
   Tabs,
 } from "@/components/admin/ui-inputs";
@@ -74,7 +76,7 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string }
   confirmed: { label: "Confirmée", bg: "#DCFCE7", color: "#15803D" },
   pending:   { label: "En attente", bg: "#FEF9C3", color: "#A16207" },
   completed: { label: "Terminée",  bg: "#F1F5F9", color: "#475569" },
-  cancelled: { label: "Annulée",   bg: "#FEE2E2", color: "#DC2626" },
+  cancelled: { label: "Annulée",   bg: "#FEE2E2", color: "#B91C1C" },
 };
 
 export function StatusBadge({
@@ -100,9 +102,10 @@ export const CHANNEL_CONFIG: Record<
   { label: string; color: string; bg: string }
 > = {
   direct:  { label: "Site direct",  color: "var(--admin-primary)", bg: "var(--admin-primary-light)" },
-  manual:  { label: "Manuel",       color: "#475569",              bg: "#F1F5F9" },
+  manual:  { label: "Saisie manuelle", color: "#475569",              bg: "#F1F5F9" },
   booking: { label: "Booking.com",  color: "#003580",              bg: "#E8F0FA" },
-  airbnb:  { label: "Airbnb",       color: "#FF5A5F",              bg: "#FFE8E9" },
+  // Corail Airbnb assombri : #FF5A5F ne fait que 2.6:1 sur sa teinte.
+  airbnb:  { label: "Airbnb",       color: "#BF3036",              bg: "#FFE8E9" },
   ical:    { label: "iCal",         color: "#475569",              bg: "#F1F5F9" },
 };
 
@@ -110,7 +113,7 @@ export function ChannelTag({ channel }: { channel: string }) {
   const cfg = CHANNEL_CONFIG[channel] ?? CHANNEL_CONFIG.manual;
   return (
     <span
-      className="text-[12px] font-semibold rounded-md px-2 py-[2px]"
+      className="text-[12px] font-semibold rounded-md px-2 py-[2px] whitespace-nowrap"
       style={{ background: cfg.bg, color: cfg.color }}
     >
       {cfg.label}
@@ -289,11 +292,11 @@ export function KPICard({
           {trend >= 0 ? (
             <Icon.TrendUp size={14} style={{ color: "#16A34A" }} />
           ) : (
-            <Icon.TrendDown size={14} style={{ color: "#DC2626" }} />
+            <Icon.TrendDown size={14} style={{ color: "var(--admin-danger)" }} />
           )}
           <span
             className="text-[12px] font-semibold"
-            style={{ color: trend >= 0 ? "#16A34A" : "#DC2626" }}
+            style={{ color: trend >= 0 ? "#15803D" : "var(--admin-danger)" }}
           >
             {trend >= 0 ? "+" : ""}
             {trendVal} vs sem. préc.
@@ -353,6 +356,9 @@ export function SettingsSection({
   );
 }
 
+// Contrôles qu'un <label htmlFor> peut cibler ; tout autre enfant (jours, couleurs…) devient un groupe nommé.
+const LABELLABLE: unknown[] = [AdminInput, AdminSelect, AdminTextarea, DateInput, "input", "select", "textarea"];
+
 export function Field({
   label,
   hint,
@@ -364,10 +370,26 @@ export function Field({
   error?: string | null;
   children: ReactNode;
 }) {
+  const id = useId();
+  const hintId = hint ? `${id}-hint` : undefined;
+  const control =
+    isValidElement<{ id?: string }>(children) && LABELLABLE.includes(children.type)
+      ? children
+      : null;
+  const controlId = control?.props.id ?? `${id}-control`;
+  const LabelTag = control ? "label" : "div";
+
   return (
-    <div className="mb-3.5">
-      <div
-        className="text-[11.5px] font-bold uppercase mb-1.5"
+    <div
+      className="mb-3.5"
+      role={control ? undefined : "group"}
+      aria-labelledby={control ? undefined : `${id}-label`}
+      aria-describedby={control ? undefined : hintId}
+    >
+      <LabelTag
+        id={`${id}-label`}
+        htmlFor={control ? controlId : undefined}
+        className="block text-[12px] font-bold uppercase mb-1.5"
         style={{
           color: "var(--admin-text-muted)",
           letterSpacing: "0.06em",
@@ -377,21 +399,69 @@ export function Field({
         {error && (
           <span
             className="font-medium ml-1 normal-case tracking-normal"
-            style={{ color: "#DC2626" }}
+            style={{ color: "var(--admin-danger)" }}
           >
             · {error}
           </span>
         )}
-      </div>
-      {children}
+      </LabelTag>
+      {control
+        ? cloneElement(control as ReactElement<Record<string, unknown>>, {
+            id: controlId,
+            "aria-describedby": hintId,
+            "aria-invalid": error ? true : undefined,
+          })
+        : children}
       {hint && (
         <div
-          className="text-[11.5px] mt-1.5 leading-[1.5]"
+          id={hintId}
+          className="text-[12px] mt-1.5 leading-[1.5]"
           style={{ color: "var(--admin-text-subtle)" }}
         >
           {hint}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Liste vide : dit ce qui apparaîtra ici, donne un exemple concret, propose la première action. */
+export function EmptyState({
+  title,
+  children,
+  example,
+  action,
+  compact = false,
+}: {
+  title: string;
+  children: ReactNode;
+  example?: ReactNode;
+  action?: ReactNode;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      data-empty-state
+      className={`flex flex-col items-center text-center mx-auto max-w-[460px] ${compact ? "py-6" : "py-12"}`}
+    >
+      <p className="text-[15px] font-bold tracking-tight" style={{ color: "var(--admin-text)" }}>
+        {title}
+      </p>
+      <p className="text-[13.5px] leading-[1.55] mt-1.5" style={{ color: "var(--admin-text-muted)" }}>
+        {children}
+      </p>
+      {example && (
+        <p
+          className="text-[12.5px] leading-[1.5] mt-3 px-3 py-2 rounded-lg"
+          style={{ background: "var(--admin-surface-2)", color: "var(--admin-text-muted)" }}
+        >
+          <span className="font-semibold" style={{ color: "var(--admin-text)" }}>
+            Exemple :
+          </span>{" "}
+          {example}
+        </p>
+      )}
+      {action && <div className="mt-5">{action}</div>}
     </div>
   );
 }
@@ -438,10 +508,12 @@ export function GuestAvatar({
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
+    // Première LETTRE de chaque mot : « <script> » ne donne pas « < ».
+    .map((w) => w.match(/\p{L}/u)?.[0]?.toUpperCase() ?? "")
     .join("") || "?";
   return (
     <div
+      aria-hidden // décoratif : le nom complet est toujours affiché à côté
       className="rounded-[10px] flex items-center justify-center flex-shrink-0"
       style={{
         width: size,
@@ -453,7 +525,7 @@ export function GuestAvatar({
         className="font-bold"
         style={{
           color,
-          fontSize: Math.round(size * 0.36),
+          fontSize: Math.max(12, Math.round(size * 0.36)),
         }}
       >
         {initials}

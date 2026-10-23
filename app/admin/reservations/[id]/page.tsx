@@ -1,24 +1,49 @@
+import { formatEuros } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { requireSession } from "@/lib/session";
-import { getBookingByIdAndTenant } from "@/lib/queries/bookings";
 import {
-  confirmBooking,
-  cancelBooking,
-  completeBooking,
-} from "@/lib/actions/bookings";
-import { STATUS_LABELS, STATUS_COLORS } from "@/lib/calendar";
+  getBookingByIdAndTenant,
+  getLatestPayment,
+  completeFinishedStays,
+} from "@/lib/queries/bookings";
+import { confirmBooking, cancelBooking, setBookingPaid } from "@/lib/actions/bookings";
 import ReservationPdfActions from "@/components/admin/ReservationPdfActions";
+import { ConfirmButton } from "@/components/admin/ConfirmButton";
+import { ChannelTag, PrimaryButton, StatusBadge, StatusBanner } from "@/components/admin/ui";
+
+// Statut du paiement en ligne → libellé hôte + couleur de badge (palette des statuts).
+const PAYMENT_LABEL: Record<string, { label: string; tone: string }> = {
+  paid: { label: "Payé en ligne", tone: "confirmed" },
+  pending: { label: "Paiement en cours", tone: "pending" },
+  failed: { label: "Paiement échoué", tone: "cancelled" },
+  expired: { label: "Paiement non abouti", tone: "cancelled" },
+  refunded: { label: "Remboursé", tone: "completed" },
+};
 
 export default async function ReservationDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ enregistree?: string; annulee?: string }>;
 }) {
   const { id } = await params;
+  const { enregistree, annulee } = await searchParams;
   const { tenantId } = await requireSession();
-  const reservation = await getBookingByIdAndTenant(id, tenantId);
+  await completeFinishedStays(tenantId);
+  const [reservation, payment] = await Promise.all([
+    getBookingByIdAndTenant(id, tenantId),
+    getLatestPayment(id, tenantId),
+  ]);
   if (!reservation) notFound();
+  // Le client a payé sur Stripe après l'annulation (webhook : le booking reste annulé).
+  const paidAfterCancel = reservation.status === "cancelled" && payment?.status === "paid";
+  const paymentInfo = paidAfterCancel
+    ? { label: "Payé après annulation", tone: "cancelled" }
+    : payment
+      ? PAYMENT_LABEL[payment.status]
+      : undefined;
 
   const nights = Math.ceil(
     (new Date(reservation.checkOut).getTime() -
@@ -28,27 +53,51 @@ export default async function ReservationDetailPage({
 
   return (
     <div className="space-y-6 max-w-2xl admin-fade-in">
-      <div className="flex items-center gap-3">
-        <Link
-          href="/admin/reservations"
-          className="text-[13px] font-semibold transition-colors"
-          style={{ color: "var(--admin-text-muted)" }}
+      <Link
+        href="/admin/reservations"
+        className="inline-block text-[13px] font-semibold transition-colors"
+        style={{ color: "var(--admin-text-muted)" }}
+      >
+        ← Réservations
+      </Link>
+
+      <div className="flex items-center gap-3 flex-wrap">
+        <h1
+          className="text-[24px] font-extrabold leading-tight"
+          style={{ color: "var(--admin-text)", letterSpacing: "-0.6px" }}
         >
-          ← Réservations
-        </Link>
-        <span
-          className={`text-[12px] px-2.5 py-[3px] rounded-full font-semibold ${STATUS_COLORS[reservation.status]}`}
-        >
-          {STATUS_LABELS[reservation.status]}
-        </span>
+          {reservation.guestName}
+        </h1>
+        <StatusBadge status={reservation.status} />
       </div>
 
-      <h1
-        className="text-[22px] font-extrabold"
-        style={{ color: "var(--admin-text)", letterSpacing: "-0.5px" }}
-      >
-        {reservation.guestName}
-      </h1>
+      {paidAfterCancel && (
+        <StatusBanner variant="error">
+          {reservation.guestName} a payé {formatEuros(payment.amount)} en ligne après l&apos;annulation.
+          Remboursez-le depuis votre tableau de bord Stripe
+          {payment.stripePaymentId ? ` (paiement ${payment.stripePaymentId})` : ""}.
+        </StatusBanner>
+      )}
+
+      {/* Retour après action : l'hôte sait que c'est fait, et ce qui en découle. */}
+      <div role="status">
+        {enregistree && (
+          <StatusBanner variant="success">
+            Réservation enregistrée. Ces nuits ne sont plus proposées sur votre site.
+          </StatusBanner>
+        )}
+        {annulee === "1" && (
+          <StatusBanner variant="success">
+            Réservation annulée. Un email d&apos;annulation a été envoyé à {reservation.guestEmail}.
+          </StatusBanner>
+        )}
+        {annulee === "sans-email" && (
+          <StatusBanner variant="warning">
+            Réservation annulée, mais l&apos;email n&apos;a pas pu partir : prévenez{" "}
+            {reservation.guestName} directement.
+          </StatusBanner>
+        )}
+      </div>
 
       <div
         style={{
@@ -86,20 +135,62 @@ export default async function ReservationDetailPage({
 
         <Section label="Client">
           <Row label="Nom" value={reservation.guestName} />
-          <Row label="Email" value={reservation.guestEmail} />
+          <Row
+            label="Email"
+            value={<ContactLink href={`mailto:${reservation.guestEmail}`}>{reservation.guestEmail}</ContactLink>}
+          />
           {reservation.guestPhone && (
-            <Row label="Téléphone" value={reservation.guestPhone} />
+            <Row
+              label="Téléphone"
+              value={
+                <ContactLink href={`tel:${reservation.guestPhone.replace(/[^\d+]/g, "")}`}>
+                  {reservation.guestPhone}
+                </ContactLink>
+              }
+            />
           )}
         </Section>
 
         <Section label="Paiement">
-          <Row label="Total" value={`${reservation.totalPrice} €`} />
+          <Row label="Total" value={formatEuros(reservation.totalPrice)} />
           <Row
-            label="Source"
+            label="Règlement"
             value={
-              reservation.source === "manual" ? "Saisie manuelle" : "Site web"
+              paymentInfo ? (
+                <StatusBadge status={paymentInfo.tone} label={paymentInfo.label} />
+              ) : reservation.paidAt ? (
+                <span className="inline-flex items-center gap-2">
+                  <StatusBadge
+                    status="confirmed"
+                    label={`Réglé le ${new Date(reservation.paidAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`}
+                  />
+                  <form action={setBookingPaid.bind(null, id, false)}>
+                    <button type="submit" className="text-[12px] underline underline-offset-2" style={{ color: "var(--admin-text-muted)" }}>
+                      Annuler
+                    </button>
+                  </form>
+                </span>
+              ) : reservation.status === "cancelled" ? (
+                <StatusBadge status="completed" label="Rien à régler" />
+              ) : reservation.source === "manual" ? (
+                <span className="inline-flex items-center gap-2">
+                  <StatusBadge status="pending" label="À régler avec le client" />
+                  <form action={setBookingPaid.bind(null, id, true)}>
+                    <button
+                      type="submit"
+                      className="admin-btn"
+                      style={{ padding: "5px 10px", fontSize: 12.5, color: "var(--admin-primary)", background: "var(--admin-primary-light)", border: "none" }}
+                    >
+                      Marquer réglé
+                    </button>
+                  </form>
+                </span>
+              ) : (
+                <StatusBadge status="completed" label="Aucun paiement enregistré" />
+              )
             }
           />
+          <Row label="Origine" value={<ChannelTag channel={reservation.source} />} />
         </Section>
 
         {reservation.notes && (
@@ -116,66 +207,46 @@ export default async function ReservationDetailPage({
 
       <ReservationPdfActions bookingId={id} />
 
-      <div className="flex gap-3">
-        {reservation.status === "pending" && (
-          <form action={confirmBooking.bind(null, id)}>
-            <button
-              type="submit"
-              style={{
-                padding: "9px 18px",
-                background: "#16A34A",
-                color: "#fff",
-                border: "none",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Confirmer
-            </button>
-          </form>
-        )}
-        {reservation.status === "confirmed" && (
-          <form action={completeBooking.bind(null, id)}>
-            <button
-              type="submit"
-              style={{
-                padding: "9px 18px",
-                background: "#0284C7",
-                color: "#fff",
-                border: "none",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Marquer terminée
-            </button>
-          </form>
-        )}
-        {(reservation.status === "pending" ||
-          reservation.status === "confirmed") && (
-          <form action={cancelBooking.bind(null, id)}>
-            <button
-              type="submit"
-              style={{
-                padding: "9px 18px",
-                background: "transparent",
-                color: "#DC2626",
-                border: "1px solid #FCA5A5",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Annuler
-            </button>
-          </form>
-        )}
-      </div>
+      {(reservation.status === "pending" || reservation.status === "confirmed") && (
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+          {reservation.status === "pending" ? (
+            <form action={confirmBooking.bind(null, id)}>
+              <PrimaryButton type="submit" icon={null}>
+                Confirmer
+              </PrimaryButton>
+            </form>
+          ) : (
+            <p className="text-[12.5px]" style={{ color: "var(--admin-text-subtle)" }}>
+              Passera automatiquement en « Terminée » après le départ.
+            </p>
+          )}
+          <ConfirmButton
+            title={`Annuler la réservation de ${reservation.guestName} ?`}
+            message={
+              <>
+                La chambre sera libérée et un email d&apos;annulation sera envoyé à{" "}
+                <strong style={{ color: "var(--admin-text)" }}>{reservation.guestEmail}</strong>.
+                Cette action est définitive.
+              </>
+            }
+            cancelLabel="Garder"
+            confirmLabel="Annuler la réservation"
+            onConfirm={cancelBooking.bind(null, id)}
+            style={{
+              padding: "9px 18px",
+              background: "transparent",
+              color: "var(--admin-danger)",
+              border: "1px solid #FCA5A5",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Annuler la réservation
+          </ConfirmButton>
+        </div>
+      )}
     </div>
   );
 }
@@ -193,7 +264,7 @@ function Section({
       style={{ borderTop: "1px solid var(--admin-border-light)" }}
     >
       <p
-        className="text-[11.5px] font-bold uppercase px-5 mb-3"
+        className="text-[12px] font-bold uppercase px-5 mb-3"
         style={{
           color: "var(--admin-text-muted)",
           letterSpacing: "0.06em",
@@ -206,14 +277,26 @@ function Section({
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function ContactLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <div className="flex justify-between px-5 py-1.5">
+    <a
+      href={href}
+      className="underline underline-offset-2 decoration-[var(--admin-border)] hover:decoration-current break-all"
+      style={{ color: "var(--admin-primary)" }}
+    >
+      {children}
+    </a>
+  );
+}
+
+function Row({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex justify-between items-center gap-4 px-5 py-1.5">
       <span className="text-[13px]" style={{ color: "var(--admin-text-muted)" }}>
         {label}
       </span>
       <span
-        className="text-[13px] font-semibold"
+        className="text-[13px] font-semibold text-right"
         style={{ color: "var(--admin-text)" }}
       >
         {value}

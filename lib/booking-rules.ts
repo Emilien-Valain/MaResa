@@ -1,7 +1,6 @@
-"use server";
-
 import { and, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/lib/db";
+import type { Tx } from "@/lib/booking-intake";
 import { bookingRules } from "@/db/schema";
 import { orderByPrecedence } from "@/lib/rule-precedence";
 
@@ -22,8 +21,9 @@ export async function validateBookingRules(
   tenantId: string,
   checkIn: Date,
   checkOut: Date,
+  conn: Tx | typeof db = db,
 ): Promise<RuleViolation[]> {
-  const effective = await getEffectiveRules(roomId, tenantId, checkIn);
+  const effective = await getEffectiveRules(roomId, tenantId, checkIn, conn);
   const nights = Math.round(
     (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24),
   );
@@ -84,13 +84,14 @@ export async function getEffectiveRules(
   roomId: string,
   tenantId: string,
   checkIn: Date,
+  conn: Tx | typeof db = db,
 ): Promise<{
   minStay: number | null;
   maxStay: number | null;
   allowedCheckInDays: number[] | null;
   allowedCheckOutDays: number[] | null;
 }> {
-  const allRules = await db
+  const allRules = await conn
     .select()
     .from(bookingRules)
     .where(

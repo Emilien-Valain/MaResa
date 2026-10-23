@@ -67,6 +67,8 @@ export default defineConfig({
       SMTP_HOST: "localhost",
       SMTP_PORT: "1025",
       SMTP_FROM: "test@maresa.test",
+      // Les flux iCal de test sont servis en local : on lève le garde anti-SSRF de la sync.
+      ICAL_ALLOW_PRIVATE: "1",
     },
   },
 });

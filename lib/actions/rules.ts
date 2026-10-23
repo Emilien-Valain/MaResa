@@ -9,7 +9,8 @@ import {
   manualBlockSchema,
   bookingRuleSchema,
   pricingRuleSchema,
-  parseFormData,
+  safeParseFormData,
+  type FormResult,
 } from "@/lib/validation";
 
 const REVALIDATE_PATHS = ["/admin/regles", "/admin/calendrier"];
@@ -29,9 +30,11 @@ async function verifyRoomOwnership(roomId: string, tenantId: string) {
 
 // ── Manual Blocks ───────────────────────────────────────────────────────────
 
-export async function createManualBlock(formData: FormData) {
+export async function createManualBlock(formData: FormData): Promise<FormResult> {
   const { tenantId } = await requireSession();
-  const data = parseFormData(manualBlockSchema, formData);
+  const parsed = safeParseFormData(manualBlockSchema, formData);
+  if ("error" in parsed) return parsed;
+  const { data } = parsed;
 
   const roomId = data.roomId || null;
   if (roomId) await verifyRoomOwnership(roomId, tenantId);
@@ -68,9 +71,11 @@ export async function deleteManualBlock(id: string) {
 
 // ── Booking Rules ───────────────────────────────────────────────────────────
 
-export async function createBookingRule(formData: FormData) {
+export async function createBookingRule(formData: FormData): Promise<FormResult> {
   const { tenantId } = await requireSession();
-  const data = parseFormData(bookingRuleSchema, formData);
+  const parsed = safeParseFormData(bookingRuleSchema, formData);
+  if ("error" in parsed) return parsed;
+  const { data } = parsed;
 
   const roomId = data.roomId || null;
   if (roomId) await verifyRoomOwnership(roomId, tenantId);
@@ -105,9 +110,11 @@ export async function deleteBookingRule(id: string) {
 
 // ── Pricing Rules ───────────────────────────────────────────────────────────
 
-export async function createPricingRule(formData: FormData) {
+export async function createPricingRule(formData: FormData): Promise<FormResult> {
   const { tenantId } = await requireSession();
-  const data = parseFormData(pricingRuleSchema, formData);
+  const parsed = safeParseFormData(pricingRuleSchema, formData);
+  if ("error" in parsed) return parsed;
+  const { data } = parsed;
 
   const roomId = data.roomId || null;
   if (roomId) await verifyRoomOwnership(roomId, tenantId);

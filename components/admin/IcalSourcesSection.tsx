@@ -1,6 +1,8 @@
 "use client";
 
+import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { useState, useCallback } from "react";
+import { useFormAction } from "@/components/admin/useFormAction";
 import {
   addIcalSource,
   deleteIcalSource,
@@ -9,8 +11,10 @@ import {
 import {
   AdminInput,
   AdminSelect,
+  EmptyState,
   Field,
   SettingsSection,
+  StatusBanner,
 } from "@/components/admin/ui";
 import { Icon } from "@/components/admin/icons";
 
@@ -66,6 +70,7 @@ export default function IcalSourcesSection({
   sources: IcalSource[];
 }) {
   const [showForm, setShowForm] = useState(false);
+  const form = useFormAction(addIcalSource, { onSuccess: () => setShowForm(false) });
 
   const grouped = new Map<string, { roomName: string; sources: IcalSource[] }>();
   for (const room of rooms) {
@@ -83,7 +88,7 @@ export default function IcalSourcesSection({
   return (
     <SettingsSection
       title="Calendriers externes"
-      desc="Synchronise les disponibilités avec Airbnb, Booking.com et autres plateformes via leurs liens iCal."
+      desc="Vos disponibilités sont synchronisées avec Airbnb, Booking.com et les autres plateformes via leurs liens iCal."
       action={
         <button
           type="button"
@@ -105,12 +110,12 @@ export default function IcalSourcesSection({
         </button>
       }
     >
+      {form.saved && !showForm && (
+        <StatusBanner variant="success">Calendrier ajouté. Ses dates seront importées à la prochaine synchronisation.</StatusBanner>
+      )}
       {showForm && (
         <form
-          action={async (formData) => {
-            await addIcalSource(formData);
-            setShowForm(false);
-          }}
+          onSubmit={form.onSubmit}
           className="mb-5"
           style={{
             padding: 14,
@@ -119,6 +124,7 @@ export default function IcalSourcesSection({
             border: "1px dashed var(--admin-border)",
           }}
         >
+          {form.error && <StatusBanner variant="error">{form.error}</StatusBanner>}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Field label="Chambre">
               <AdminSelect id="ical-room" name="roomId" required>
@@ -129,7 +135,7 @@ export default function IcalSourcesSection({
                 ))}
               </AdminSelect>
             </Field>
-            <Field label="Nom">
+            <Field label="Nom" error={form.fieldError("name")}>
               <AdminInput
                 id="ical-name"
                 name="name"
@@ -138,7 +144,7 @@ export default function IcalSourcesSection({
                 placeholder="Airbnb"
               />
             </Field>
-            <Field label="URL iCal">
+            <Field label="URL iCal" error={form.fieldError("url")}>
               <AdminInput
                 id="ical-url"
                 name="url"
@@ -151,6 +157,7 @@ export default function IcalSourcesSection({
           <div className="flex justify-end mt-2">
             <button
               type="submit"
+              disabled={form.pending}
               style={{
                 padding: "9px 18px",
                 background: "var(--admin-primary)",
@@ -159,23 +166,25 @@ export default function IcalSourcesSection({
                 borderRadius: 8,
                 fontSize: 13,
                 fontWeight: 600,
-                cursor: "pointer",
+                cursor: form.pending ? "wait" : "pointer",
+                opacity: form.pending ? 0.7 : 1,
               }}
             >
-              Ajouter le calendrier
+              {form.pending ? "Ajout…" : "Ajouter le calendrier"}
             </button>
           </div>
         </form>
       )}
 
       {grouped.size === 0 && !showForm ? (
-        <p
-          className="text-center py-6 text-[13px]"
-          style={{ color: "var(--admin-text-muted)" }}
+        <EmptyState
+          compact
+          title="Aucun calendrier externe configuré"
+          example="un lien qui se termine par .ics, proposé par Airbnb sous « Exporter le calendrier »."
         >
-          Aucun calendrier externe configuré. Ajoute les liens iCal de tes
-          plateformes pour synchroniser automatiquement les disponibilités.
-        </p>
+          Collez le lien iCal de vos annonces Airbnb ou Booking.com : les dates réservées là-bas
+          seront bloquées ici automatiquement.
+        </EmptyState>
       ) : (
         <div className="space-y-5">
           {Array.from(grouped.entries()).map(
@@ -210,7 +219,7 @@ export default function IcalSourcesSection({
                         Lien d&apos;export (à coller dans Airbnb / Booking)
                       </p>
                       <p
-                        className="font-mono text-[11.5px] mt-0.5 truncate"
+                        className="font-mono text-[12px] mt-0.5 truncate"
                         style={{ color: "var(--admin-text-muted)" }}
                       >
                         {exportUrl}
@@ -252,7 +261,7 @@ export default function IcalSourcesSection({
                               {src.name}
                             </p>
                             <p
-                              className="text-[11.5px] font-mono truncate"
+                              className="text-[12px] font-mono truncate"
                               style={{
                                 color: "var(--admin-text-subtle)",
                                 maxWidth: 360,
@@ -262,7 +271,7 @@ export default function IcalSourcesSection({
                             </p>
                             {src.lastSyncAt && (
                               <p
-                                className="text-[11.5px] mt-0.5"
+                                className="text-[12px] mt-0.5"
                                 style={{ color: "var(--admin-text-subtle)" }}
                               >
                                 Dernière sync :{" "}
@@ -304,36 +313,25 @@ export default function IcalSourcesSection({
                               {src.active ? "Désactiver" : "Activer"}
                             </button>
                           </form>
-                          <form
-                            action={deleteIcalSource}
-                            onSubmit={(e) => {
-                              if (
-                                !confirm(
-                                  `Supprimer le calendrier "${src.name}" ?`,
-                                )
-                              ) {
-                                e.preventDefault();
-                              }
+                          <ConfirmButton
+                            title={`Supprimer le calendrier « ${src.name} » ?`}
+                            message="Ses dates bloquées seront retirées et ne seront plus synchronisées. Vérifiez qu’elles ne sont pas déjà réservées ailleurs avant de les rouvrir."
+                            confirmLabel="Supprimer le calendrier"
+                            onConfirm={() => {
+                              const fd = new FormData();
+                              fd.set("sourceId", src.id);
+                              return deleteIcalSource(fd);
+                            }}
+                            className="text-[12px] font-semibold"
+                            style={{
+                              color: "#B91C1C",
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
                             }}
                           >
-                            <input
-                              type="hidden"
-                              name="sourceId"
-                              value={src.id}
-                            />
-                            <button
-                              type="submit"
-                              className="text-[12px] font-semibold"
-                              style={{
-                                color: "#DC2626",
-                                background: "none",
-                                border: "none",
-                                cursor: "pointer",
-                              }}
-                            >
-                              Supprimer
-                            </button>
-                          </form>
+                            Supprimer
+                          </ConfirmButton>
                         </div>
                       </div>
                     ))}

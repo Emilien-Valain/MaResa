@@ -1,5 +1,6 @@
 "use client";
 
+import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { SettingsSection, StatusBanner } from "@/components/admin/ui";
@@ -45,13 +46,6 @@ export default function StripeConnectSection({
   }
 
   async function handleDisconnect() {
-    if (
-      !confirm(
-        "Déconnecter votre compte Stripe ? Les paiements ne seront plus possibles.",
-      )
-    ) {
-      return;
-    }
     setLoading(true);
     try {
       await fetch("/api/admin/stripe/connect", { method: "DELETE" });
@@ -69,7 +63,7 @@ export default function StripeConnectSection({
   return (
     <SettingsSection
       title="Paiement Stripe"
-      desc="Reçois les paiements directement sur ton compte Stripe. DirectLoc ne prélève aucune commission."
+      desc="Recevez les paiements directement sur votre compte Stripe. DirectLoc ne prélève aucune commission."
     >
       {stripeParam === "success" && (
         <StatusBanner variant="success">
@@ -78,7 +72,7 @@ export default function StripeConnectSection({
       )}
       {stripeParam === "refresh" && (
         <StatusBanner variant="warning">
-          La session a expiré. Clique ci-dessous pour reprendre la configuration.
+          La session a expiré. Cliquez ci-dessous pour reprendre la configuration.
         </StatusBanner>
       )}
 
@@ -102,7 +96,7 @@ export default function StripeConnectSection({
               </div>
               <span
                 style={{
-                  fontSize: 11.5,
+                  fontSize: 12,
                   background: "rgba(255,255,255,0.2)",
                   padding: "3px 10px",
                   borderRadius: 12,
@@ -150,24 +144,25 @@ export default function StripeConnectSection({
             >
               Ouvrir le Dashboard Stripe ↗
             </a>
-            <button
-              type="button"
-              onClick={handleDisconnect}
-              disabled={loading}
+            <ConfirmButton
+              title="Déconnecter votre compte Stripe ?"
+              message="Les clients ne pourront plus payer en ligne sur votre site tant que vous ne l’aurez pas reconnecté. Les réservations existantes ne sont pas modifiées."
+              confirmLabel="Déconnecter Stripe"
+              onConfirm={handleDisconnect}
               style={{
                 padding: "9px 16px",
                 background: "transparent",
-                border: "1px solid #DC2626",
+                border: "1px solid #FCA5A5",
                 borderRadius: 8,
                 fontSize: 13,
                 fontWeight: 600,
-                color: "#DC2626",
+                color: "var(--admin-danger)",
                 cursor: loading ? "not-allowed" : "pointer",
                 opacity: loading ? 0.5 : 1,
               }}
             >
               Déconnecter
-            </button>
+            </ConfirmButton>
           </div>
         </>
       ) : needsCompletion ? (
@@ -221,7 +216,7 @@ export default function StripeConnectSection({
               maxWidth: 360,
             }}
           >
-            Connecte ton compte Stripe pour activer les paiements en ligne sur ton site.
+            Connectez votre compte Stripe pour activer les paiements en ligne sur votre site.
           </div>
           <button
             type="button"

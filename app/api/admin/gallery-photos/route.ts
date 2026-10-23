@@ -13,6 +13,7 @@ import {
   tenantPhotoPublicUrl,
   ensureDir,
 } from "@/lib/uploads";
+import { mergeTenantConfig } from "@/lib/tenant-config";
 import type {
   TenantConfig,
   GalleryPhoto,
@@ -32,8 +33,14 @@ async function readConfig(tenantId: string): Promise<TenantConfig> {
   return (t.config ?? {}) as TenantConfig;
 }
 
-async function writeConfig(tenantId: string, config: TenantConfig) {
-  await db.update(tenants).set({ config }).where(eq(tenants.id, tenantId));
+// shortcut: galleryPhotos reste lu-modifié-écrit (une seule clé, même admin) ;
+// deux uploads galerie simultanés peuvent encore perdre une photo — passer à un
+// jsonb_set/append SQL si ça arrive.
+async function writeConfig(tenantId: string, patch: Partial<TenantConfig>) {
+  await db
+    .update(tenants)
+    .set({ config: mergeTenantConfig(patch) })
+    .where(eq(tenants.id, tenantId));
   revalidatePath("/admin/parametres");
   revalidatePath("/");
 }
@@ -107,7 +114,7 @@ export async function POST(request: NextRequest) {
   }
 
   const next = [...current, ...added];
-  await writeConfig(tenantId, { ...config, galleryPhotos: next });
+  await writeConfig(tenantId, { galleryPhotos: next });
 
   return NextResponse.json({ galleryPhotos: next });
 }
@@ -142,7 +149,7 @@ export async function DELETE(request: NextRequest) {
   }
 
   const next = current.filter((p) => p.id !== photoId);
-  await writeConfig(tenantId, { ...config, galleryPhotos: next });
+  await writeConfig(tenantId, { galleryPhotos: next });
 
   return NextResponse.json({ galleryPhotos: next });
 }
@@ -177,7 +184,7 @@ export async function PUT(request: NextRequest) {
     });
   }
 
-  await writeConfig(tenantId, { ...config, galleryPhotos: next });
+  await writeConfig(tenantId, { galleryPhotos: next });
 
   return NextResponse.json({ galleryPhotos: next });
 }

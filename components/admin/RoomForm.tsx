@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
-import { AdminInput, AdminTextarea, Field } from "@/components/admin/ui";
+import { AdminInput, AdminTextarea, Field, StatusBanner } from "@/components/admin/ui";
+import { useFormAction } from "@/components/admin/useFormAction";
+import type { FormResult } from "@/lib/validation";
 
 type DefaultValues = {
   name?: string;
@@ -13,12 +17,13 @@ export default function RoomForm({
   action,
   defaultValues,
 }: {
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => Promise<FormResult>;
   defaultValues?: DefaultValues;
 }) {
+  const form = useFormAction(action);
   return (
     <form
-      action={action}
+      onSubmit={form.onSubmit}
       style={{
         background: "var(--admin-surface)",
         border: "1px solid var(--admin-border)",
@@ -26,7 +31,8 @@ export default function RoomForm({
         padding: 24,
       }}
     >
-      <Field label="Nom *">
+      {form.error && <StatusBanner variant="error">{form.error}</StatusBanner>}
+      <Field label="Nom *" error={form.fieldError("nom")}>
         <AdminInput
           name="nom"
           type="text"
@@ -35,7 +41,7 @@ export default function RoomForm({
         />
       </Field>
 
-      <Field label="Description">
+      <Field label="Description" error={form.fieldError("description")}>
         <AdminTextarea
           name="description"
           rows={3}
@@ -44,18 +50,18 @@ export default function RoomForm({
       </Field>
 
       <div className="grid grid-cols-2 gap-3.5">
-        <Field label="Prix / nuit (€) *">
+        <Field label="Prix / nuit (€) *" error={form.fieldError("prix")}>
           <AdminInput
             name="prix"
             type="number"
             step="0.01"
             min="0"
             required
-            defaultValue={defaultValues?.pricePerNight ?? ""}
+            defaultValue={defaultValues?.pricePerNight ? String(Number(defaultValues.pricePerNight)) : ""}
           />
         </Field>
 
-        <Field label="Capacité (pers.) *">
+        <Field label="Capacité (pers.) *" error={form.fieldError("capacite")}>
           <AdminInput
             name="capacite"
             type="number"
@@ -87,6 +93,7 @@ export default function RoomForm({
       <div className="flex gap-3 pt-2">
         <button
           type="submit"
+          disabled={form.pending}
           style={{
             padding: "9px 18px",
             background: "var(--admin-primary)",
@@ -95,10 +102,11 @@ export default function RoomForm({
             borderRadius: 8,
             fontSize: 13,
             fontWeight: 600,
-            cursor: "pointer",
+            cursor: form.pending ? "wait" : "pointer",
+            opacity: form.pending ? 0.7 : 1,
           }}
         >
-          Enregistrer
+          {form.pending ? "Enregistrement…" : "Enregistrer"}
         </button>
         <Link
           href="/admin/chambres"
@@ -110,7 +118,7 @@ export default function RoomForm({
             textDecoration: "none",
           }}
         >
-          Annuler
+          Retour
         </Link>
       </div>
     </form>

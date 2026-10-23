@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { fd, fdCalendarQuery, fdFr } from "../helpers/dates";
+import { confirmDialog } from "../helpers/confirm";
 
 const RUN_ID = Date.now().toString(36).slice(-6);
 
@@ -9,9 +10,9 @@ test.describe("Admin — Blocages manuels", () => {
   test("la page Règles est accessible et affiche les 3 onglets", async ({ page }) => {
     await page.goto("/admin/regles");
     await expect(page.getByRole("heading", { level: 1, name: "Règles" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Blocages manuels" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Règles de réservation" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Tarification" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Blocages manuels" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Règles de réservation" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Tarification" })).toBeVisible();
   });
 
   test("le lien Règles est dans la navigation admin", async ({ page }) => {
@@ -21,7 +22,7 @@ test.describe("Admin — Blocages manuels", () => {
 
   test("créer un blocage ponctuel par chambre puis le supprimer", async ({ page }) => {
     await page.goto("/admin/regles");
-    await page.getByRole("button", { name: "Blocages manuels" }).click();
+    await page.getByRole("tab", { name: "Blocages manuels" }).click();
 
     // Ouvrir le formulaire
     await page.getByRole("button", { name: "Ajouter" }).first().click();
@@ -38,8 +39,8 @@ test.describe("Admin — Blocages manuels", () => {
     await expect(page.getByText(fdFr("2026-08-15"))).toBeVisible();
 
     // Supprimer
-    page.on("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Supprimer" }).first().click();
+    await confirmDialog(page);
 
     // Vérifier que c'est supprimé
     await expect(page.getByText("Aucun blocage configuré")).toBeVisible();
@@ -47,7 +48,7 @@ test.describe("Admin — Blocages manuels", () => {
 
   test("créer un blocage global (toutes les chambres)", async ({ page }) => {
     await page.goto("/admin/regles");
-    await page.getByRole("button", { name: "Blocages manuels" }).click();
+    await page.getByRole("tab", { name: "Blocages manuels" }).click();
 
     await page.getByRole("button", { name: "Ajouter" }).first().click();
 
@@ -60,13 +61,13 @@ test.describe("Admin — Blocages manuels", () => {
     await expect(page.getByText("Toutes les chambres")).toBeVisible();
 
     // Cleanup
-    page.on("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Supprimer" }).first().click();
+    await confirmDialog(page);
   });
 
   test("créer un blocage récurrent (tous les lundis)", async ({ page }) => {
     await page.goto("/admin/regles");
-    await page.getByRole("button", { name: "Blocages manuels" }).click();
+    await page.getByRole("tab", { name: "Blocages manuels" }).click();
 
     await page.getByRole("button", { name: "Ajouter" }).first().click();
 
@@ -86,8 +87,8 @@ test.describe("Admin — Blocages manuels", () => {
     await expect(page.getByText(/Chaque.*Lun/)).toBeVisible();
 
     // Cleanup
-    page.on("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Supprimer" }).first().click();
+    await confirmDialog(page);
   });
 
   // ─── Calendrier ────────────────────────────────────────────────────────────
@@ -95,7 +96,7 @@ test.describe("Admin — Blocages manuels", () => {
   test("les blocages manuels apparaissent dans le calendrier avec ✕", async ({ page }) => {
     // Créer un blocage
     await page.goto("/admin/regles");
-    await page.getByRole("button", { name: "Blocages manuels" }).click();
+    await page.getByRole("tab", { name: "Blocages manuels" }).click();
     await page.getByRole("button", { name: "Ajouter" }).first().click();
     await page.locator("input[name='startDate']").fill(fd("2026-07-01"));
     await page.locator("input[name='endDate']").fill(fd("2026-07-03"));
@@ -114,9 +115,9 @@ test.describe("Admin — Blocages manuels", () => {
 
     // Cleanup
     await page.goto("/admin/regles");
-    await page.getByRole("button", { name: "Blocages manuels" }).click();
-    page.on("dialog", (dialog) => dialog.accept());
+    await page.getByRole("tab", { name: "Blocages manuels" }).click();
     await page.getByRole("button", { name: "Supprimer" }).first().click();
+    await confirmDialog(page);
   });
 
 });

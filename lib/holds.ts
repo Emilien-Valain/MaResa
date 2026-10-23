@@ -1,5 +1,6 @@
 import { and, eq, gt, isNull, lt, or, type Column } from "drizzle-orm";
 import { db } from "@/lib/db";
+import type { Tx } from "@/lib/booking-intake";
 import { bookings, icalBlocks, manualBlocks } from "@/db/schema";
 
 /**
@@ -57,12 +58,13 @@ export async function blockedDates(
   roomId: string,
   tenantId: string,
   window: Window,
+  conn: Tx | typeof db = db,
 ): Promise<Set<IsoDate>> {
   const overlapsWindow = (start: Column, end: Column) =>
     and(lt(start, window.end), gt(end, window.start));
 
   const [activeBookings, blocks, manuals] = await Promise.all([
-    db
+    conn
       .select({ checkIn: bookings.checkIn, checkOut: bookings.checkOut })
       .from(bookings)
       .where(
@@ -73,7 +75,7 @@ export async function blockedDates(
           overlapsWindow(bookings.checkIn, bookings.checkOut),
         ),
       ),
-    db
+    conn
       .select({ start: icalBlocks.start, end: icalBlocks.end })
       .from(icalBlocks)
       .where(
@@ -86,7 +88,7 @@ export async function blockedDates(
     // Les blocages récurrents ne se filtrent pas proprement par fenêtre en SQL
     // (pas d'intervalle matériel) : on récupère tous les manual blocks de la
     // chambre + globaux, et on matérialise app-side.
-    db
+    conn
       .select()
       .from(manualBlocks)
       .where(

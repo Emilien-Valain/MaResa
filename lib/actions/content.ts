@@ -6,7 +6,9 @@ import { z } from "zod";
 import { requireSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { tenants } from "@/db/schema";
+import { safeParseFormData, type FormResult } from "@/lib/validation";
 import type { TenantConfig } from "@/lib/tenant-context";
+import { mergeTenantConfig } from "@/lib/tenant-config";
 
 const safeText = (max: number) => z.string().max(max).optional().or(z.literal(""));
 
@@ -39,28 +41,14 @@ function parseStats(raw: string | undefined): TenantConfig["storyStats"] {
   }
 }
 
-export async function updateContent(formData: FormData) {
+export async function updateContent(formData: FormData): Promise<FormResult> {
   const { tenantId } = await requireSession();
 
-  const raw: Record<string, string | undefined> = {};
-  for (const [k, v] of formData.entries()) {
-    raw[k] = typeof v === "string" ? v : undefined;
-  }
+  const parsed = safeParseFormData(contentSchema, formData);
+  if ("error" in parsed) return parsed;
+  const { data } = parsed;
 
-  const data = contentSchema.parse(raw);
-
-  const [tenant] = await db
-    .select({ config: tenants.config })
-    .from(tenants)
-    .where(eq(tenants.id, tenantId))
-    .limit(1);
-
-  if (!tenant) throw new Error("Tenant introuvable");
-
-  const current = (tenant.config ?? {}) as TenantConfig;
-
-  const next: TenantConfig = {
-    ...current,
+  const patch: TenantConfig = {
     heroEyebrow: data.heroEyebrow?.trim() || undefined,
     heroTitle: data.heroTitle?.trim() || undefined,
     heroSubtitle: data.heroSubtitle?.trim() || undefined,
@@ -71,7 +59,7 @@ export async function updateContent(formData: FormData) {
     storyStats: parseStats(data.storyStats),
   };
 
-  await db.update(tenants).set({ config: next }).where(eq(tenants.id, tenantId));
+  await db.update(tenants).set({ config: mergeTenantConfig(patch) }).where(eq(tenants.id, tenantId));
 
   revalidatePath("/admin/parametres");
   revalidatePath("/");

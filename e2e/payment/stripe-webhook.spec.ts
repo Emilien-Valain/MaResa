@@ -3,6 +3,7 @@ import path from "path";
 import crypto from "crypto";
 import { Pool } from "pg";
 import { test, expect } from "@playwright/test";
+import { startSmtpSink } from "../helpers/smtp-sink";
 
 /**
  * Spécification : Tests de non-régression > Paiement > Webhook Stripe
@@ -300,6 +301,64 @@ test.describe("Paiement — Webhook Stripe", () => {
       // cancelled → confirmed est illégale : le booking reste cancelled.
       expect(result.rows[0].status).toBe("cancelled");
     } finally {
+      await pool.query("DELETE FROM payments WHERE booking_id = $1", [bookingId]);
+      await pool.query("DELETE FROM bookings WHERE id = $1", [bookingId]);
+    }
+  });
+
+  test("paiement reçu sur un booking annulé : payment paid, booking reste annulé, admins alertés une seule fois", async ({
+    request,
+  }) => {
+    const { tenantId, apiRoomId } = loadTestContext();
+    const sessionId = `cs_test_paidcancelled_${Date.now()}`;
+    const paymentIntent = `pi_test_paidcancelled_${Date.now()}`;
+    const bookingId = await createTestBookingWithPayment(pool, tenantId, apiRoomId, sessionId);
+    // L'admin annule pendant que le client est sur Stripe Checkout.
+    await pool.query("UPDATE bookings SET status = 'cancelled' WHERE id = $1", [bookingId]);
+    const admins = (
+      await pool.query(
+        "SELECT u.email FROM user_tenants ut JOIN users u ON u.id = ut.user_id WHERE ut.tenant_id = $1",
+        [tenantId],
+      )
+    ).rows.map((r) => r.email as string);
+    expect(admins.length).toBeGreaterThan(0);
+
+    const sink = await startSmtpSink();
+    const send = () => {
+      const payload = JSON.stringify({
+        id: `evt_test_${Date.now()}_${Math.random()}`,
+        type: "checkout.session.completed",
+        data: { object: { id: sessionId, payment_intent: paymentIntent, metadata: { bookingId, tenantId } } },
+      });
+      return request.post(`${BASE_URL}/api/webhooks/stripe`, {
+        data: payload,
+        headers: {
+          "content-type": "application/json",
+          "stripe-signature": generateStripeSignature(payload, WEBHOOK_SECRET),
+        },
+      });
+    };
+
+    try {
+      expect((await send()).status()).toBe(200);
+
+      const booking = await pool.query("SELECT status FROM bookings WHERE id = $1", [bookingId]);
+      expect(booking.rows[0].status).toBe("cancelled");
+      const payment = await pool.query(
+        "SELECT status, stripe_payment_id FROM payments WHERE stripe_session_id = $1",
+        [sessionId],
+      );
+      expect(payment.rows[0]).toEqual({ status: "paid", stripe_payment_id: paymentIntent });
+
+      // Une alerte par admin, et rien pour le client (pas de confirmation).
+      expect(sink.mails.flatMap((m) => m.to).sort()).toEqual([...admins].sort());
+      expect(sink.mails[0].raw).toContain("remboursez"); // sujet « … — remboursez via Stripe »
+
+      // Re-livraison Stripe du même événement : aucune alerte en double.
+      expect((await send()).status()).toBe(200);
+      expect(sink.mails).toHaveLength(admins.length);
+    } finally {
+      await sink.stop();
       await pool.query("DELETE FROM payments WHERE booking_id = $1", [bookingId]);
       await pool.query("DELETE FROM bookings WHERE id = $1", [bookingId]);
     }

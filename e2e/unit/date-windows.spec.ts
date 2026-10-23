@@ -29,6 +29,9 @@ const expected = {
   startOfMonth: "2026-01-01T00:00:00.000Z",
   endOfMonth: "2026-01-31T23:59:59.999Z",
   bookingInMonth: true, // résa du 31 jan 23:30 UTC dans le bucket de janvier
+  todayParisWinterNight: "2026-01-16T00:00:00.000Z",
+  todayParisSummerNight: "2026-07-16T00:00:00.000Z",
+  todayParisSummerEvening: "2026-07-15T00:00:00.000Z", // 23:30 à Paris : encore le 15
 };
 
 test.describe("Fenêtres de dates KPI — indépendantes du TZ", () => {

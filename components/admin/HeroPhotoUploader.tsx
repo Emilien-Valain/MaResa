@@ -76,7 +76,7 @@ export default function HeroPhotoUploader({
             />
           ) : (
             <span
-              className="text-[11px]"
+              className="text-[12px]"
               style={{ color: "var(--admin-text-subtle)" }}
             >
               aucune photo
@@ -136,7 +136,7 @@ export default function HeroPhotoUploader({
           )}
 
           <p
-            className="text-[11.5px]"
+            className="text-[12px]"
             style={{ color: "var(--admin-text-subtle)" }}
           >
             JPEG, PNG ou WebP · 5 Mo max · redimensionnée à 2400×1600
@@ -145,7 +145,7 @@ export default function HeroPhotoUploader({
       </div>
 
       {error && (
-        <p className="text-[13px] font-semibold" style={{ color: "#DC2626" }}>
+        <p className="text-[13px] font-semibold" style={{ color: "var(--admin-danger)" }}>
           {error}
         </p>
       )}

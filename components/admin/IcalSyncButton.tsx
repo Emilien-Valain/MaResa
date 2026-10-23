@@ -41,23 +41,13 @@ export default function IcalSyncButton() {
         type="button"
         disabled={loading}
         onClick={handleSync}
-        style={{
-          padding: "6px 14px",
-          background: "var(--admin-surface-2)",
-          color: "var(--admin-text)",
-          border: "1px solid var(--admin-border)",
-          borderRadius: 7,
-          fontSize: 13,
-          fontWeight: 600,
-          cursor: loading ? "not-allowed" : "pointer",
-          opacity: loading ? 0.5 : 1,
-          transition: "background 0.15s",
-        }}
+        className="admin-btn admin-btn--ghost"
       >
-        {loading ? "Sync…" : "Synchroniser"}
+        {loading ? "Synchronisation…" : "Synchroniser"}
       </button>
       {result && (
         <span
+          role="status"
           className="text-[12px]"
           style={{ color: "var(--admin-text-muted)" }}
         >

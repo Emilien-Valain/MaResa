@@ -8,8 +8,9 @@ import { checkRateLimit, type RateLimitRule } from "@/lib/rate-limit";
 
 // ── Rate limiting rules ───────────────────────────────────────────────────────
 
+// Pas de règle "login" : le matcher exclut /api/auth, et Better Auth limite
+// déjà /sign-in* lui-même en production (3 req / 10 s par IP).
 const RATE_RULES: Record<string, RateLimitRule> = {
-  login: { name: "login", limit: 10, windowSec: 60 },
   api: { name: "api-public", limit: 60, windowSec: 60 },
   webhook: { name: "webhook", limit: 30, windowSec: 60 },
 };
@@ -85,9 +86,7 @@ export async function proxy(request: NextRequest) {
     ?? "unknown";
 
   let rateRule: RateLimitRule | null = null;
-  if (pathname === "/login" || pathname.startsWith("/api/auth/")) {
-    rateRule = RATE_RULES.login;
-  } else if (pathname.startsWith("/api/webhooks/")) {
+  if (pathname.startsWith("/api/webhooks/")) {
     rateRule = RATE_RULES.webhook;
   } else if (
     pathname.startsWith("/api/") &&
@@ -114,7 +113,13 @@ export async function proxy(request: NextRequest) {
   }
 
   // ── Résolution tenant (nécessaire pour toutes les routes) ────────────────
-  const hostHeader = request.headers.get("host") ?? "";
+  // x-forwarded-host d'abord : le rendu d'un redirect() de server action est un
+  // fetch interne vers __NEXT_PRIVATE_ORIGIN (Host = localhost), qui ne garde le
+  // domaine du tenant que dans x-forwarded-host (même ordre que Next lui-même).
+  const hostHeader =
+    request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ??
+    request.headers.get("host") ??
+    "";
   const host = hostHeader.split(":")[0];
 
   const tenant = await resolveTenant(host);

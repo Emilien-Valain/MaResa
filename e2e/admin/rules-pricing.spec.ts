@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 import { fd } from "../helpers/dates";
+import { confirmDialog } from "../helpers/confirm";
 
 // Charger le contexte de test seedé par globalSetup
 const ctx = JSON.parse(
@@ -16,14 +17,23 @@ test.describe("Admin — Tarification dynamique", () => {
 
   test("onglet Tarification affiche le formulaire", async ({ page }) => {
     await page.goto("/admin/regles");
-    await page.getByRole("button", { name: "Tarification" }).click();
+    await page.getByRole("tab", { name: "Tarification" }).click();
     await expect(page.getByRole("heading", { name: "Tarification dynamique" })).toBeVisible();
     await expect(page.getByText("Prix saisonniers")).toBeVisible();
   });
 
+  test("onglet dans l'URL : /admin/regles?tab=pricing ouvre Tarification", async ({ page }) => {
+    await page.goto("/admin/regles?tab=pricing");
+    await expect(page.getByRole("tab", { name: "Tarification" })).toHaveAttribute("aria-selected", "true");
+    await page.getByRole("tab", { name: "Blocages manuels" }).click();
+    await expect(page).toHaveURL(/tab=blocks/);
+    await page.goto("/admin/regles?tab=nimporte");
+    await expect(page.getByRole("tab", { name: "Règles de réservation" })).toHaveAttribute("aria-selected", "true");
+  });
+
   test("créer une règle de prix fixe puis la supprimer", async ({ page }) => {
     await page.goto("/admin/regles");
-    await page.getByRole("button", { name: "Tarification" }).click();
+    await page.getByRole("tab", { name: "Tarification" }).click();
 
     await page.getByRole("button", { name: "Ajouter" }).click();
 
@@ -38,14 +48,41 @@ test.describe("Admin — Tarification dynamique", () => {
     await expect(page.getByText("150 €/nuit")).toBeVisible();
 
     // Cleanup
-    page.on("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Supprimer" }).first().click();
+    await confirmDialog(page);
     await expect(page.getByText("Aucune règle tarifaire configurée")).toBeVisible();
+  });
+
+  test("règle sans prix refusée par le serveur : message sur le champ, saisie conservée, pas de page d'erreur", async ({ page }) => {
+    await page.goto("/admin/regles");
+    await page.getByRole("tab", { name: "Tarification" }).click();
+    await page.getByRole("button", { name: "Ajouter" }).click();
+    await page.locator("input[name='name']").fill("Sans prix test");
+    // Contourne la validation du navigateur pour exercer celle du serveur.
+    await page.locator("input[name='name']").evaluate((el) => ((el as HTMLInputElement).form!.noValidate = true));
+    await page.getByRole("button", { name: "Créer la règle" }).click();
+
+    await expect(page.getByText("Indiquez un prix fixe ou un modificateur en pourcentage").first()).toBeVisible();
+    await expect(page.locator("input[name='fixedPrice']")).toHaveAttribute("aria-invalid", "true");
+    await expect(page.locator("input[name='name']")).toHaveValue("Sans prix test");
+    await expect(page.getByText("Cette page n'a pas pu s'afficher")).toHaveCount(0);
+  });
+
+  test("règle créée : confirmation visible", async ({ page }) => {
+    await page.goto("/admin/regles");
+    await page.getByRole("tab", { name: "Tarification" }).click();
+    await page.getByRole("button", { name: "Ajouter" }).click();
+    await page.locator("input[name='name']").fill("Confirmation test");
+    await page.locator("input[name='fixedPrice']").fill("99");
+    await page.getByRole("button", { name: "Créer la règle" }).click();
+    await expect(page.getByText("Règle tarifaire ajoutée.")).toBeVisible();
+    await page.getByRole("button", { name: "Supprimer" }).first().click();
+    await confirmDialog(page);
   });
 
   test("créer une règle avec modificateur pourcentage", async ({ page }) => {
     await page.goto("/admin/regles");
-    await page.getByRole("button", { name: "Tarification" }).click();
+    await page.getByRole("tab", { name: "Tarification" }).click();
 
     await page.getByRole("button", { name: "Ajouter" }).click();
 
@@ -62,13 +99,13 @@ test.describe("Admin — Tarification dynamique", () => {
     await expect(page.getByText("-15%")).toBeVisible();
 
     // Cleanup
-    page.on("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Supprimer" }).first().click();
+    await confirmDialog(page);
   });
 
   test("créer une règle par jour de la semaine (samedi)", async ({ page }) => {
     await page.goto("/admin/regles");
-    await page.getByRole("button", { name: "Tarification" }).click();
+    await page.getByRole("tab", { name: "Tarification" }).click();
 
     await page.getByRole("button", { name: "Ajouter" }).click();
 
@@ -86,15 +123,15 @@ test.describe("Admin — Tarification dynamique", () => {
     await expect(page.getByText(/samedi/)).toBeVisible();
 
     // Cleanup
-    page.on("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Supprimer" }).first().click();
+    await confirmDialog(page);
   });
 
   // ─── Toggle actif/inactif ─────────────────────────────────────────────────
 
   test("désactiver et réactiver une règle de pricing", async ({ page }) => {
     await page.goto("/admin/regles");
-    await page.getByRole("button", { name: "Tarification" }).click();
+    await page.getByRole("tab", { name: "Tarification" }).click();
 
     // Créer une règle
     await page.getByRole("button", { name: "Ajouter" }).click();
@@ -112,8 +149,8 @@ test.describe("Admin — Tarification dynamique", () => {
     await expect(page.getByText("Désactivée")).not.toBeVisible();
 
     // Cleanup
-    page.on("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Supprimer" }).first().click();
+    await confirmDialog(page);
   });
 
   // ─── API Pricing ───────────────────────────────────────────────────────────
@@ -193,7 +230,7 @@ test.describe("Admin — Tarification dynamique", () => {
     });
 
     await page.goto("/admin/regles");
-    await page.getByRole("button", { name: "Tarification" }).click();
+    await page.getByRole("tab", { name: "Tarification" }).click();
     await page.getByRole("button", { name: "Ajouter" }).click();
 
     const xssPayload = '<script>alert(1)</script>';
@@ -205,7 +242,9 @@ test.describe("Admin — Tarification dynamique", () => {
     await expect(page.getByText(xssPayload)).toBeVisible();
     expect(dialogDetected).toBe(false);
 
-    // Cleanup — the dialog handler is already registered above and will accept confirm()
+    // Cleanup — confirmation via le dialog stylé (aucun dialog natif ne doit s'ouvrir)
     await page.getByRole("button", { name: "Supprimer" }).first().click();
+    await confirmDialog(page);
+    expect(dialogDetected).toBe(false);
   });
 });

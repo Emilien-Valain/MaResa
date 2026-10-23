@@ -1,9 +1,8 @@
-"use server";
-
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { rooms } from "@/db/schema";
 import { blockedDates } from "@/lib/holds";
+import type { Tx } from "@/lib/booking-intake";
 
 /**
  * Disponibilité = complément des Holds (voir lib/holds.ts, ADR-0007).
@@ -21,8 +20,9 @@ export async function isRoomAvailable(
   tenantId: string,
   checkIn: Date,
   checkOut: Date,
+  conn: Tx | typeof db = db,
 ): Promise<boolean> {
-  const held = await blockedDates(roomId, tenantId, { start: checkIn, end: checkOut });
+  const held = await blockedDates(roomId, tenantId, { start: checkIn, end: checkOut }, conn);
   return held.size === 0;
 }
 

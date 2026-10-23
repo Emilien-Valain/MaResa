@@ -1,16 +1,23 @@
 "use client";
 
+import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { useState } from "react";
+import { useFormAction } from "@/components/admin/useFormAction";
 import { createBookingRule, deleteBookingRule } from "@/lib/actions/rules";
 import {
   AdminInput,
   AdminSelect,
+  DateInput,
+  EmptyState,
   Field,
   SettingsSection,
+  StatusBanner,
 } from "@/components/admin/ui";
 import type { BookingRuleRow } from "./RulesPageClient";
 
 const DAY_NAMES = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
+// Indices JS (0 = dimanche), affichés dans l'ordre de la semaine française.
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const DAY_NAMES_FR = [
   "dimanche",
   "lundi",
@@ -30,6 +37,17 @@ export default function BookingRuleSection({ rooms, rules }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [checkInDays, setCheckInDays] = useState<number[]>([]);
   const [checkOutDays, setCheckOutDays] = useState<number[]>([]);
+  const form = useFormAction(createBookingRule, {
+    prepare: (fd) => {
+      if (checkInDays.length > 0) fd.set("allowedCheckInDays", checkInDays.join(","));
+      if (checkOutDays.length > 0) fd.set("allowedCheckOutDays", checkOutDays.join(","));
+    },
+    onSuccess: () => {
+      setShowForm(false);
+      setCheckInDays([]);
+      setCheckOutDays([]);
+    },
+  });
 
   const toggleDay = (
     days: number[],
@@ -64,20 +82,12 @@ export default function BookingRuleSection({ rooms, rules }: Props) {
         </button>
       }
     >
+      {form.saved && !showForm && (
+        <StatusBanner variant="success">Règle de réservation ajoutée.</StatusBanner>
+      )}
       {showForm && (
         <form
-          action={async (formData) => {
-            if (checkInDays.length > 0) {
-              formData.set("allowedCheckInDays", checkInDays.join(","));
-            }
-            if (checkOutDays.length > 0) {
-              formData.set("allowedCheckOutDays", checkOutDays.join(","));
-            }
-            await createBookingRule(formData);
-            setShowForm(false);
-            setCheckInDays([]);
-            setCheckOutDays([]);
-          }}
+          onSubmit={form.onSubmit}
           className="mb-5"
           style={{
             padding: 14,
@@ -86,9 +96,10 @@ export default function BookingRuleSection({ rooms, rules }: Props) {
             border: "1px dashed var(--admin-border)",
           }}
         >
+          {form.error && <StatusBanner variant="error">{form.error}</StatusBanner>}
           <Field label="Chambre">
             <AdminSelect name="roomId">
-              <option value="">Toutes les chambres (global)</option>
+              <option value="">Toutes les chambres</option>
               {rooms.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name}
@@ -99,18 +110,18 @@ export default function BookingRuleSection({ rooms, rules }: Props) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Saison — début (optionnel)">
-              <AdminInput type="date" name="validFrom" />
+              <DateInput name="validFrom" />
             </Field>
-            <Field label="Saison — fin (optionnel)">
-              <AdminInput type="date" name="validTo" />
+            <Field label="Saison — fin (optionnel)" error={form.fieldError("validTo")}>
+              <DateInput name="validTo" />
             </Field>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Nuits minimum">
+            <Field label="Nuits minimum" error={form.fieldError("minStay")}>
               <AdminInput type="number" name="minStay" min="1" placeholder="ex: 2" />
             </Field>
-            <Field label="Nuits maximum">
+            <Field label="Nuits maximum" error={form.fieldError("maxStay")}>
               <AdminInput type="number" name="maxStay" min="1" placeholder="ex: 14" />
             </Field>
           </div>
@@ -120,12 +131,14 @@ export default function BookingRuleSection({ rooms, rules }: Props) {
             hint="Aucun sélectionné = tous les jours autorisés"
           >
             <div className="flex gap-2">
-              {DAY_NAMES.map((name, i) => {
+              {WEEK_ORDER.map((i) => {
+                const name = DAY_NAMES[i];
                 const active = checkInDays.includes(i);
                 return (
                   <button
                     key={i}
                     type="button"
+                    aria-pressed={active}
                     onClick={() => toggleDay(checkInDays, setCheckInDays, i)}
                     style={{
                       width: 40,
@@ -153,12 +166,14 @@ export default function BookingRuleSection({ rooms, rules }: Props) {
             hint="Aucun sélectionné = tous les jours autorisés"
           >
             <div className="flex gap-2">
-              {DAY_NAMES.map((name, i) => {
+              {WEEK_ORDER.map((i) => {
+                const name = DAY_NAMES[i];
                 const active = checkOutDays.includes(i);
                 return (
                   <button
                     key={i}
                     type="button"
+                    aria-pressed={active}
                     onClick={() => toggleDay(checkOutDays, setCheckOutDays, i)}
                     style={{
                       width: 40,
@@ -184,6 +199,7 @@ export default function BookingRuleSection({ rooms, rules }: Props) {
           <div className="flex justify-end">
             <button
               type="submit"
+              disabled={form.pending}
               style={{
                 padding: "9px 18px",
                 background: "var(--admin-primary)",
@@ -192,22 +208,24 @@ export default function BookingRuleSection({ rooms, rules }: Props) {
                 borderRadius: 8,
                 fontSize: 13,
                 fontWeight: 600,
-                cursor: "pointer",
+                cursor: form.pending ? "wait" : "pointer",
+                opacity: form.pending ? 0.7 : 1,
               }}
             >
-              Créer la règle
+              {form.pending ? "Création…" : "Créer la règle"}
             </button>
           </div>
         </form>
       )}
 
-      {rules.length === 0 ? (
-        <p
-          className="text-center py-6 text-[13px]"
-          style={{ color: "var(--admin-text-muted)" }}
+      {rules.length === 0 && !showForm ? (
+        <EmptyState
+          compact
+          title="Aucune règle configurée"
+          example="en juillet-août, 7 nuits minimum avec arrivée et départ le samedi."
         >
-          Aucune règle configurée
-        </p>
+          Sans règle, un client peut réserver une seule nuit, en arrivant n’importe quel jour.
+        </EmptyState>
       ) : (
         <div>
           {rules.map((rule, i) => (
@@ -229,7 +247,7 @@ export default function BookingRuleSection({ rooms, rules }: Props) {
                   {rule.roomName ?? "Global (toutes les chambres)"}
                   {rule.validFrom && (
                     <span
-                      className="ml-2 text-[11px] font-bold"
+                      className="ml-2 text-[12px] font-bold"
                       style={{
                         padding: "2px 8px",
                         borderRadius: 12,
@@ -242,7 +260,7 @@ export default function BookingRuleSection({ rooms, rules }: Props) {
                   )}
                 </p>
                 <p
-                  className="text-[11.5px] space-x-2"
+                  className="text-[12px] space-x-2"
                   style={{ color: "var(--admin-text-muted)" }}
                 >
                   {rule.minStay && <span>Min {rule.minStay} nuit(s)</span>}
@@ -265,30 +283,29 @@ export default function BookingRuleSection({ rooms, rules }: Props) {
                   )}
                   {rule.validFrom && (
                     <span>
-                      {new Date(rule.validFrom).toLocaleDateString("fr-FR")} →{" "}
+                      {new Date(rule.validFrom).toLocaleDateString("fr-FR", { timeZone: "UTC" })} →{" "}
                       {rule.validTo
-                        ? new Date(rule.validTo).toLocaleDateString("fr-FR")
+                        ? new Date(rule.validTo).toLocaleDateString("fr-FR", { timeZone: "UTC" })
                         : "…"}
                     </span>
                   )}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm("Supprimer cette règle ?"))
-                    deleteBookingRule(rule.id);
-                }}
+              <ConfirmButton
+                title={"Supprimer cette règle de réservation ?"}
+                message="Ses contraintes (durée minimale, jours d’arrivée…) ne s’appliqueront plus aux nouvelles réservations du site."
+                confirmLabel="Supprimer la règle"
+                onConfirm={() => deleteBookingRule(rule.id)}
                 className="text-[12px] font-semibold"
                 style={{
-                  color: "#DC2626",
+                  color: "var(--admin-danger)",
                   background: "none",
                   border: "none",
                   cursor: "pointer",
                 }}
               >
                 Supprimer
-              </button>
+              </ConfirmButton>
             </div>
           ))}
         </div>

@@ -132,7 +132,7 @@ export default function RoomPhotosUploader({
   return (
     <div className="space-y-4">
       <div
-        className="text-[11.5px] font-bold uppercase mb-1.5"
+        className="text-[12px] font-bold uppercase mb-1.5"
         style={{
           color: "var(--admin-text-muted)",
           letterSpacing: "0.06em",
@@ -178,7 +178,7 @@ export default function RoomPhotosUploader({
 
               {idx === 0 && (
                 <span
-                  className="absolute top-1.5 left-1.5 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
+                  className="absolute top-1.5 left-1.5 text-white text-[12px] font-semibold px-1.5 py-0.5 rounded-md"
                   style={{ background: "rgba(28, 25, 23, 0.8)" }}
                 >
                   Principale
@@ -188,7 +188,7 @@ export default function RoomPhotosUploader({
               <button
                 type="button"
                 onClick={() => deletePhoto(photo.id)}
-                className="absolute top-1.5 right-1.5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-1.5 right-1.5 flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
                 style={{
                   width: 24,
                   height: 24,
@@ -200,12 +200,13 @@ export default function RoomPhotosUploader({
                   cursor: "pointer",
                 }}
                 title="Supprimer"
+                aria-label="Supprimer la photo"
               >
                 ✕
               </button>
 
               <div
-                className="absolute bottom-1.5 left-1.5 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute bottom-1.5 left-1.5 text-[12px] opacity-0 group-hover:opacity-100 transition-opacity"
                 style={{ color: "rgba(255,255,255,0.85)" }}
               >
                 ⠿ Glisser
@@ -264,10 +265,10 @@ export default function RoomPhotosUploader({
                 className="text-[13px] font-semibold"
                 style={{ color: "var(--admin-text)" }}
               >
-                Glisse des images ici ou clique pour sélectionner
+                Glissez des images ici ou cliquez pour les sélectionner
               </p>
               <p
-                className="text-[11.5px] mt-1"
+                className="text-[12px] mt-1"
                 style={{ color: "var(--admin-text-subtle)" }}
               >
                 JPEG, PNG ou WebP · {10 - photos.length} place
@@ -282,7 +283,7 @@ export default function RoomPhotosUploader({
       {error && (
         <p
           className="text-[13px] font-semibold"
-          style={{ color: "#DC2626" }}
+          style={{ color: "var(--admin-danger)" }}
         >
           {error}
         </p>

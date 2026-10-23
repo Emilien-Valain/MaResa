@@ -1,32 +1,27 @@
+import { formatEuros } from "@/lib/utils";
 import Link from "next/link";
 import { requireSession } from "@/lib/session";
-import { getBookingsByTenant } from "@/lib/queries/bookings";
+import { getBookingsByTenant, completeFinishedStays } from "@/lib/queries/bookings";
 import { getRoomsByTenant } from "@/lib/queries/rooms";
 import { STATUS_LABELS } from "@/lib/calendar";
 import type { BookingStatus, BookingFilters } from "@/lib/queries/bookings";
 import {
   Card,
   ChannelTag,
+  EmptyState,
   GhostButton,
   GuestAvatar,
   PageHeader,
   PrimaryButton,
   StatusBadge,
 } from "@/components/admin/ui";
-import { Icon } from "@/components/admin/icons";
 
 function fmtDate(d: Date) {
   return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
 }
 
-function fmtCurrency(n: number) {
-  return n.toLocaleString("fr-FR", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
-}
+// Table cell on xl+, plain grid item in the mobile card.
+const CELL = "xl:table-cell xl:px-4 xl:py-[13px]";
 
 export default async function ReservationsPage({
   searchParams,
@@ -34,6 +29,7 @@ export default async function ReservationsPage({
   searchParams: Promise<{ status?: string; roomId?: string }>;
 }) {
   const { tenantId } = await requireSession();
+  await completeFinishedStays(tenantId);
   const params = await searchParams;
 
   const filters: BookingFilters = {
@@ -66,7 +62,7 @@ export default async function ReservationsPage({
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap items-center">
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex gap-1.5 overflow-x-auto md:flex-wrap -mx-5 px-5 sm:-mx-8 sm:px-8 md:mx-0 md:px-0 pb-1 md:pb-0 admin-scroll-cue">
           {statusFilters.map((s) => {
             const href =
               s === "all"
@@ -87,10 +83,10 @@ export default async function ReservationsPage({
 
       {/* Room chips */}
       {chambres.length > 0 && (
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex gap-1.5 overflow-x-auto md:flex-wrap -mx-5 px-5 sm:-mx-8 sm:px-8 md:mx-0 md:px-0 pb-1 md:pb-0 admin-scroll-cue">
           <Link
             href={`/admin/reservations${params.status ? `?status=${params.status}` : ""}`}
-            className="text-[12px] font-semibold rounded-md px-2.5 py-[5px] transition-colors"
+            className="text-[12px] font-semibold rounded-md px-2.5 py-[5px] transition-colors whitespace-nowrap flex-shrink-0"
             style={{
               background: !params.roomId
                 ? "var(--admin-primary-light)"
@@ -109,7 +105,7 @@ export default async function ReservationsPage({
               <Link
                 key={c.id}
                 href={`/admin/reservations?roomId=${c.id}${params.status ? `&status=${params.status}` : ""}`}
-                className="text-[12px] font-semibold rounded-md px-2.5 py-[5px] transition-colors"
+                className="text-[12px] font-semibold rounded-md px-2.5 py-[5px] transition-colors whitespace-nowrap flex-shrink-0"
                 style={{
                   background: active ? "var(--admin-primary-light)" : "transparent",
                   color: active
@@ -127,22 +123,37 @@ export default async function ReservationsPage({
 
       {/* Table */}
       {reservations.length === 0 ? (
-        <Card style={{ padding: "60px 24px", textAlign: "center" }}>
-          <p
-            className="text-[14px]"
-            style={{ color: "var(--admin-text-muted)" }}
-          >
-            Aucune réservation.
-          </p>
+        <Card>
+          {filters.status || filters.roomId ? (
+            <EmptyState
+              title="Aucune réservation ne correspond à ce filtre"
+              action={
+                <GhostButton href="/admin/reservations">Voir toutes les réservations</GhostButton>
+              }
+            >
+              Essayez un autre statut ou une autre chambre.
+            </EmptyState>
+          ) : (
+            <EmptyState
+              title="Aucune réservation pour l’instant"
+              example="un client vous appelle pour 2 nuits la semaine prochaine : saisissez-le ici pour bloquer les dates sur votre site."
+              action={
+                <PrimaryButton href="/admin/reservations/new">Saisir une réservation</PrimaryButton>
+              }
+            >
+              Les réservations faites sur votre site arrivent ici automatiquement. Vous pouvez aussi
+              saisir celles prises par téléphone ou sur une autre plateforme.
+            </EmptyState>
+          )}
         </Card>
       ) : (
         <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
+          {/* One DOM for both layouts: a table from xl up, stacked cards below. */}
+          <div className="xl:overflow-x-auto">
+            <table className="w-full border-collapse block xl:table">
+              <thead className="hidden xl:table-header-group">
                 <tr style={{ borderBottom: "1px solid var(--admin-border)" }}>
                   {[
-                    "Référence",
                     "Client",
                     "Chambre",
                     "Arrivée",
@@ -150,11 +161,10 @@ export default async function ReservationsPage({
                     "Montant",
                     "Canal",
                     "Statut",
-                    "",
                   ].map((h) => (
                     <th
                       key={h}
-                      className="text-left text-[11.5px] font-bold uppercase tracking-[0.06em] whitespace-nowrap"
+                      className="text-left text-[12px] font-bold uppercase tracking-[0.06em] whitespace-nowrap"
                       style={{
                         padding: "12px 16px",
                         color: "var(--admin-text-muted)",
@@ -165,36 +175,23 @@ export default async function ReservationsPage({
                   ))}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="block xl:table-row-group">
                 {reservations.map((r, i) => (
                   <tr
                     key={r.id}
-                    className="hover:bg-[var(--admin-surface-2)]/60 transition-colors"
-                    style={{
-                      borderBottom: "1px solid var(--admin-border-light)",
-                      background:
-                        i % 2 === 0 ? "transparent" : "var(--admin-surface-2)",
-                    }}
+                    className={`relative grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1.5 px-4 py-3.5 xl:table-row xl:p-0 hover:bg-[var(--admin-surface-2)]/60 transition-colors ${
+                      i % 2 === 0 ? "" : "xl:bg-[var(--admin-surface-2)]"
+                    }`}
+                    style={{ borderBottom: "1px solid var(--admin-border-light)" }}
                   >
-                    <td
-                      className="text-[12.5px] font-bold whitespace-nowrap"
-                      style={{
-                        padding: "13px 16px",
-                        color: "var(--admin-text-muted)",
-                        fontFamily:
-                          "var(--font-mono), ui-monospace, Menlo, monospace",
-                      }}
-                    >
-                      {r.id.slice(0, 8)}
-                    </td>
-                    <td style={{ padding: "13px 16px" }}>
+                    <td className={`${CELL} block min-w-0`}>
                       <Link
                         href={`/admin/reservations/${r.id}`}
-                        className="flex items-center gap-2.5 hover:opacity-80"
+                        className="flex items-center gap-2.5 hover:opacity-80 after:absolute after:inset-0"
                       >
                         <GuestAvatar name={r.guestName} size={30} />
                         <span
-                          className="text-[13.5px] font-semibold whitespace-nowrap"
+                          className="text-[14px] xl:text-[13.5px] font-semibold min-w-0 break-words xl:max-w-[200px]"
                           style={{ color: "var(--admin-text)" }}
                         >
                           {r.guestName}
@@ -202,44 +199,41 @@ export default async function ReservationsPage({
                       </Link>
                     </td>
                     <td
-                      className="text-[13px] whitespace-nowrap"
-                      style={{ padding: "13px 16px", color: "var(--admin-text)" }}
+                      className={`${CELL} block col-span-2 text-[13px] xl:whitespace-nowrap`}
+                      style={{ color: "var(--admin-text)" }}
                     >
                       {r.room?.name ?? "—"}
+                      <span
+                        className="xl:hidden tabular-nums"
+                        style={{ color: "var(--admin-text-muted)" }}
+                      >
+                        {" · "}
+                        {fmtDate(new Date(r.checkIn))} → {fmtDate(new Date(r.checkOut))}
+                      </span>
                     </td>
                     <td
-                      className="text-[13px] whitespace-nowrap tabular-nums"
-                      style={{ padding: "13px 16px", color: "var(--admin-text)" }}
+                      className={`${CELL} hidden text-[13px] whitespace-nowrap tabular-nums`}
+                      style={{ color: "var(--admin-text)" }}
                     >
                       {fmtDate(new Date(r.checkIn))}
                     </td>
                     <td
-                      className="text-[13px] whitespace-nowrap tabular-nums"
-                      style={{ padding: "13px 16px", color: "var(--admin-text)" }}
+                      className={`${CELL} hidden text-[13px] whitespace-nowrap tabular-nums`}
+                      style={{ color: "var(--admin-text)" }}
                     >
                       {fmtDate(new Date(r.checkOut))}
                     </td>
                     <td
-                      className="text-[13.5px] font-bold whitespace-nowrap tabular-nums"
-                      style={{ padding: "13px 16px", color: "var(--admin-text)" }}
+                      className={`${CELL} block text-[13.5px] font-bold whitespace-nowrap tabular-nums`}
+                      style={{ color: "var(--admin-text)" }}
                     >
-                      {fmtCurrency(Number(r.totalPrice))}
+                      {formatEuros(r.totalPrice)}
                     </td>
-                    <td style={{ padding: "13px 16px" }}>
+                    <td className={`${CELL} block justify-self-end whitespace-nowrap`}>
                       <ChannelTag channel={r.source ?? "manual"} />
                     </td>
-                    <td style={{ padding: "13px 16px" }}>
+                    <td className={`${CELL} block col-start-2 row-start-1 justify-self-end`}>
                       <StatusBadge status={r.status} />
-                    </td>
-                    <td style={{ padding: "13px 16px" }}>
-                      <Link
-                        href={`/admin/reservations/${r.id}`}
-                        aria-label="Voir le détail"
-                        className="inline-flex items-center hover:opacity-70"
-                        style={{ color: "var(--admin-text-muted)" }}
-                      >
-                        <Icon.Eye size={15} />
-                      </Link>
                     </td>
                   </tr>
                 ))}

@@ -251,6 +251,16 @@ export default async function globalSetup() {
     source: "manual",
   });
 
+  // ── Tenant vide : états vides de l'admin. L'admin de test y a accès, il ne contient rien. ──
+  let [emptyTenant] = await db.select().from(tenants).where(eq(tenants.slug, "empty-tenant"));
+  if (!emptyTenant) {
+    [emptyTenant] = await db
+      .insert(tenants)
+      .values({ name: "Hôtel Vide", slug: "empty-tenant" })
+      .returning();
+  }
+  await db.insert(userTenants).values({ userId, tenantId: emptyTenant.id }).onConflictDoNothing();
+
   // ── Écrire le contexte de test (tenantId, roomId, rival, iCal) ──────────────
 
   const authDir = path.join(process.cwd(), "e2e", ".auth");
@@ -266,6 +276,7 @@ export default async function globalSetup() {
       icalBlockEnd: fd("2026-06-23"),
       rivalTenantId: rivalTenant.id,
       rivalRoomId: rivalRoom.id,
+      emptyTenantSlug: emptyTenant.slug,
     }),
   );
 

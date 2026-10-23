@@ -35,12 +35,6 @@ export function nextMonth(year: number, month: number) {
   return month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 };
 }
 
-/** Retourne true si `date` est dans l'intervalle [checkIn, checkOut[ */
-export function isDateInBooking(date: Date, checkIn: Date, checkOut: Date) {
-  const d = date.getTime();
-  return d >= checkIn.getTime() && d < checkOut.getTime();
-}
-
 export function formatMonthLabel(year: number, month: number) {
   return new Date(Date.UTC(year, month, 1)).toLocaleDateString("fr-FR", {
     month: "long",
@@ -48,14 +42,6 @@ export function formatMonthLabel(year: number, month: number) {
     timeZone: "UTC",
   });
 }
-
-export const STATUS_COLORS: Record<string, string> = {
-  pending: "bg-amber-300 text-amber-950",
-  confirmed: "bg-emerald-400 text-emerald-950",
-  cancelled: "bg-stone-200 text-stone-500 line-through",
-  completed: "bg-sky-300 text-sky-950",
-  blocked: "bg-red-200 text-red-700",
-};
 
 export const STATUS_LABELS: Record<string, string> = {
   pending: "En attente",

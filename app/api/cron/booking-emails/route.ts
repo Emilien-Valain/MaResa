@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { bookings, rooms, tenants } from "@/db/schema";
 import { sendCheckInReminder, sendPostStayThankYou } from "@/lib/email";
 import type { TenantConfig } from "@/lib/tenant-context";
+import { cancelOrphanPending, completeFinishedStays } from "@/lib/queries/bookings";
 
 /**
  * GET /api/cron/booking-emails
@@ -11,6 +12,8 @@ import type { TenantConfig } from "@/lib/tenant-context";
  * Envoie les emails automatiques :
  * - Rappel J-2 avant check-in (bookings confirmed, checkIn dans 2 jours, reminderSentAt IS NULL)
  * - Remerciement post-séjour (bookings confirmed/completed, checkOut = hier, thankYouSentAt IS NULL)
+ * Et clôt les séjours terminés (confirmed → completed une fois le départ passé),
+ * et libère les pending publics qui n'ont jamais atteint Stripe.
  *
  * Protégé par CRON_SECRET. Usage Coolify : tous les jours à 10h
  *   curl -s -H "Authorization: Bearer $CRON_SECRET" https://domaine/api/cron/booking-emails
@@ -29,7 +32,21 @@ export async function GET(request: NextRequest) {
   }
 
   const now = new Date();
-  const results = { reminders: 0, thankYous: 0, errors: 0 };
+  const results = { reminders: 0, thankYous: 0, completed: 0, orphansCancelled: 0, errors: 0 };
+
+  try {
+    results.completed = await completeFinishedStays();
+  } catch (err) {
+    console.error("[booking-emails] Erreur clôture des séjours:", err);
+    results.errors++;
+  }
+
+  try {
+    results.orphansCancelled = await cancelOrphanPending();
+  } catch (err) {
+    console.error("[booking-emails] Erreur libération des pending orphelins:", err);
+    results.errors++;
+  }
 
   // ── Rappels J-2 ─────────────────────────────────────────────────────────
   try {

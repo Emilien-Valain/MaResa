@@ -4,13 +4,15 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/session";
 import { db } from "@/lib/db";
-import { icalSources, rooms } from "@/db/schema";
-import { icalSourceSchema, parseFormData } from "@/lib/validation";
+import { icalBlocks, icalSources, rooms } from "@/db/schema";
+import { icalSourceSchema, safeParseFormData, type FormResult } from "@/lib/validation";
 
-export async function addIcalSource(formData: FormData) {
+export async function addIcalSource(formData: FormData): Promise<FormResult> {
   const { tenantId } = await requireSession();
 
-  const { roomId, name, url } = parseFormData(icalSourceSchema, formData);
+  const parsed = safeParseFormData(icalSourceSchema, formData);
+  if ("error" in parsed) return parsed;
+  const { roomId, name, url } = parsed.data;
 
   // Vérifier que la chambre appartient au tenant
   const [room] = await db
@@ -42,11 +44,18 @@ export async function deleteIcalSource(formData: FormData) {
     throw new Error("ID de source manquant");
   }
 
-  await db
-    .delete(icalSources)
-    .where(and(eq(icalSources.id, sourceId), eq(icalSources.tenantId, tenantId)));
+  // Les blocs importés référencent la source (FK sans cascade) : on les retire avec elle.
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(icalBlocks)
+      .where(and(eq(icalBlocks.sourceId, sourceId), eq(icalBlocks.tenantId, tenantId)));
+    await tx
+      .delete(icalSources)
+      .where(and(eq(icalSources.id, sourceId), eq(icalSources.tenantId, tenantId)));
+  });
 
   revalidatePath("/admin/parametres");
+  revalidatePath("/admin/calendrier");
 }
 
 export async function toggleIcalSource(formData: FormData) {

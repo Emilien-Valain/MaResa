@@ -247,6 +247,33 @@ export async function sendAdminNotification(data: AdminNotificationData) {
   });
 }
 
+// ─── 2b. Alerte admin : paiement reçu sur une réservation annulée ───────────
+
+type PaidAfterCancellationData = BookingEmailData & {
+  adminEmail: string;
+  stripePaymentId: string;
+};
+
+export async function sendPaidAfterCancellationAlert(data: PaidAfterCancellationData) {
+  const { guestName, guestEmail, hotelName, config, adminEmail, stripePaymentId } = data;
+
+  const body = `
+<h2 style="margin: 0 0 16px 0; font-size: 22px; font-weight: 600; color: #b42318;">Paiement re&ccedil;u sur une r&eacute;servation annul&eacute;e</h2>
+<p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6;">
+  ${escapeHtml(guestName)} (${escapeHtml(guestEmail)}) a pay&eacute; une r&eacute;servation qui avait &eacute;t&eacute; annul&eacute;e entre-temps.
+  La r&eacute;servation reste annul&eacute;e : <strong>remboursez le client depuis votre tableau de bord Stripe</strong>
+  (paiement <code>${escapeHtml(stripePaymentId)}</code>), ou recr&eacute;ez la r&eacute;servation si la chambre est encore libre.
+</p>
+${renderBookingSummaryTable(data)}`;
+
+  await sendEmail({
+    to: adminEmail,
+    subject: `Paiement reçu sur une réservation annulée — remboursez via Stripe (${guestName})`,
+    html: renderEmailLayout({ hotelName, config }, body),
+    hotelName: `DirectLoc`,
+  });
+}
+
 // ─── 3. Annulation de réservation (client) ──────────────────────────────────
 
 type CancellationEmailData = {

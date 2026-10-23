@@ -1,4 +1,4 @@
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
@@ -42,15 +42,23 @@ export default async function AdminLayout({
   }));
 
   return (
-    <div data-admin className="flex h-screen overflow-hidden">
+    <div data-admin className="flex flex-col lg:flex-row h-dvh overflow-hidden">
+      <a
+        href="#admin-main"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2.5 focus:rounded-lg focus:text-[13.5px] focus:font-semibold"
+        style={{ background: "var(--admin-primary)", color: "#fff" }}
+      >
+        Aller au contenu
+      </a>
       <Sidebar
         userEmail={session.user.email}
         userName={session.user.name ?? undefined}
         currentTenantName={currentTenant?.name ?? ""}
+        initialCollapsed={(await cookies()).get("admin-sidebar-collapsed")?.value === "1"}
         accessibleTenants={accessibleTenants}
       />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <main className="flex-1 overflow-y-auto">
+        <main id="admin-main" tabIndex={-1} className="flex-1 overflow-y-auto focus:outline-none">
           <div className="px-5 sm:px-8 py-7 max-w-[1280px] mx-auto w-full admin-fade-in">
             {children}
           </div>

@@ -94,7 +94,7 @@ function ResetPasswordForm() {
         className="text-[13.5px] mb-7"
         style={{ color: "var(--admin-text-muted)" }}
       >
-        Choisis un nouveau mot de passe pour ton compte.
+        Choisissez un nouveau mot de passe pour votre compte.
       </p>
 
       <form onSubmit={handleSubmit} noValidate>

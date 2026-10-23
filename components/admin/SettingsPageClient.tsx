@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useFormAction } from "@/components/admin/useFormAction";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/admin/icons";
 import {
@@ -84,22 +85,27 @@ export default function SettingsPageClient({
     <div className="admin-fade-in">
       <header className="mb-6">
         <h1
-          className="text-[22px] font-extrabold"
-          style={{ color: "var(--admin-text)", letterSpacing: "-0.5px" }}
+          className="text-[24px] font-extrabold leading-tight"
+          style={{ color: "var(--admin-text)", letterSpacing: "-0.6px" }}
         >
           Paramètres
         </h1>
         <p
-          className="text-[13.5px] mt-1"
+          className="text-[14px] mt-1"
           style={{ color: "var(--admin-text-muted)" }}
         >
-          Configuration de l&apos;hôtel, intégrations et thème.
+          Votre établissement, son site, ses calendriers et ses paiements.
         </p>
       </header>
 
-      <Tabs<TabId> tabs={TABS} active={tab} onChange={setTab} />
+      <Tabs<TabId> tabs={TABS} active={tab} onChange={setTab} label="Sections des paramètres" />
 
-      <div className="max-w-[760px]">
+      <div
+        className="max-w-[760px]"
+        role="tabpanel"
+        id={`panel-${tab}`}
+        aria-labelledby={`tab-${tab}`}
+      >
         {tab === "general" && (
           <GeneralTab tenant={tenant} config={config} />
         )}
@@ -143,35 +149,23 @@ function GeneralTab({
   tenant: { id: string; name: string; slug: string; domain: string | null };
   config: TenantConfig;
 }) {
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const form = useFormAction(updateGeneral);
 
   return (
     <>
-      {saved && (
+      {form.saved && (
         <StatusBanner variant="success">Informations mises à jour.</StatusBanner>
       )}
-      {error && <StatusBanner variant="error">{error}</StatusBanner>}
+      {form.error && <StatusBanner variant="error">{form.error}</StatusBanner>}
 
       <form
-        action={async (formData) => {
-          setSaved(false);
-          setError(null);
-          try {
-            await updateGeneral(formData);
-            setSaved(true);
-          } catch (e) {
-            setError(
-              e instanceof Error ? e.message : "Erreur lors de la sauvegarde",
-            );
-          }
-        }}
+        onSubmit={form.onSubmit}
       >
         <SettingsSection
           title="Informations de l'hôtel"
           desc="Visibles sur le site public et les emails."
         >
-          <Field label="Nom de l'hôtel">
+          <Field label="Nom de l'établissement" error={form.fieldError("name")}>
             <AdminInput
               name="name"
               defaultValue={tenant.name}
@@ -182,29 +176,35 @@ function GeneralTab({
         </SettingsSection>
 
         <SettingsSection
-          title="Adresses techniques"
-          desc="Gérées par l'équipe DirectLoc. Contacte-nous pour toute modification."
+          title="Adresse de votre site"
+          desc="Gérée par l'équipe DirectLoc. Contactez-nous pour la modifier."
         >
-          <Field
-            label="Slug (sous-domaine)"
-            hint="Utilisé pour les URLs internes et l'URL de prévisualisation."
-          >
-            <AdminInput value={tenant.slug} readOnly disabled />
-          </Field>
-          <Field
-            label="Domaine personnalisé"
-            hint="Le domaine principal pointant vers ce tenant."
-          >
-            <AdminInput value={tenant.domain ?? "—"} readOnly disabled />
-          </Field>
+          {tenant.domain ? (
+            <a
+              href={`https://${tenant.domain}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[14px] font-semibold underline underline-offset-2 break-all"
+              style={{ color: "var(--admin-primary)" }}
+            >
+              {tenant.domain}
+            </a>
+          ) : (
+            <p className="text-[13.5px]" style={{ color: "var(--admin-text)" }}>
+              Pas encore de nom de domaine : l&apos;équipe DirectLoc le branche pour vous.
+            </p>
+          )}
+          <p className="text-[12.5px] mt-2" style={{ color: "var(--admin-text-subtle)" }}>
+            Identifiant à donner au support : <strong>{tenant.slug}</strong>
+          </p>
         </SettingsSection>
 
         <SettingsSection
           title="Contact"
-          desc="Affiché en footer et sur la page de réservation."
+          desc="Affiché en pied de page et sur la page de réservation."
         >
           <div className="grid grid-cols-2 gap-3.5">
-            <Field label="Email">
+            <Field label="Email" error={form.fieldError("email")}>
               <AdminInput
                 name="email"
                 defaultValue={config.email ?? ""}
@@ -213,21 +213,21 @@ function GeneralTab({
                 maxLength={120}
               />
             </Field>
-            <Field label="Téléphone">
+            <Field label="Téléphone" error={form.fieldError("phone")}>
               <AdminInput
                 name="phone"
                 defaultValue={config.phone ?? ""}
                 type="tel"
-                placeholder="+33 4 90 00 00 00"
+                placeholder="02 51 00 00 00"
                 maxLength={40}
               />
             </Field>
           </div>
-          <Field label="Adresse">
+          <Field label="Adresse" error={form.fieldError("address")}>
             <AdminInput
               name="address"
               defaultValue={config.address ?? ""}
-              placeholder="Route des Vignes, 84400 Apt"
+              placeholder="12 rue du Bocage, 85590 Les Épesses"
               maxLength={200}
             />
           </Field>
@@ -236,6 +236,7 @@ function GeneralTab({
         <div className="flex justify-end mt-4">
           <button
             type="submit"
+            disabled={form.pending}
             style={{
               padding: "10px 20px",
               background: "var(--admin-primary)",
@@ -244,10 +245,11 @@ function GeneralTab({
               borderRadius: 8,
               fontSize: 13,
               fontWeight: 600,
-              cursor: "pointer",
+              cursor: form.pending ? "wait" : "pointer",
+              opacity: form.pending ? 0.7 : 1,
             }}
           >
-            Enregistrer
+            {form.pending ? "Enregistrement…" : "Enregistrer"}
           </button>
         </div>
       </form>
@@ -286,30 +288,18 @@ function ThemeTab({ config }: { config: TenantConfig }) {
   );
   const [primary, setPrimary] = useState(config.primaryColor ?? "#1C3A2C");
   const [accent, setAccent] = useState(config.secondaryColor ?? "#D4784A");
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const form = useFormAction(updateTheme);
 
   return (
     <>
-      {saved && <StatusBanner variant="success">Apparence mise à jour.</StatusBanner>}
-      {error && <StatusBanner variant="error">{error}</StatusBanner>}
+      {form.saved && <StatusBanner variant="success">Apparence mise à jour.</StatusBanner>}
+      {form.error && <StatusBanner variant="error">{form.error}</StatusBanner>}
 
       <form
-        action={async (formData) => {
-          setSaved(false);
-          setError(null);
-          try {
-            await updateTheme(formData);
-            setSaved(true);
-          } catch (e) {
-            setError(
-              e instanceof Error ? e.message : "Erreur lors de la sauvegarde",
-            );
-          }
-        }}
+        onSubmit={form.onSubmit}
       >
       <SettingsSection
-        title="Template"
+        title="Modèle de site"
         desc="Le design utilisé pour le site public. Chaque template a sa propre identité visuelle."
       >
         <input type="hidden" name="template" value={template} />
@@ -321,7 +311,7 @@ function ThemeTab({ config }: { config: TenantConfig }) {
                 key={t.id}
                 type="button"
                 onClick={() => setTemplate(t.id)}
-                aria-label={`Template ${t.name}`}
+                aria-label={`Modèle ${t.name}`}
                 aria-pressed={selected}
                 className="text-left relative"
                 style={{
@@ -392,17 +382,17 @@ function ThemeTab({ config }: { config: TenantConfig }) {
 
       <SettingsSection
         title="Couleurs"
-        desc="Personnalise la palette du template choisi. Les changements apparaissent sur la homepage après enregistrement."
+        desc="Personnalisez les couleurs du modèle choisi. Elles apparaissent sur votre site après enregistrement."
       >
         <div className="grid grid-cols-2 gap-3.5">
-          <Field label="Couleur principale">
+          <Field label="Couleur principale" error={form.fieldError("primaryColor")}>
             <ColorRow
               name="primaryColor"
               value={primary}
               onChange={setPrimary}
             />
           </Field>
-          <Field label="Couleur d'accent">
+          <Field label="Couleur d'accent" error={form.fieldError("secondaryColor")}>
             <ColorRow
               name="secondaryColor"
               value={accent}
@@ -415,6 +405,7 @@ function ThemeTab({ config }: { config: TenantConfig }) {
         <div className="flex justify-end mt-4">
           <button
             type="submit"
+            disabled={form.pending}
             style={{
               padding: "10px 20px",
               background: "var(--admin-primary)",
@@ -423,10 +414,11 @@ function ThemeTab({ config }: { config: TenantConfig }) {
               borderRadius: 8,
               fontSize: 13,
               fontWeight: 600,
-              cursor: "pointer",
+              cursor: form.pending ? "wait" : "pointer",
+              opacity: form.pending ? 0.7 : 1,
             }}
           >
-            Enregistrer
+            {form.pending ? "Enregistrement…" : "Enregistrer"}
           </button>
         </div>
       </form>
@@ -455,14 +447,13 @@ function ColorRow({
           border: "1px solid var(--admin-border)",
           overflow: "hidden",
         }}
-        aria-label="Choisir la couleur"
       >
         <input
           type="color"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className="absolute inset-0 opacity-0 cursor-pointer"
-          aria-hidden="true"
+          aria-label="Choisir la couleur"
         />
       </label>
       <AdminInput
@@ -470,6 +461,7 @@ function ColorRow({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         maxLength={7}
+        aria-label="Code hexadécimal"
         pattern="^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
       />
     </div>

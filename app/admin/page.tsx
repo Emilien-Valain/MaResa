@@ -1,5 +1,7 @@
+import { formatEuros } from "@/lib/utils";
 import Link from "next/link";
 import { requireSession } from "@/lib/session";
+import { completeFinishedStays } from "@/lib/queries/bookings";
 import { getDashboardData } from "@/lib/queries/dashboard";
 import {
   Card,
@@ -20,18 +22,10 @@ function formatDate(d: Date) {
   });
 }
 
-function formatCurrency(n: number) {
-  return n.toLocaleString("fr-FR", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
-}
-
 export default async function AdminDashboard() {
   const { tenantId } = await requireSession();
-  const { checkIns, checkOuts, channels, occupancy, revenue } =
+  await completeFinishedStays(tenantId);
+  const { today: movements, checkIns, checkOuts, channels, occupancy, monthRevenue } =
     await getDashboardData(tenantId);
 
   const totalThisMonth = channels.reduce((acc, c) => acc + c.count, 0);
@@ -54,33 +48,42 @@ export default async function AdminDashboard() {
         }
       />
 
+      {/* Aujourd'hui : la question du matin — qui arrive, qui part */}
+      <Card style={{ padding: "20px 24px" }}>
+        <SectionHeader title="Aujourd'hui" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
+          <MovementList
+            label="Arrivées"
+            empty="Personne n'arrive aujourd'hui."
+            items={movements.arrivals}
+          />
+          <MovementList
+            label="Départs"
+            empty="Aucun départ aujourd'hui."
+            items={movements.departures}
+            note="Chambre à préparer"
+            departure
+          />
+        </div>
+      </Card>
+
       {/* KPI row */}
       <div className="flex flex-wrap gap-3.5">
         <KPICard
-          title="Taux d'occupation"
+          title="Occupation ce soir"
           value={`${occupancy.rate}%`}
-          sub={`${occupancy.occupied}/${occupancy.total} chambre${occupancy.total > 1 ? "s" : ""}`}
+          sub={`${occupancy.occupied} chambre${occupancy.occupied > 1 ? "s" : ""} sur ${occupancy.total}`}
           accent
         />
         <KPICard
-          title="CA Aujourd'hui"
-          value={formatCurrency(revenue.day)}
-          sub={`${checkIns.length} arrivée${checkIns.length > 1 ? "s" : ""}`}
+          title="Réservé ce mois"
+          value={formatEuros(monthRevenue)}
+          sub="Réservations confirmées depuis le 1er"
         />
         <KPICard
-          title="CA Semaine"
-          value={formatCurrency(revenue.week)}
-          sub="7 derniers jours"
-        />
-        <KPICard
-          title="CA Mois"
-          value={formatCurrency(revenue.month)}
-          sub="Mois en cours"
-        />
-        <KPICard
-          title="Départs auj."
-          value={String(checkOuts.length)}
-          sub="Chambres à préparer"
+          title="Réservations ce mois"
+          value={String(totalThisMonth)}
+          sub="Tous canaux, hors annulations"
         />
       </div>
 
@@ -136,7 +139,7 @@ export default async function AdminDashboard() {
                       />
                     </div>
                     <div
-                      className="text-[11.5px] mt-1"
+                      className="text-[12px] mt-1"
                       style={{ color: "var(--admin-text-muted)" }}
                     >
                       {ch.count} réservation{ch.count > 1 ? "s" : ""} ce mois
@@ -152,10 +155,10 @@ export default async function AdminDashboard() {
         <Card style={{ padding: "20px 24px" }} className="arrivals-card">
           <SectionHeader
             title="Prochaines arrivées"
-            subtitle={`${checkIns.length} à venir`}
+            subtitle="À partir de demain"
             action={
               <span
-                className="text-[11px] font-semibold uppercase tracking-[0.06em] rounded-md px-2 py-[3px]"
+                className="text-[12px] font-semibold uppercase tracking-[0.06em] rounded-md px-2 py-[3px]"
                 style={{
                   background: "#DCFCE7",
                   color: "#15803D",
@@ -170,7 +173,7 @@ export default async function AdminDashboard() {
               className="text-[13px] text-center py-6"
               style={{ color: "var(--admin-text-muted)" }}
             >
-              Aucune arrivée prévue
+              Aucune arrivée prévue pour l&apos;instant
             </p>
           ) : (
             <div>
@@ -178,7 +181,7 @@ export default async function AdminDashboard() {
                 <Link
                   key={b.id}
                   href={`/admin/reservations/${b.id}`}
-                  className="flex items-center gap-3 py-2.5 transition-colors hover:opacity-80"
+                  className="flex items-center gap-3 py-2.5 -mx-2 px-2 rounded-lg transition-colors hover:bg-[var(--admin-surface-2)]"
                   style={{
                     borderBottom: "1px solid var(--admin-border-light)",
                   }}
@@ -219,13 +222,13 @@ export default async function AdminDashboard() {
         <Card style={{ padding: "20px 24px" }} className="departures-card">
           <SectionHeader
             title="Prochains départs"
-            subtitle={`${checkOuts.length} à venir`}
+            subtitle="À partir de demain"
             action={
               <span
-                className="text-[11px] font-semibold uppercase tracking-[0.06em] rounded-md px-2 py-[3px]"
+                className="text-[12px] font-semibold uppercase tracking-[0.06em] rounded-md px-2 py-[3px]"
                 style={{
                   background: "var(--admin-accent-light)",
-                  color: "var(--admin-accent)",
+                  color: "var(--admin-accent-text)",
                 }}
               >
                 Check-out
@@ -237,7 +240,7 @@ export default async function AdminDashboard() {
               className="text-[13px] text-center py-6"
               style={{ color: "var(--admin-text-muted)" }}
             >
-              Aucun départ prévu
+              Aucun départ prévu pour l&apos;instant
             </p>
           ) : (
             <div>
@@ -245,7 +248,7 @@ export default async function AdminDashboard() {
                 <Link
                   key={b.id}
                   href={`/admin/reservations/${b.id}`}
-                  className="flex items-center gap-3 py-2.5 transition-colors hover:opacity-80"
+                  className="flex items-center gap-3 py-2.5 -mx-2 px-2 rounded-lg transition-colors hover:bg-[var(--admin-surface-2)]"
                   style={{
                     borderBottom: "1px solid var(--admin-border-light)",
                   }}
@@ -254,7 +257,7 @@ export default async function AdminDashboard() {
                     name={b.guestName}
                     size={36}
                     bg="var(--admin-accent-light)"
-                    color="var(--admin-accent)"
+                    color="var(--admin-accent-text)"
                   />
                   <div className="flex-1 min-w-0">
                     <div
@@ -302,6 +305,77 @@ export default async function AdminDashboard() {
         />
       </div>
     </div>
+  );
+}
+
+type Movement = {
+  id: string;
+  guestName: string;
+  room: { name: string } | null;
+};
+
+function MovementList({
+  label,
+  empty,
+  items,
+  note,
+  departure = false,
+}: {
+  label: string;
+  empty: string;
+  items: Movement[];
+  note?: string;
+  departure?: boolean;
+}) {
+  return (
+    <section aria-label={label}>
+      <h2
+        className="text-[12px] font-semibold uppercase tracking-[0.06em] mb-2"
+        style={{ color: "var(--admin-text-muted)" }}
+      >
+        {label} · <span className="tabular-nums">{items.length}</span>
+      </h2>
+      {items.length === 0 ? (
+        <p className="text-[13px] py-2" style={{ color: "var(--admin-text-muted)" }}>
+          {empty}
+        </p>
+      ) : (
+        <ul>
+          {items.map((b) => (
+            <li key={b.id}>
+              <Link
+                href={`/admin/reservations/${b.id}`}
+                className="flex items-center gap-3 py-2 -mx-2 px-2 rounded-lg transition-colors hover:bg-[var(--admin-surface-2)]"
+                style={{ borderBottom: "1px solid var(--admin-border-light)" }}
+              >
+                <GuestAvatar
+                  name={b.guestName}
+                  size={32}
+                  {...(departure
+                    ? { bg: "var(--admin-accent-light)", color: "var(--admin-accent-text)" }
+                    : {})}
+                />
+                <div className="flex-1 min-w-0">
+                  <div
+                    className="text-[13.5px] font-semibold truncate"
+                    style={{ color: "var(--admin-text)" }}
+                  >
+                    {b.guestName}
+                  </div>
+                  <div
+                    className="text-[12px] truncate"
+                    style={{ color: "var(--admin-text-muted)" }}
+                  >
+                    {b.room?.name}
+                    {note && ` · ${note}`}
+                  </div>
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

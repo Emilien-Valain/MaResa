@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useActionState, useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { createBookingPublic } from "@/lib/actions/bookings-public";
+import { createBookingPublic, type PublicBookingState } from "@/lib/actions/bookings-public";
 import RoomPhoto from "@/components/public/RoomPhoto";
 import type { TemplateName } from "@/lib/tenant-context";
+import { parisToday } from "@/lib/date-windows";
 
 type Room = {
   id: string;
@@ -46,14 +47,13 @@ const DAY_NAMES_FR = [
   "samedi",
 ];
 
+// « Aujourd'hui » = date à Paris, comme le serveur (bookingPublicSchema refuse une arrivée passée).
 function getToday(): string {
-  return new Date().toISOString().split("T")[0];
+  return parisToday();
 }
 
 function getTomorrow(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().split("T")[0];
+  return addDay(parisToday());
 }
 
 function addDay(dateStr: string): string {
@@ -88,11 +88,20 @@ export default function BookingForm({
   const tomorrow = getTomorrow();
   const searchParams = useSearchParams();
   const wasCancelled = searchParams.get("cancelled") === "true";
+  const [state, action, submitting] = useActionState<PublicBookingState, FormData>(
+    createBookingPublic,
+    null,
+  );
+  const v = state?.values ?? {};
 
   const [checkIn, setCheckIn] = useState(searchParams.get("checkIn") ?? today);
   const [checkOut, setCheckOut] = useState(searchParams.get("checkOut") ?? tomorrow);
   const [guestCount, setGuestCount] = useState(1);
-  const [availability, setAvailability] = useState<AvailabilityStatus>("idle");
+  const [fetchedAvailability, setAvailability] = useState<AvailabilityStatus>("idle");
+  // Dates incomplètes ou incohérentes : rien à vérifier, statut dérivé plutôt que posé dans l'effet.
+  const datesValid =
+    !!checkIn && !!checkOut && new Date(checkOut + "T00:00:00Z") > new Date(checkIn + "T00:00:00Z");
+  const availability: AvailabilityStatus = datesValid ? fetchedAvailability : "idle";
   const [nights, setNights] = useState(0);
   const [totalPrice, setTotalPrice] = useState(0);
   const [nightPrices, setNightPrices] = useState<NightPrice[]>([]);
@@ -110,17 +119,10 @@ export default function BookingForm({
   }, [room.id, tenantId]);
 
   useEffect(() => {
-    if (!checkIn || !checkOut) {
-      setAvailability("idle");
-      return;
-    }
+    if (!datesValid) return;
 
     const checkInDate = new Date(checkIn + "T00:00:00Z");
     const checkOutDate = new Date(checkOut + "T00:00:00Z");
-    if (checkOutDate <= checkInDate) {
-      setAvailability("idle");
-      return;
-    }
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
@@ -177,7 +179,8 @@ export default function BookingForm({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [checkIn, checkOut, room.id, room.pricePerNight, tenantId]);
+    // `state` : après un refus serveur, la dispo affichée est peut-être périmée.
+  }, [checkIn, checkOut, datesValid, room.id, room.pricePerNight, tenantId, state]);
 
   const handleCheckInChange = (val: string) => {
     setCheckIn(val);
@@ -211,6 +214,12 @@ export default function BookingForm({
   const cancelledWarning = wasCancelled ? (
     <div className="bg-amber-50 border border-amber-200 rounded-sm p-4 text-sm text-amber-800">
       Le paiement a été annulé. Vous pouvez réessayer ci-dessous.
+    </div>
+  ) : null;
+
+  const serverError = state?.error ? (
+    <div role="alert" data-testid="booking-error" className="bg-red-50 border border-red-200 rounded-sm p-4 text-sm text-red-800">
+      {state.error}
     </div>
   ) : null;
 
@@ -370,6 +379,7 @@ export default function BookingForm({
           type="text"
           name="guestName"
           required
+          defaultValue={v.guestName}
           className={inputClass}
           style={inputBorderStyle}
         />
@@ -383,6 +393,7 @@ export default function BookingForm({
           type="email"
           name="guestEmail"
           required
+          defaultValue={v.guestEmail}
           className={inputClass}
           style={inputBorderStyle}
         />
@@ -399,6 +410,7 @@ export default function BookingForm({
         id="guestPhone"
         type="tel"
         name="guestPhone"
+        defaultValue={v.guestPhone}
         className={inputClass}
         style={inputBorderStyle}
       />
@@ -477,7 +489,7 @@ export default function BookingForm({
   const submitBtn = (
     <button
       type="submit"
-      disabled={availability !== "available" || violations.length > 0}
+      disabled={submitting || availability !== "available" || violations.length > 0}
       data-testid="booking-submit"
       className={
         isBoutique
@@ -532,7 +544,8 @@ export default function BookingForm({
     );
 
     return (
-      <form action={createBookingPublic}>
+      // Remonte le formulaire à chaque réponse : les defaultValue reprennent la saisie.
+      <form action={action} key={JSON.stringify(v)}>
         <input type="hidden" name="roomId" value={room.id} />
         <div className="grid grid-cols-1 md:grid-cols-[1fr_320px] gap-7 items-start">
           {/* Form column */}
@@ -541,6 +554,7 @@ export default function BookingForm({
             style={{ borderColor: "var(--classic-border)" }}
           >
             {cancelledWarning}
+            {serverError}
             {dateRow}
             {rulesInfo}
             {availabilityIndicator}
@@ -576,9 +590,10 @@ export default function BookingForm({
   // ── Layout par défaut (Boutique) : flux vertical ─────────────────────────
 
   return (
-    <form action={createBookingPublic} className="space-y-6">
+    <form action={action} key={JSON.stringify(v)} className="space-y-6">
       <input type="hidden" name="roomId" value={room.id} />
       {cancelledWarning}
+      {serverError}
       {dateRow}
       {rulesInfo}
       {availabilityIndicator}

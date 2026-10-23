@@ -152,14 +152,16 @@
   --admin-primary-light: #EAF2ED;
   --admin-accent: #D4784A;
   --admin-accent-light: #FDF0E8;
+  --admin-danger: #B91C1C; /* suppression, erreurs, statut annulé (6.5:1 sur blanc) */
+  --admin-accent-text: #A9532A; /* terracotta lisible sur blush (4.7:1) */
 
   --admin-bg: #F8F6F3;
   --admin-surface: #FFFFFF;
   --admin-surface-2: #F3EFE9;
 
   --admin-text: #1C1917;
-  --admin-text-muted: #78716C;
-  --admin-text-subtle: #A8A29E;
+  --admin-text-muted: #6B645F;
+  --admin-text-subtle: #736C66; /* ≥ 4.5:1 sur surface, linen et surface-2 */
 
   --admin-border: #E7E2DA;
   --admin-border-light: #F0EDE7;
@@ -198,6 +200,42 @@
 [data-admin] .admin-field:focus {
   border-color: var(--admin-primary);
 }
+/* Placeholder par défaut du navigateur ≈ 3.3:1 : on le ramène au gris pebble (≥ 4.5:1). */
+[data-admin] ::placeholder {
+  color: var(--admin-text-subtle);
+  opacity: 1;
+}
+/* Anneau de focus clavier unique, forêt sur papier, lin clair sur la sidebar forêt. */
+[data-admin] :focus-visible {
+  outline: 2px solid var(--admin-primary);
+  outline-offset: 2px;
+}
+[data-admin] [data-admin-sidebar] :focus-visible {
+  outline-color: #F3EFE9;
+}
+/* Calendrier : une nuit libre se teinte au survol, signe qu'on peut y réserver. */
+[data-admin] .admin-cal-free { display: block; cursor: pointer; transition: background-color 0.12s; }
+/* Rangée qui défile horizontalement sur mobile : un fondu à droite dit « il y a la suite ». */
+@media (max-width: 767px) {
+  [data-admin] .admin-scroll-cue {
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    padding-right: 28px;
+    scrollbar-width: none;
+  }
+  /* Cibles au pouce : 44 px de haut pour chaque filtre/onglet de la rangée. */
+  [data-admin] .admin-scroll-cue > * {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+[data-admin] .admin-cal-free:hover,
+[data-admin] .admin-cal-free:focus-visible { background-color: var(--admin-primary-light) !important; }
+[data-admin] .admin-cal-free:focus-visible { outline: 2px solid var(--admin-primary); outline-offset: -2px; }
+[data-admin] ::selection {
+  background: var(--admin-primary-light);
+  color: var(--admin-primary);
+}
 [data-admin] .admin-field--textarea {
   padding: 10px 12px;
   resize: vertical;
@@ -206,6 +244,54 @@
 [data-admin] .admin-field--select {
   cursor: pointer;
 }
+
+/* Confirmation dialog (ConfirmButton) — paper card floating on a dimmed linen. */
+[data-admin] .admin-dialog {
+  width: min(440px, calc(100vw - 32px));
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--admin-border);
+  border-radius: 16px;
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+}
+[data-admin] .admin-dialog::backdrop {
+  background: rgba(28, 25, 23, 0.42);
+}
+[data-admin] .admin-dialog[open] {
+  animation: admin-fade-in 0.18s ease-out;
+}
+
+[data-admin] .admin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+[data-admin] .admin-btn:disabled { opacity: 0.6; cursor: wait; }
+[data-admin] .admin-btn:focus-visible { outline: 2px solid var(--admin-primary); outline-offset: 2px; }
+[data-admin] .admin-btn--ghost {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  border: 1px solid var(--admin-border);
+}
+[data-admin] .admin-btn--ghost:hover { border-color: var(--admin-text-subtle); }
+[data-admin] .admin-btn--danger {
+  background: var(--admin-danger);
+  color: #fff;
+  border: 1px solid var(--admin-danger);
+  box-shadow: 0 2px 8px rgba(185, 28, 28, 0.2);
+}
+[data-admin] .admin-btn--danger:hover { background: #991B1B; }
+[data-admin] .admin-btn--danger:focus-visible { outline-color: var(--admin-danger); }
 
 /* ── Animations d'entrée stagées ──────────────────────────────────── */
 
@@ -260,7 +346,9 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
   .animate-fade-in,
-  .animate-slide-down {
+  .animate-slide-down,
+  .admin-fade-in,
+  [data-admin] .admin-dialog[open] {
     animation: none !important;
   }
   .animate-spin {

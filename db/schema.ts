@@ -9,6 +9,7 @@ import {
   jsonb,
   decimal,
   index,
+  uniqueIndex,
   unique,
 } from "drizzle-orm/pg-core";
 
@@ -152,7 +153,8 @@ export const rooms = pgTable(
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at").defaultNow(),
   },
-  (table) => [index("rooms_slug_tenant_idx").on(table.tenantId, table.slug)],
+  // Unique par tenant : /chambres/[slug] doit désigner une seule chambre
+  (table) => [uniqueIndex("rooms_slug_tenant_idx").on(table.tenantId, table.slug)],
 );
 
 // ─── BOOKINGS ────────────────────────────────────────────────────────────────
@@ -184,6 +186,8 @@ export const bookings = pgTable(
     guestCount: integer("guest_count").notNull().default(1),
     notes: text("notes"),
     source: text("source").notNull().default("direct"),
+    // Règlement hors ligne (saisie manuelle) marqué par l'hôte ; le paiement en ligne vit dans `payments`.
+    paidAt: timestamp("paid_at"),
     reminderSentAt: timestamp("reminder_sent_at"),
     thankYouSentAt: timestamp("thank_you_sent_at"),
     createdAt: timestamp("created_at").defaultNow(),

@@ -29,12 +29,16 @@ export type BlockSpan = {
 
 type Room = { id: string; name: string };
 
-const STATUS_COLOR_MAP: Record<Status, { border: string; bg: string }> = {
-  confirmed: { border: "#16A34A", bg: "#DCFCE7" },
-  pending: { border: "#D97706", bg: "#FEF3C7" },
-  completed: { border: "#94A3B8", bg: "#F1F5F9" },
-  cancelled: { border: "#DC2626", bg: "#FEE2E2" },
+// Même palette que StatusBadge (DESIGN.md « status-* ») ; border = barre/point, text ≥ 4.5:1 sur bg.
+const STATUS_COLOR_MAP: Record<Status, { border: string; bg: string; text: string }> = {
+  confirmed: { border: "#16A34A", bg: "#DCFCE7", text: "#15803D" },
+  pending: { border: "#D97706", bg: "#FEF9C3", text: "#A16207" },
+  completed: { border: "#94A3B8", bg: "#F1F5F9", text: "#475569" },
+  cancelled: { border: "#DC2626", bg: "#FEE2E2", text: "#B91C1C" },
 };
+
+const shortDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "UTC" });
 
 const STATUS_LABEL: Record<Status, string> = {
   confirmed: "Confirmée",
@@ -51,6 +55,8 @@ export default function CalendarTimeline({
   weekdayLabels,
   weekendDays,
   todayDay,
+  dateKeys,
+  todayKey,
 }: {
   rooms: Room[];
   bookings: BookingSpan[];
@@ -59,6 +65,9 @@ export default function CalendarTimeline({
   weekdayLabels: string[];
   weekendDays: boolean[];
   todayDay: number | null;
+  /** AAAA-MM-JJ de chaque jour du mois (index = jour - 1). */
+  dateKeys: string[];
+  todayKey: string;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
@@ -89,7 +98,11 @@ export default function CalendarTimeline({
 
   return (
     <>
+      {/* Défilement horizontal : focusable pour le défiler au clavier. */}
       <div
+        role="region"
+        aria-label="Planning des séjours"
+        tabIndex={0}
         style={{
           background: "var(--admin-surface)",
           border: "1px solid var(--admin-border)",
@@ -114,7 +127,7 @@ export default function CalendarTimeline({
                 width: ROOM_LABEL_W,
                 flexShrink: 0,
                 padding: "10px 16px",
-                fontSize: 11.5,
+                fontSize: 12,
                 fontWeight: 700,
                 color: "var(--admin-text-muted)",
                 textTransform: "uppercase",
@@ -134,7 +147,7 @@ export default function CalendarTimeline({
                 <div key={d} style={dayCellStyle(d, true)}>
                   <div
                     style={{
-                      fontSize: 10,
+                      fontSize: 12,
                       fontWeight: 600,
                       color: isToday
                         ? "var(--admin-primary)"
@@ -172,6 +185,9 @@ export default function CalendarTimeline({
           {rooms.map((room, ri) => {
             const roomBookings = bookings.filter((b) => b.roomId === room.id);
             const roomBlocks = blocks.filter((b) => b.roomId === room.id);
+            const busy = new Set<number>();
+            for (const sp of [...roomBookings, ...roomBlocks])
+              for (let d = sp.startDay; d < sp.endDay; d++) busy.add(d);
             return (
               <div
                 key={room.id}
@@ -233,9 +249,38 @@ export default function CalendarTimeline({
                     position: "relative",
                   }}
                 >
-                  {days.map((d) => (
-                    <div key={d} style={dayCellStyle(d, false)} />
-                  ))}
+                  {/* Nuit libre à venir : un clic ouvre une réservation pré-remplie. Au clavier,
+                      un seul arrêt par plage libre (son premier jour), pas un par nuit. */}
+                  {days.map((d) => {
+                    const isFree = (n: number) => !busy.has(n) && dateKeys[n - 1] >= todayKey;
+                    if (!isFree(d)) return <div key={d} style={dayCellStyle(d, false)} />;
+                    const runStart = d === 1 || !isFree(d - 1);
+                    let end = d;
+                    while (runStart && end <= days.length && isFree(end)) end++;
+                    const day = (n: number) =>
+                      // n peut valoir « dernier jour + 1 » (fin de plage) : on part du 1er du mois.
+                      new Date(Date.parse(`${dateKeys[0]}T00:00:00Z`) + (n - 1) * 86_400_000).toLocaleDateString("fr-FR", {
+                        day: "numeric",
+                        month: "long",
+                        timeZone: "UTC",
+                      });
+                    return (
+                      <Link
+                        key={d}
+                        href={`/admin/reservations/new?roomId=${room.id}&checkIn=${dateKeys[d - 1]}`}
+                        tabIndex={runStart ? 0 : -1}
+                        aria-hidden={runStart ? undefined : true}
+                        aria-label={
+                          runStart
+                            ? `Réserver ${room.name} à partir du ${day(d)} (libre jusqu'au ${day(end)})`
+                            : undefined
+                        }
+                        title={`Réserver ${room.name} à partir du ${d}`}
+                        className="admin-cal-free"
+                        style={dayCellStyle(d, false)}
+                      />
+                    );
+                  })}
 
                   {/* Blocked ranges */}
                   {roomBlocks.map((blk, bi) => {
@@ -271,10 +316,14 @@ export default function CalendarTimeline({
                     const width = (bk.endDay - bk.startDay) * dayPct;
                     const colors = STATUS_COLOR_MAP[bk.status];
                     const isSelected = selected === bk.id;
+                    const summary = `${bk.guestName} · ${shortDate(bk.checkIn)} → ${shortDate(bk.checkOut)} · ${STATUS_LABEL[bk.status]}`;
                     return (
                       <button
                         key={bk.id}
                         type="button"
+                        title={summary}
+                        aria-label={summary}
+                        aria-pressed={isSelected}
                         onClick={() =>
                           setSelected(isSelected ? null : bk.id)
                         }
@@ -312,9 +361,9 @@ export default function CalendarTimeline({
                         />
                         <span
                           style={{
-                            fontSize: 11.5,
+                            fontSize: 12,
                             fontWeight: 600,
-                            color: colors.border,
+                            color: colors.text,
                             whiteSpace: "nowrap",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
@@ -390,7 +439,7 @@ export default function CalendarTimeline({
                   padding: "3px 12px",
                   borderRadius: 12,
                   background: colors.bg,
-                  color: colors.border,
+                  color: colors.text,
                 }}
               >
                 {STATUS_LABEL[bk.status]}
@@ -413,6 +462,7 @@ export default function CalendarTimeline({
                 </Link>
                 <button
                   type="button"
+                  aria-label="Fermer"
                   onClick={() => setSelected(null)}
                   style={{
                     background: "var(--admin-surface-2)",

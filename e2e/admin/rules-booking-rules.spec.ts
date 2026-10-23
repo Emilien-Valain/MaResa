@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 import { fd } from "../helpers/dates";
+import { confirmDialog } from "../helpers/confirm";
 
 // Charger le contexte de test seedé par globalSetup
 const ctx = JSON.parse(
@@ -16,14 +17,14 @@ test.describe("Admin — Règles de séjour", () => {
 
   test("onglet Règles de séjour affiche le formulaire", async ({ page }) => {
     await page.goto("/admin/regles");
-    await page.getByRole("button", { name: "Règles de réservation" }).click();
+    await page.getByRole("tab", { name: "Règles de réservation" }).click();
     await expect(page.getByRole("heading", { name: "Règles de séjour" })).toBeVisible();
     await expect(page.getByText("Durée min/max")).toBeVisible();
   });
 
   test("créer une règle globale min 2 nuits puis la supprimer", async ({ page }) => {
     await page.goto("/admin/regles");
-    await page.getByRole("button", { name: "Règles de réservation" }).click();
+    await page.getByRole("tab", { name: "Règles de réservation" }).click();
 
     await page.getByRole("button", { name: "Ajouter" }).click();
 
@@ -35,14 +36,14 @@ test.describe("Admin — Règles de séjour", () => {
     await expect(page.getByText("Global (toutes les chambres)")).toBeVisible();
 
     // Cleanup
-    page.on("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Supprimer" }).first().click();
+    await confirmDialog(page);
     await expect(page.getByText("Aucune règle configurée")).toBeVisible();
   });
 
   test("créer une règle avec jours d'arrivée (samedi)", async ({ page }) => {
     await page.goto("/admin/regles");
-    await page.getByRole("button", { name: "Règles de réservation" }).click();
+    await page.getByRole("tab", { name: "Règles de réservation" }).click();
 
     await page.getByRole("button", { name: "Ajouter" }).click();
 
@@ -54,13 +55,13 @@ test.describe("Admin — Règles de séjour", () => {
     await expect(page.getByText(/samedi/)).toBeVisible();
 
     // Cleanup
-    page.on("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Supprimer" }).first().click();
+    await confirmDialog(page);
   });
 
   test("créer une règle saisonnière", async ({ page }) => {
     await page.goto("/admin/regles");
-    await page.getByRole("button", { name: "Règles de réservation" }).click();
+    await page.getByRole("tab", { name: "Règles de réservation" }).click();
 
     await page.getByRole("button", { name: "Ajouter" }).click();
 
@@ -74,8 +75,8 @@ test.describe("Admin — Règles de séjour", () => {
     await expect(page.getByText("Min 7 nuit(s)")).toBeVisible();
 
     // Cleanup
-    page.on("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Supprimer" }).first().click();
+    await confirmDialog(page);
   });
 
   // ─── Validation API ────────────────────────────────────────────────────────
@@ -83,7 +84,7 @@ test.describe("Admin — Règles de séjour", () => {
   test("l'API availability retourne les violations de règles", async ({ page }) => {
     // D'abord créer une règle min 3 nuits
     await page.goto("/admin/regles");
-    await page.getByRole("button", { name: "Règles de réservation" }).click();
+    await page.getByRole("tab", { name: "Règles de réservation" }).click();
     await page.getByRole("button", { name: "Ajouter" }).click();
     await page.locator("input[name='minStay']").fill("3");
     await page.getByRole("button", { name: "Créer la règle" }).click();
@@ -103,16 +104,16 @@ test.describe("Admin — Règles de séjour", () => {
 
     // Cleanup
     await page.goto("/admin/regles");
-    await page.getByRole("button", { name: "Règles de réservation" }).click();
-    page.on("dialog", (dialog) => dialog.accept());
+    await page.getByRole("tab", { name: "Règles de réservation" }).click();
     await page.getByRole("button", { name: "Supprimer" }).first().click();
+    await confirmDialog(page);
   });
 
   // ─── Boundary ──────────────────────────────────────────────────────────────
 
   test("règle max stay accepte les valeurs valides", async ({ page }) => {
     await page.goto("/admin/regles");
-    await page.getByRole("button", { name: "Règles de réservation" }).click();
+    await page.getByRole("tab", { name: "Règles de réservation" }).click();
     await page.getByRole("button", { name: "Ajouter" }).click();
 
     await page.locator("input[name='maxStay']").fill("14");
@@ -121,8 +122,8 @@ test.describe("Admin — Règles de séjour", () => {
     await expect(page.getByText("Max 14 nuit(s)")).toBeVisible();
 
     // Cleanup
-    page.on("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Supprimer" }).first().click();
+    await confirmDialog(page);
   });
 
   // ─── Fiche chambre ────────────────────────────────────────────────────────

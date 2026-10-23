@@ -1,0 +1,392 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-21T18:14:16.266662+00:00",
+  "title": "Design System: DirectLoc",
+  "extensions": {
+    "colorMeta": {
+      "forest-night": {
+        "role": "primary",
+        "displayName": "Forest Night",
+        "canonical": "#1C3A2C",
+        "tonalRamp": [
+          "#08110D",
+          "#0E1D16",
+          "#13281E",
+          "#193427",
+          "#496156",
+          "#82928A",
+          "#BAC3BF",
+          "#E8EBE9"
+        ]
+      },
+      "forest": {
+        "role": "primary",
+        "displayName": "Forest",
+        "canonical": "#2A5C40",
+        "tonalRamp": [
+          "#0C1B13",
+          "#152E20",
+          "#1D402C",
+          "#255239",
+          "#547C66",
+          "#89A595",
+          "#BFCEC5",
+          "#E9EEEB"
+        ]
+      },
+      "forest-mist": {
+        "role": "primary",
+        "displayName": "Forest Mist",
+        "canonical": "#EAF2ED",
+        "tonalRamp": [
+          "#464847",
+          "#757976",
+          "#A3A9A5",
+          "#D2D9D5",
+          "#EEF4F0",
+          "#F3F7F5",
+          "#F8FBF9",
+          "#FCFDFD"
+        ]
+      },
+      "terracotta": {
+        "role": "secondary",
+        "displayName": "Terracotta",
+        "canonical": "#D4784A",
+        "tonalRamp": [
+          "#3F2416",
+          "#6A3C25",
+          "#945433",
+          "#BE6C42",
+          "#DC936E",
+          "#E7B49B",
+          "#F2D6C8",
+          "#FAF1EC"
+        ]
+      },
+      "terracotta-blush": {
+        "role": "secondary",
+        "displayName": "Terracotta Blush",
+        "canonical": "#FDF0E8",
+        "tonalRamp": [
+          "#4B4845",
+          "#7E7874",
+          "#B1A8A2",
+          "#E3D8D0",
+          "#FDF3EC",
+          "#FDF6F2",
+          "#FEFAF8",
+          "#FEFDFC"
+        ]
+      },
+      "linen": {
+        "role": "neutral",
+        "displayName": "Linen",
+        "canonical": "#F8F6F3",
+        "tonalRamp": [
+          "#4A4948",
+          "#7C7B79",
+          "#ADACAA",
+          "#DFDDDA",
+          "#F9F7F5",
+          "#FBFAF8",
+          "#FCFCFB",
+          "#FEFEFD"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "#FFFFFF",
+        "tonalRamp": [
+          "#4C4C4C",
+          "#7F7F7F",
+          "#B2B2B2",
+          "#E5E5E5",
+          "#FFFFFF",
+          "#FFFFFF",
+          "#FFFFFF",
+          "#FFFFFF"
+        ]
+      },
+      "oat": {
+        "role": "neutral",
+        "displayName": "Oat",
+        "canonical": "#F3EFE9",
+        "tonalRamp": [
+          "#484745",
+          "#797774",
+          "#AAA7A3",
+          "#DAD7D1",
+          "#F5F2ED",
+          "#F8F6F2",
+          "#FBFAF8",
+          "#FDFDFC"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1C1917",
+        "tonalRamp": [
+          "#080706",
+          "#0E0C0B",
+          "#131110",
+          "#191614",
+          "#494745",
+          "#82807F",
+          "#BABAB9",
+          "#E8E8E7"
+        ]
+      },
+      "stone": {
+        "role": "neutral",
+        "displayName": "Stone",
+        "canonical": "#6B645F",
+        "tonalRamp": [
+          "#242120",
+          "#3C3836",
+          "#544F4B",
+          "#6C6561",
+          "#938D89",
+          "#B4B0AE",
+          "#D6D4D2",
+          "#F1F0F0"
+        ]
+      },
+      "pebble": {
+        "role": "neutral",
+        "displayName": "Pebble",
+        "canonical": "#736C66",
+        "tonalRamp": [
+          "#32302F",
+          "#54514F",
+          "#75716E",
+          "#97918E",
+          "#B9B4B1",
+          "#CFCBC9",
+          "#E4E3E1",
+          "#F6F5F5"
+        ]
+      },
+      "sand-line": {
+        "role": "neutral",
+        "displayName": "Sand Line",
+        "canonical": "#E7E2DA",
+        "tonalRamp": [
+          "#454341",
+          "#73716D",
+          "#A19E98",
+          "#CFCBC4",
+          "#EBE7E1",
+          "#F1EFEA",
+          "#F7F6F3",
+          "#FCFCFB"
+        ]
+      },
+      "sand-line-light": {
+        "role": "neutral",
+        "displayName": "Sand Line Light",
+        "canonical": "#F0EDE7",
+        "tonalRamp": [
+          "#484745",
+          "#787673",
+          "#A8A5A1",
+          "#D8D5CF",
+          "#F3F0EB",
+          "#F6F5F1",
+          "#FAF9F7",
+          "#FDFDFC"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "page-title": {
+        "displayName": "Page title",
+        "purpose": "One per admin page, in PageHeader."
+      },
+      "kpi-value": {
+        "displayName": "KPI value",
+        "purpose": "Dashboard figures."
+      },
+      "section-title": {
+        "displayName": "Section title",
+        "purpose": "Settings sections and card headers."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Nav, buttons, field values, tabs."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Subtitles, descriptions, banners."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase form labels and KPI titles."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card-rest",
+        "value": "0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)",
+        "purpose": "All Card surfaces."
+      },
+      {
+        "name": "raised",
+        "value": "0 4px 12px rgba(0,0,0,0.09), 0 2px 4px rgba(0,0,0,0.05)",
+        "purpose": "Popovers and hover lifts."
+      },
+      {
+        "name": "pressable",
+        "value": "0 2px 8px rgba(0,0,0,0.12)",
+        "purpose": "Primary button."
+      },
+      {
+        "name": "floating",
+        "value": "0 20px 60px rgba(0,0,0,0.08)",
+        "purpose": "Auth card only."
+      }
+    ],
+    "motion": [
+      {
+        "name": "admin-fade-in",
+        "value": "0.22s ease; translateY(6px)→0",
+        "purpose": "Admin page entrance."
+      },
+      {
+        "name": "state",
+        "value": "0.15s",
+        "purpose": "Colour/border transitions on controls."
+      },
+      {
+        "name": "fade-up",
+        "value": "0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Public template staged reveals, stagger 50ms."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "calendar-no-scroll",
+        "value": "~1010px content width"
+      },
+      {
+        "name": "content-max",
+        "value": "1280px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Single main action per page header; forest fill, pressable shadow.",
+      "html": "<button class=\"ds-btn-primary\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M12 5v14M5 12h14\"/></svg><span>Nouvelle réservation</span></button>",
+      "css": ".ds-btn-primary{font-family: var(--font-jakarta), 'Plus Jakarta Sans', system-ui, sans-serif;display:inline-flex;align-items:center;gap:6px;background:var(--admin-primary,#2A5C40);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:13.5px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.12);cursor:pointer;transition:opacity .15s,transform .15s}.ds-btn-primary:hover{opacity:.92;transform:translateY(-1px)}.ds-btn-primary:focus-visible{outline:2px solid #D4784A;outline-offset:2px}.ds-btn-primary:active{transform:translateY(0)}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary actions and view toggles; inverts to forest when active.",
+      "html": "<div style=\"display:flex;gap:8px\"><button class=\"ds-btn-ghost\">Mois précédent</button><button class=\"ds-btn-ghost ds-btn-ghost--active\">Aujourd'hui</button></div>",
+      "css": ".ds-btn-ghost{font-family: var(--font-jakarta), 'Plus Jakarta Sans', system-ui, sans-serif;background:#fff;color:#6B645F;border:1px solid #E7E2DA;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}.ds-btn-ghost:hover{color:#1C1917;border-color:#736C66}.ds-btn-ghost:focus-visible{outline:2px solid #2A5C40;outline-offset:2px}.ds-btn-ghost--active{background:#2A5C40;color:#fff;border-color:#2A5C40}"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Uppercase label, 1.5px sand stroke, forest border on focus.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Nom du voyageur</span><input class=\"ds-input\" placeholder=\"Marie Dupont\"><span class=\"ds-field-hint\">Tel qu'il apparaîtra sur la confirmation.</span></label>",
+      "css": ".ds-field{font-family: var(--font-jakarta), 'Plus Jakarta Sans', system-ui, sans-serif;display:block;max-width:320px}.ds-field-label{display:block;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6B645F;margin-bottom:6px}.ds-input{width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #E7E2DA;border-radius:8px;font:inherit;font-size:13.5px;color:#1C1917;background:#fff;outline:none;transition:border-color .15s}.ds-input:focus,.ds-input:focus-visible{border-color:#2A5C40}.ds-field-hint{display:block;font-size:11.5px;color:#736C66;margin-top:6px;line-height:1.5}"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "status-badge-confirmed",
+      "description": "Fixed booking-status pills, identical everywhere.",
+      "html": "<div style=\"display:flex;gap:6px;flex-wrap:wrap\"><span class=\"ds-badge ds-badge--confirmed\">Confirmée</span><span class=\"ds-badge ds-badge--pending\">En attente</span><span class=\"ds-badge ds-badge--completed\">Terminée</span><span class=\"ds-badge ds-badge--cancelled\">Annulée</span></div>",
+      "css": ".ds-badge{font-family: var(--font-jakarta), 'Plus Jakarta Sans', system-ui, sans-serif;display:inline-block;font-size:12px;font-weight:600;border-radius:9999px;padding:3px 10px;white-space:nowrap}.ds-badge--confirmed{background:#DCFCE7;color:#15803D}.ds-badge--pending{background:#FEF9C3;color:#A16207}.ds-badge--completed{background:#F1F5F9;color:#475569}.ds-badge--cancelled{background:#FEE2E2;color:#DC2626}"
+    },
+    {
+      "name": "KPI Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Paper card on linen with uppercase title and heavy figure.",
+      "html": "<div class=\"ds-kpi\"><div class=\"ds-kpi-title\">Taux d'occupation</div><div class=\"ds-kpi-value\">78 %</div><div class=\"ds-kpi-sub\">ce mois-ci</div></div>",
+      "css": ".ds-kpi{font-family: var(--font-jakarta), 'Plus Jakarta Sans', system-ui, sans-serif;background:#fff;border:1px solid #E7E2DA;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);padding:18px 20px;min-width:180px;transition:box-shadow .15s}.ds-kpi:hover{box-shadow:0 4px 12px rgba(0,0,0,0.09),0 2px 4px rgba(0,0,0,0.05)}.ds-kpi-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#6B645F;margin-bottom:10px}.ds-kpi-value{font-size:28px;font-weight:800;line-height:1;letter-spacing:-1px;color:#2A5C40}.ds-kpi-sub{font-size:12px;color:#6B645F;margin-top:6px}"
+    },
+    {
+      "name": "Sidebar Nav",
+      "kind": "nav",
+      "refersTo": "sidebar",
+      "description": "Forest-night sidebar; active item gets terracotta left bar.",
+      "html": "<nav class=\"ds-nav\"><div class=\"ds-nav-brand\"><span class=\"ds-nav-mark\">D</span><span><b>DirectLoc</b><small>Administration</small></span></div><a class=\"ds-nav-item ds-nav-item--active\" href=\"#\">Tableau de bord</a><a class=\"ds-nav-item\" href=\"#\">Réservations</a><a class=\"ds-nav-item\" href=\"#\">Calendrier</a></nav>",
+      "css": ".ds-nav{font-family: var(--font-jakarta), 'Plus Jakarta Sans', system-ui, sans-serif;width:240px;background:#1C3A2C;padding-bottom:8px}.ds-nav-brand{display:flex;gap:10px;align-items:center;padding:20px 16px;border-bottom:1px solid rgba(255,255,255,.07);color:#fff}.ds-nav-brand small{display:block;font-size:11px;color:rgba(255,255,255,.45)}.ds-nav-brand b{font-size:15px}.ds-nav-mark{width:34px;height:34px;border-radius:9px;background:#D4784A;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff}.ds-nav-item{display:block;padding:10px 14px;font-size:13.5px;font-weight:500;color:rgba(255,255,255,.55);text-decoration:none;border-left:3px solid transparent;transition:color .15s}.ds-nav-item:hover{color:rgba(255,255,255,.85)}.ds-nav-item:focus-visible{outline:2px solid #D4784A;outline-offset:-2px}.ds-nav-item--active{color:#fff;font-weight:600;background:rgba(255,255,255,.1);border-left-color:#D4784A}"
+    },
+    {
+      "name": "Tabs",
+      "kind": "nav",
+      "refersTo": "",
+      "description": "Underline tabs for Paramètres / Règles, deep-linkable.",
+      "html": "<div class=\"ds-tabs\"><button class=\"ds-tab ds-tab--active\">Général</button><button class=\"ds-tab\">Apparence</button><button class=\"ds-tab\">iCal</button></div>",
+      "css": ".ds-tabs{font-family: var(--font-jakarta), 'Plus Jakarta Sans', system-ui, sans-serif;display:flex;gap:4px;border-bottom:1px solid #E7E2DA}.ds-tab{background:none;border:none;border-bottom:2px solid transparent;padding:10px 18px;font:inherit;font-size:13.5px;font-weight:500;color:#6B645F;cursor:pointer;transition:all .15s}.ds-tab:hover{color:#1C1917}.ds-tab:focus-visible{outline:2px solid #2A5C40;outline-offset:-2px}.ds-tab--active{color:#2A5C40;font-weight:700;border-bottom-color:#2A5C40}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Concierge",
+    "overview": "The admin is a concierge who is always ready and never in the way. The host comes in to check today's arrivals, record a phone booking, or close a weekend. The interface answers quickly, in plain French, and then gets out of the way. Expression lives in the details: a deep forest sidebar, a terracotta mark, warm linen behind white cards. The layout itself stays predictable.\n\nThe surface is warm and tactile, never clinical. Backgrounds are linen and oat rather than grey. Borders are sand-coloured. Controls have soft 8–12px corners, a 1.5px field stroke and a gentle shadow you can almost feel. Density is moderate: one screen shows a working day's worth of information without crowding. Text sizes are compact (13.5px body) because hosts scan, not read.\n\nGuest-facing sites are a different world on purpose. Each one belongs to the host (see *Public templates* under Components). The admin palette never leaks into them, and template palettes never leak into the admin.",
+    "keyCharacteristics": [
+      "Forest-green structure, terracotta as the rare warm accent.",
+      "Warm neutrals (linen, oat, sand), never cool grey for surfaces.",
+      "One sans family (Plus Jakarta Sans) carrying hierarchy through weight and tight tracking.",
+      "Soft corners, light lift, flat at rest.",
+      "Status colours are semantic and fixed; they mean the same thing on every screen."
+    ],
+    "rules": [
+      {
+        "name": "The Terracotta Whisper Rule",
+        "body": "Terracotta marks identity and \"you are here\" — the logo tile, the active nav bar. It is never a button fill or a large surface.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Palettes Rule",
+        "body": "`--admin-*` tokens live under `[data-admin]` and are used only in `/admin` and auth screens. The legacy `warm-*` / `amber-accent` scale belongs to the public templates. Never mix them.",
+        "section": "colors"
+      },
+      {
+        "name": "The Weight-Not-Size Rule",
+        "body": "Hierarchy comes from weight and tracking at compact sizes. Nothing in the admin goes above 28px.",
+        "section": "typography"
+      },
+      {
+        "name": "The Paper-on-Linen Rule",
+        "body": "Depth comes from white paper against warm linen plus a sand border first, and from shadow second. Never stack shadows to create hierarchy.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** scope admin styling under `[data-admin]` and use the `--admin-*` variables, not literal hex values in new components.",
+      "**Do** reuse the shared primitives in `components/admin/ui.tsx` (`Card`, `PageHeader`, `SettingsSection`, `Field`, `PrimaryButton`, `GhostButton`, `StatusBadge`, `Tabs`).",
+      "**Do** keep a single primary action per page header.",
+      "**Do** keep status and channel colours identical on every screen (list, detail, calendar spans).",
+      "**Do** respect `prefers-reduced-motion`; admin motion is limited to the 0.22s `admin-fade-in` page entrance and 0.15s colour transitions."
+    ],
+    "donts": [
+      "**Don't** use terracotta as a button fill or a large background.",
+      "**Don't** bring `warm-*`, `amber-accent` or Cormorant into admin screens, or admin tokens into public templates.",
+      "**Don't** put DirectLoc branding on guest-facing pages beyond a discreet credit.",
+      "**Don't** use cool greys for admin surfaces; neutrals stay warm (linen, oat, sand).",
+      "**Don't** add a second type family to the admin."
+    ]
+  }
+}

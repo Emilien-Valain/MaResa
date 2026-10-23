@@ -9,15 +9,26 @@
  * les bornes de l'offset et une réservation proche de minuit tomberait dans le
  * mauvais bucket. Voir `.scratch/timezone-dates/issues/01`.
  *
+ * « Aujourd'hui » est la date calendaire à Paris (l'hôte vit à l'heure française) :
+ * à 00:30 heure de Paris on est déjà le lendemain, même si UTC est encore la veille.
+ * Cette date est ensuite exprimée en UTC minuit, comme toutes les dates domaine.
+ *
  * Chaque helper accepte un `now` injectable pour des tests déterministes ;
  * il défaut à l'instant courant.
  */
 
-/** Minuit UTC du jour de `now`. */
+// shortcut: fuseau unique pour tous les tenants, à passer en config tenant si un établissement hors France arrive.
+export const HOTEL_TIME_ZONE = "Europe/Paris";
+
+/** Date du jour à Paris, au format YYYY-MM-DD. */
+export function parisToday(now: Date = new Date()): string {
+  // en-CA formate en YYYY-MM-DD
+  return new Intl.DateTimeFormat("en-CA", { timeZone: HOTEL_TIME_ZONE }).format(now);
+}
+
+/** Date du jour à Paris, en UTC minuit. */
 export function todayStart(now: Date = new Date()): Date {
-  const d = new Date(now);
-  d.setUTCHours(0, 0, 0, 0);
-  return d;
+  return new Date(`${parisToday(now)}T00:00:00.000Z`);
 }
 
 /** Minuit UTC du lendemain de `now` (borne haute exclusive d'« aujourd'hui »). */

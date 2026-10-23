@@ -1,12 +1,12 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { rooms, properties, tenants } from "@/db/schema";
-import { roomSchema, roomUpdateSchema, parseFormData } from "@/lib/validation";
+import { roomSchema, roomUpdateSchema, safeParseFormData, type FormResult } from "@/lib/validation";
 
 async function requireTenantId(): Promise<string> {
   const { tenantId } = await requireSession();
@@ -22,10 +22,26 @@ function slugify(str: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-export async function createRoom(formData: FormData) {
+// Slug unique par tenant : si vide (nom sans lettres latines) ou déjà pris par une autre chambre,
+// on suffixe avec les 6 premiers caractères de l'id de la chambre.
+async function uniqueRoomSlug(tenantId: string, roomId: string, name: string): Promise<string> {
+  const base = slugify(name);
+  if (base) {
+    const taken = await db.query.rooms.findFirst({
+      where: and(eq(rooms.tenantId, tenantId), eq(rooms.slug, base), ne(rooms.id, roomId)),
+      columns: { id: true },
+    });
+    if (!taken) return base;
+  }
+  return `${base || "chambre"}-${roomId.slice(0, 6)}`;
+}
+
+export async function createRoom(formData: FormData): Promise<FormResult> {
   const tenantId = await requireTenantId();
 
-  const data = parseFormData(roomSchema, formData);
+  const parsed = safeParseFormData(roomSchema, formData);
+  if ("error" in parsed) return parsed;
+  const { data } = parsed;
   const name = data.nom;
   const description = data.description || null;
   const pricePerNight = data.prix.replace(",", ".");
@@ -47,11 +63,13 @@ export async function createRoom(formData: FormData) {
       .returning();
   }
 
+  const id = crypto.randomUUID();
   await db.insert(rooms).values({
+    id,
     tenantId,
     propertyId: property.id,
     name,
-    slug: slugify(name),
+    slug: await uniqueRoomSlug(tenantId, id, name),
     description,
     pricePerNight,
     capacity,
@@ -61,10 +79,12 @@ export async function createRoom(formData: FormData) {
   redirect("/admin/chambres");
 }
 
-export async function updateRoom(id: string, formData: FormData) {
+export async function updateRoom(id: string, formData: FormData): Promise<FormResult> {
   const tenantId = await requireTenantId();
 
-  const data = parseFormData(roomUpdateSchema, formData);
+  const parsed = safeParseFormData(roomUpdateSchema, formData);
+  if ("error" in parsed) return parsed;
+  const { data } = parsed;
   const name = data.nom;
   const description = data.description || null;
   const pricePerNight = data.prix.replace(",", ".");
@@ -73,19 +93,32 @@ export async function updateRoom(id: string, formData: FormData) {
 
   await db
     .update(rooms)
-    .set({ name, slug: slugify(name), description, pricePerNight, capacity, active })
+    .set({ name, slug: await uniqueRoomSlug(tenantId, id, name), description, pricePerNight, capacity, active })
     .where(and(eq(rooms.id, id), eq(rooms.tenantId, tenantId)));
 
   revalidatePath("/admin/chambres");
   redirect("/admin/chambres");
 }
 
-export async function deleteRoom(id: string) {
+export async function deleteRoom(id: string): Promise<{ error?: string }> {
   const tenantId = await requireTenantId();
 
-  await db
-    .delete(rooms)
-    .where(and(eq(rooms.id, id), eq(rooms.tenantId, tenantId)));
+  try {
+    await db
+      .delete(rooms)
+      .where(and(eq(rooms.id, id), eq(rooms.tenantId, tenantId)));
+  } catch (e) {
+    // 23503 = clé étrangère : la chambre a encore des réservations, blocages ou calendriers liés.
+    const code = (e as { code?: string; cause?: { code?: string } }).code ?? (e as { cause?: { code?: string } }).cause?.code;
+    if (code === "23503") {
+      return {
+        error:
+          "Cette chambre a des réservations ou des calendriers liés : elle ne peut pas être supprimée. Désactivez-la plutôt depuis « Modifier ».",
+      };
+    }
+    throw e;
+  }
 
   revalidatePath("/admin/chambres");
+  return {};
 }

@@ -28,13 +28,13 @@ export default async function ReglesPage() {
     <div className="space-y-6 admin-fade-in">
       <header>
         <h1
-          className="text-[22px] font-extrabold"
-          style={{ color: "var(--admin-text)", letterSpacing: "-0.5px" }}
+          className="text-[24px] font-extrabold leading-tight"
+          style={{ color: "var(--admin-text)", letterSpacing: "-0.6px" }}
         >
           Règles
         </h1>
         <p
-          className="text-[13.5px] mt-1"
+          className="text-[14px] mt-1"
           style={{ color: "var(--admin-text-muted)" }}
         >
           Contraintes de réservation, prix variables et blocages de calendrier.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs } from "@/components/admin/ui";
 import ManualBlockSection from "./ManualBlockSection";
 import BookingRuleSection from "./BookingRuleSection";
@@ -69,13 +70,30 @@ export default function RulesPageClient({
   bookingRules,
   pricingRules,
 }: Props) {
-  const [tab, setTab] = useState<Tab>("booking");
+  // Onglet dans l'URL (?tab=) : partageable et conservé au rechargement, comme Paramètres.
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlTab = searchParams.get("tab") as Tab | null;
+  const [tab, setTabState] = useState<Tab>(
+    urlTab && TABS.some((t) => t.id === urlTab) ? urlTab : "booking",
+  );
+  const setTab = (next: Tab) => {
+    setTabState(next);
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", next);
+    router.replace(`?${params.toString()}`, { scroll: false });
+  };
 
   return (
     <>
-      <Tabs<Tab> tabs={TABS} active={tab} onChange={setTab} />
+      <Tabs<Tab> tabs={TABS} active={tab} onChange={setTab} label="Types de règles" />
 
-      <div className="max-w-[760px]">
+      <div
+        className="max-w-[760px]"
+        role="tabpanel"
+        id={`panel-${tab}`}
+        aria-labelledby={`tab-${tab}`}
+      >
         {tab === "booking" && (
           <BookingRuleSection rooms={rooms} rules={bookingRules} />
         )}

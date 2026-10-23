@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { rooms } from "@/db/schema";
 import { blockedDates, coalesce } from "@/lib/holds";
+import { isUuid } from "@/lib/validation";
 
 /**
  * GET /api/ical/[roomId]
@@ -23,6 +24,10 @@ export async function GET(
   { params }: { params: Promise<{ roomId: string }> },
 ) {
   const { roomId } = await params;
+  // Un id non-UUID ferait planter Postgres → 404 comme une chambre inconnue
+  if (!isUuid(roomId)) {
+    return new NextResponse("Not Found", { status: 404 });
+  }
 
   // Vérifier que la chambre existe et est active
   const room = await db.query.rooms.findFirst({

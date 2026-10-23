@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isRoomAvailable, getBlockedDates } from "@/lib/availability";
 import { validateBookingRules } from "@/lib/booking-rules";
+import { isStayTooLong, isUuid, STAY_TOO_LONG_MESSAGE } from "@/lib/validation";
 
 /**
  * GET /api/availability
@@ -40,6 +41,11 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // Un id non-UUID ferait planter Postgres (« invalid input syntax for type uuid ») → 500
+  if (!isUuid(roomId) || !isUuid(tenantId)) {
+    return NextResponse.json({ error: "Identifiant invalide" }, { status: 400 });
+  }
+
   const checkIn = new Date(from + "T00:00:00.000Z");
   const checkOut = new Date(to + "T00:00:00.000Z");
 
@@ -55,6 +61,10 @@ export async function GET(request: NextRequest) {
       { error: "La date de départ doit être après la date d'arrivée" },
       { status: 400 },
     );
+  }
+
+  if (isStayTooLong(checkIn, checkOut)) {
+    return NextResponse.json({ error: STAY_TOO_LONG_MESSAGE }, { status: 400 });
   }
 
   const [available, blockedDates, violations] = await Promise.all([

@@ -115,7 +115,7 @@ export default function GalleryPhotosUploader({
   return (
     <div className="space-y-4">
       <div
-        className="text-[11.5px] font-bold uppercase mb-1.5"
+        className="text-[12px] font-bold uppercase mb-1.5"
         style={{
           color: "var(--admin-text-muted)",
           letterSpacing: "0.06em",
@@ -252,10 +252,10 @@ export default function GalleryPhotosUploader({
                 className="text-[13px] font-semibold"
                 style={{ color: "var(--admin-text)" }}
               >
-                Glisse des images ici ou clique pour sélectionner
+                Glissez des images ici ou cliquez pour les sélectionner
               </p>
               <p
-                className="text-[11.5px] mt-1"
+                className="text-[12px] mt-1"
                 style={{ color: "var(--admin-text-subtle)" }}
               >
                 JPEG, PNG ou WebP · {remainingSlots} place
@@ -270,7 +270,7 @@ export default function GalleryPhotosUploader({
       {error && (
         <p
           className="text-[13px] font-semibold"
-          style={{ color: "#DC2626" }}
+          style={{ color: "var(--admin-danger)" }}
         >
           {error}
         </p>

@@ -1,10 +1,9 @@
-import { and, eq, gte, lte, or, sql, count, sum, asc } from "drizzle-orm";
+import { and, eq, gte, lt, lte, or, inArray, count, sum, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { bookings, rooms } from "@/db/schema";
 import {
   todayStart,
   tomorrowStart,
-  startOfWeek,
   startOfMonth,
   endOfMonth,
 } from "@/lib/date-windows";
@@ -13,15 +12,49 @@ import {
 // rester alignée sur le stockage UTC-minuit des dates domaine (ADR-0005) et
 // donc indépendante du `TZ` serveur. Voir `lib/date-windows.ts`.
 
-// ─── Prochaines arrivées / départs ──────────────────────────────────────────
+// ─── Aujourd'hui ────────────────────────────────────────────────────────────
 
-export async function getUpcomingCheckIns(tenantId: string, limit = 8) {
+// Tous les séjours non annulés : un séjour « en attente » arrive et part comme les autres.
+const LIVE = ["pending", "confirmed", "completed"] as const;
+
+export async function getTodayMovements(tenantId: string) {
   const today = todayStart();
+  const tomorrow = tomorrowStart();
+  const withRoom = { room: { columns: { name: true } } } as const;
 
+  const [arrivals, departures] = await Promise.all([
+    db.query.bookings.findMany({
+      where: and(
+        eq(bookings.tenantId, tenantId),
+        gte(bookings.checkIn, today),
+        lt(bookings.checkIn, tomorrow),
+        inArray(bookings.status, [...LIVE]),
+      ),
+      with: withRoom,
+      orderBy: [asc(bookings.guestName)],
+    }),
+    db.query.bookings.findMany({
+      where: and(
+        eq(bookings.tenantId, tenantId),
+        gte(bookings.checkOut, today),
+        lt(bookings.checkOut, tomorrow),
+        inArray(bookings.status, [...LIVE]),
+      ),
+      with: withRoom,
+      orderBy: [asc(bookings.guestName)],
+    }),
+  ]);
+
+  return { arrivals, departures };
+}
+
+// ─── Prochaines arrivées / départs (à partir de demain : aujourd'hui a son bloc) ───
+
+export async function getUpcomingCheckIns(tenantId: string, limit = 6) {
   return db.query.bookings.findMany({
     where: and(
       eq(bookings.tenantId, tenantId),
-      gte(bookings.checkIn, today),
+      gte(bookings.checkIn, tomorrowStart()),
       or(eq(bookings.status, "pending"), eq(bookings.status, "confirmed")),
     ),
     with: { room: { columns: { name: true } } },
@@ -30,13 +63,11 @@ export async function getUpcomingCheckIns(tenantId: string, limit = 8) {
   });
 }
 
-export async function getUpcomingCheckOuts(tenantId: string, limit = 8) {
-  const today = todayStart();
-
+export async function getUpcomingCheckOuts(tenantId: string, limit = 6) {
   return db.query.bookings.findMany({
     where: and(
       eq(bookings.tenantId, tenantId),
-      gte(bookings.checkOut, today),
+      gte(bookings.checkOut, tomorrowStart()),
       or(eq(bookings.status, "confirmed"), eq(bookings.status, "completed")),
     ),
     with: { room: { columns: { name: true } } },
@@ -114,15 +145,16 @@ export async function getOccupancyRate(tenantId: string) {
 
 // ─── Chiffre d'affaires ─────────────────────────────────────────────────────
 
-async function getRevenueForPeriod(tenantId: string, from: Date, to: Date) {
+/** Montant des réservations confirmées ou terminées créées ce mois-ci (pas un encaissement). */
+export async function getMonthRevenue(tenantId: string) {
   const [result] = await db
     .select({ revenue: sum(bookings.totalPrice) })
     .from(bookings)
     .where(
       and(
         eq(bookings.tenantId, tenantId),
-        gte(bookings.createdAt, from),
-        lte(bookings.createdAt, to),
+        gte(bookings.createdAt, startOfMonth()),
+        lte(bookings.createdAt, endOfMonth()),
         or(eq(bookings.status, "confirmed"), eq(bookings.status, "completed")),
       ),
     );
@@ -130,29 +162,17 @@ async function getRevenueForPeriod(tenantId: string, from: Date, to: Date) {
   return parseFloat(result?.revenue ?? "0");
 }
 
-export async function getRevenue(tenantId: string) {
-  const today = todayStart();
-  const tomorrow = tomorrowStart();
-
-  const [day, week, month] = await Promise.all([
-    getRevenueForPeriod(tenantId, today, tomorrow),
-    getRevenueForPeriod(tenantId, startOfWeek(), tomorrow),
-    getRevenueForPeriod(tenantId, startOfMonth(), endOfMonth()),
-  ]);
-
-  return { day, week, month };
-}
-
 // ─── Tout en un ─────────────────────────────────────────────────────────────
 
 export async function getDashboardData(tenantId: string) {
-  const [checkIns, checkOuts, channels, occupancy, revenue] = await Promise.all([
+  const [today, checkIns, checkOuts, channels, occupancy, monthRevenue] = await Promise.all([
+    getTodayMovements(tenantId),
     getUpcomingCheckIns(tenantId),
     getUpcomingCheckOuts(tenantId),
     getBookingsByChannel(tenantId),
     getOccupancyRate(tenantId),
-    getRevenue(tenantId),
+    getMonthRevenue(tenantId),
   ]);
 
-  return { checkIns, checkOuts, channels, occupancy, revenue };
+  return { today, checkIns, checkOuts, channels, occupancy, monthRevenue };
 }

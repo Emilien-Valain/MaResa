@@ -1,13 +1,45 @@
 import { z } from "zod";
+import { parisToday } from "@/lib/date-windows";
 
 // ── Primitives réutilisables ──────────────────────────────────────────────────
 
-const dateString = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Format de date attendu : YYYY-MM-DD")
-  .refine((s) => !isNaN(new Date(s + "T00:00:00.000Z").getTime()), "Date invalide");
+/** « 05/01/2027 » → « 2027-01-05 » ; toute autre chaîne est rendue telle quelle. */
+export function frDateToIso(v: string): string {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(v.trim());
+  return m ? `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}` : v;
+}
+
+// Les champs date de l'admin affichent JJ/MM/AAAA ; l'API et les tests envoient YYYY-MM-DD. Les deux sont acceptés.
+const dateString = z.preprocess(
+  (v) => (typeof v === "string" ? frDateToIso(v) : v),
+  z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Format de date attendu : JJ/MM/AAAA")
+    .refine((s) => {
+      // Rejette aussi les dates qui « débordent » (31/02 → 3 mars)
+      const d = new Date(s + "T00:00:00.000Z");
+      return !isNaN(d.getTime()) && d.toISOString().startsWith(s);
+    }, "Date invalide"),
+);
+
+/** Borne de séjour : au-delà, c'est une faute de frappe ou un abus (une requête = une boucle par nuit). */
+export const MAX_STAY_NIGHTS = 366;
+export const STAY_TOO_LONG_MESSAGE = `Séjour trop long (${MAX_STAY_NIGHTS} nuits maximum)`;
+
+export function isStayTooLong(checkIn: Date, checkOut: Date): boolean {
+  return checkOut.getTime() - checkIn.getTime() > MAX_STAY_NIGHTS * 86_400_000;
+}
+
+const stayNotTooLong = (d: { checkIn: string; checkOut: string }) =>
+  !isStayTooLong(new Date(d.checkIn + "T00:00:00Z"), new Date(d.checkOut + "T00:00:00Z"));
 
 const uuidString = z.string().uuid("UUID invalide");
+// Un roomId invalide vient d'un select laissé vide : on le dit dans les mots de l'hôte.
+const roomIdString = z.string().uuid("Choisissez une chambre");
+
+export function isUuid(s: string): boolean {
+  return uuidString.safeParse(s).success;
+}
 
 const email = z.string().email("Adresse email invalide").max(320);
 
@@ -37,7 +69,7 @@ const positiveDecimal = z
 
 // ── URL iCal (anti-SSRF) ─────────────────────────────────────────────────────
 
-const BLOCKED_HOSTS = /^(localhost|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+|0\.0\.0\.0|\[::1?\])/i;
+const BLOCKED_HOSTS = /^(localhost|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+|169\.254\.\d+\.\d+|0\.0\.0\.0|\[::1?\])/i;
 
 const icalUrl = z
   .string()
@@ -64,7 +96,7 @@ const icalUrl = z
 
 export const bookingPublicSchema = z
   .object({
-    roomId: uuidString,
+    roomId: roomIdString,
     checkIn: dateString,
     checkOut: dateString,
     guestName: safeName,
@@ -75,11 +107,17 @@ export const bookingPublicSchema = z
   .refine(
     (d) => new Date(d.checkOut + "T00:00:00Z") > new Date(d.checkIn + "T00:00:00Z"),
     { message: "La date de départ doit être après la date d'arrivée", path: ["checkOut"] },
-  );
+  )
+  .refine(stayNotTooLong, { message: STAY_TOO_LONG_MESSAGE, path: ["checkOut"] })
+  // Public seulement : l'hôte peut saisir un séjour passé (régularisation), pas un client.
+  .refine((d) => d.checkIn >= parisToday(), {
+    message: "La date d'arrivée est déjà passée",
+    path: ["checkIn"],
+  });
 
 export const bookingManualSchema = z
   .object({
-    roomId: uuidString,
+    roomId: roomIdString,
     guestName: safeName,
     guestEmail: email,
     guestPhone: phone,
@@ -87,6 +125,13 @@ export const bookingManualSchema = z
     checkIn: dateString,
     checkOut: dateString,
     notes: safeText.optional().or(z.literal("")),
+    // Total convenu avec le client ; vide = prix calculé par les règles tarifaires.
+    agreedPrice: z
+      .string()
+      .trim()
+      .regex(/^\d+([.,]\d{1,2})?$/, "Prix convenu : un montant en euros (ex : 250 ou 249,50)")
+      .optional()
+      .or(z.literal("")),
     // Case « Forcer » : autorise l'admission par-dessus un Hold (override admin).
     // Checkbox absente si décochée → false ; "on" si cochée → true.
     force: z
@@ -97,7 +142,8 @@ export const bookingManualSchema = z
   .refine(
     (d) => new Date(d.checkOut + "T00:00:00Z") > new Date(d.checkIn + "T00:00:00Z"),
     { message: "La date de départ doit être après la date d'arrivée", path: ["checkOut"] },
-  );
+  )
+  .refine(stayNotTooLong, { message: STAY_TOO_LONG_MESSAGE, path: ["checkOut"] });
 
 export const roomSchema = z.object({
   nom: safeName,
@@ -111,7 +157,7 @@ export const roomUpdateSchema = roomSchema.extend({
 });
 
 export const icalSourceSchema = z.object({
-  roomId: uuidString,
+  roomId: roomIdString,
   name: safeName,
   url: icalUrl,
 });
@@ -120,7 +166,7 @@ export const icalSourceSchema = z.object({
 
 export const manualBlockSchema = z
   .object({
-    roomId: uuidString.optional().or(z.literal("")),
+    roomId: roomIdString.optional().or(z.literal("")),
     startDate: dateString,
     endDate: dateString,
     recurring: z.enum(["on"]).optional(),
@@ -137,18 +183,18 @@ export const manualBlockSchema = z
   );
 
 export const bookingRuleSchema = z.object({
-  roomId: uuidString.optional().or(z.literal("")),
+  roomId: roomIdString.optional().or(z.literal("")),
   validFrom: dateString.optional().or(z.literal("")),
   validTo: dateString.optional().or(z.literal("")),
-  minStay: z.coerce.number().int().min(1).optional().or(z.literal("").transform(() => undefined)),
-  maxStay: z.coerce.number().int().min(1).optional().or(z.literal("").transform(() => undefined)),
+  minStay: z.coerce.number().int("Nombre de nuits entier").min(1, "Au moins 1 nuit").optional().or(z.literal("").transform(() => undefined)),
+  maxStay: z.coerce.number().int("Nombre de nuits entier").min(1, "Au moins 1 nuit").optional().or(z.literal("").transform(() => undefined)),
   allowedCheckInDays: z.string().optional().or(z.literal("")), // "6" ou "0,6"
   allowedCheckOutDays: z.string().optional().or(z.literal("")),
 });
 
 export const pricingRuleSchema = z
   .object({
-    roomId: uuidString.optional().or(z.literal("")),
+    roomId: roomIdString.optional().or(z.literal("")),
     name: safeName,
     validFrom: dateString.optional().or(z.literal("")),
     validTo: dateString.optional().or(z.literal("")),
@@ -219,13 +265,42 @@ export const locationSchema = z.object({
 
 // ── Helper : parse un FormData avec un schéma Zod ────────────────────────────
 
-export function parseFormData<T extends z.ZodTypeAny>(
-  schema: T,
-  formData: FormData,
-): z.infer<T> {
+function formEntries(formData: FormData): Record<string, unknown> {
   const raw: Record<string, unknown> = {};
   for (const [key, value] of formData.entries()) {
     raw[key] = typeof value === "string" ? value : undefined;
   }
-  return schema.parse(raw);
+  return raw;
+}
+
+export function parseFormData<T extends z.ZodTypeAny>(
+  schema: T,
+  formData: FormData,
+): z.infer<T> {
+  return schema.parse(formEntries(formData));
+}
+
+// ── Résultat des server actions de formulaire ────────────────────────────────
+// Une erreur levée par une server action est masquée en production (digest) :
+// les erreurs de saisie sont donc RENDUES au client, jamais levées.
+
+/** `undefined` = succès ; sinon un message FR prêt à afficher et, par champ, son erreur. */
+export type FormResult = { error: string; fieldErrors: Record<string, string> } | undefined;
+
+export function formError(e: z.ZodError): NonNullable<FormResult> {
+  const fieldErrors: Record<string, string> = {};
+  for (const i of e.issues) {
+    const name = String(i.path[0] ?? "");
+    if (name && !fieldErrors[name]) fieldErrors[name] = i.message;
+  }
+  return { error: e.issues.map((i) => i.message).join(" · "), fieldErrors };
+}
+
+/** Comme parseFormData, mais rend l'erreur de saisie au lieu de la lever. */
+export function safeParseFormData<T extends z.ZodTypeAny>(
+  schema: T,
+  formData: FormData,
+): { data: z.infer<T> } | NonNullable<FormResult> {
+  const r = schema.safeParse(formEntries(formData));
+  return r.success ? { data: r.data } : formError(r.error);
 }
